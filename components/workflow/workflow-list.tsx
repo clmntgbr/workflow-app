@@ -6,7 +6,8 @@ import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
 import { useOrganization } from "@/lib/organization/context"
 import { useWorkflow } from "@/lib/workflow/context"
 import { Workflow } from "@/lib/workflow/types"
-import { PlusIcon } from "lucide-react"
+import { PlusIcon, SettingsIcon } from "lucide-react"
+import Link from "next/link"
 import { useState } from "react"
 
 export function WorkflowList() {
@@ -24,7 +25,7 @@ export function WorkflowList() {
     setIsDrawerOpen(true)
   }
 
-  const openWorkflow = (workflow: Workflow) => {
+  const openEdit = (workflow: Workflow) => {
     setSelectedWorkflow(workflow)
     setDrawerMode("edit")
     setIsDrawerOpen(true)
@@ -71,11 +72,10 @@ export function WorkflowList() {
       ) : (
         <ul className="divide-y rounded-lg border">
           {workflows.members.map((workflow) => (
-            <li key={workflow.id}>
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left hover:bg-muted/50"
-                onClick={() => openWorkflow(workflow)}
+            <li key={workflow.id} className="flex items-stretch">
+              <Link
+                href={`/workflow/${workflow.id}`}
+                className="flex min-w-0 flex-1 items-center justify-between gap-4 px-4 py-3 text-left hover:bg-muted/50"
               >
                 <div className="min-w-0">
                   <p className="truncate font-medium">{workflow.name}</p>
@@ -86,7 +86,18 @@ export function WorkflowList() {
                 <span className="shrink-0 rounded-md border px-2 py-0.5 text-xs capitalize text-muted-foreground">
                   {workflow.status}
                 </span>
-              </button>
+              </Link>
+              <div className="flex items-center border-s px-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Edit ${workflow.name}`}
+                  onClick={() => openEdit(workflow)}
+                >
+                  <SettingsIcon className="size-4" />
+                </Button>
+              </div>
             </li>
           ))}
         </ul>
