@@ -1,0 +1,37 @@
+"use client"
+
+import { OrganizationSwitcher } from "@/components/organization/organization-switcher"
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignOutButton,
+  SignUpButton,
+  UserButton,
+} from "@clerk/nextjs"
+
+export function AppHeader() {
+  return (
+    <header className="flex h-16 items-center justify-between gap-4 p-4">
+      <div className="flex items-center gap-3">
+        <SignedIn>
+          <OrganizationSwitcher />
+        </SignedIn>
+      </div>
+      <div className="flex items-center gap-4">
+        <SignedOut>
+          <SignInButton />
+          <SignUpButton>
+            <button className="h-10 cursor-pointer rounded-full bg-purple-700 px-4 text-sm font-medium text-white sm:h-12 sm:px-5 sm:text-base">
+              Sign Up
+            </button>
+          </SignUpButton>
+        </SignedOut>
+        <SignedIn>
+          <UserButton />
+          <SignOutButton />
+        </SignedIn>
+      </div>
+    </header>
+  )
+}

@@ -1,7 +1,14 @@
 export interface User {
-  firstname?: string
-  lastname?: string
   id?: string
+  clerkId?: string
+  firstName?: string
+  lastName?: string
+  email?: string
+  activeOrganizationId?: string | null
+  /** @deprecated use firstName */
+  firstname?: string
+  /** @deprecated use lastName */
+  lastname?: string
 }
 
 export interface UserState {
