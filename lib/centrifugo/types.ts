@@ -72,6 +72,15 @@ export function shouldRefetchOrganizations(event: UserStreamEvent): boolean {
   )
 }
 
+/** Refetch workflows on CRUD events and when the active org changes. */
+export function shouldRefetchWorkflows(event: UserStreamEvent): boolean {
+  return (
+    getEventResource(event) === "workflow" ||
+    event.type === "user.active_organization_changed" ||
+    event.type === "organization.created"
+  )
+}
+
 /** Builds `users:{internalUserId}` — prefer `channel` from `/api/realtime/connection`. */
 export function getUserChannel(userId: string): string {
   return `users:${userId}`

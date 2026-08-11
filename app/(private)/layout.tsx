@@ -3,6 +3,8 @@ import { UserCentrifugeListener } from "@/lib/centrifugo/user-centrifuge-listene
 import { OrganizationProvider } from "@/lib/organization/provider"
 import { ThemeProvider } from "@/lib/theme/theme-provider"
 import { UserProvider } from "@/lib/user/provider"
+import { WorkflowProvider } from "@/lib/workflow/provider"
+import { Toaster } from "sonner"
 
 export default function PrivateLayout({
   children,
@@ -18,9 +20,12 @@ export default function PrivateLayout({
     >
       <UserProvider>
         <OrganizationProvider>
-          <UserCentrifugeListener />
-          <AppHeader />
-          <div className="mx-auto px-0">{children}</div>
+          <WorkflowProvider>
+            <UserCentrifugeListener />
+            <AppHeader />
+            <div className="mx-auto px-0">{children}</div>
+            <Toaster />
+          </WorkflowProvider>
         </OrganizationProvider>
       </UserProvider>
     </ThemeProvider>

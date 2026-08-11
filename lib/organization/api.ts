@@ -4,14 +4,8 @@ import {
   UpdateOrganizationInput,
 } from "./types"
 
-const ORGANIZATIONS_COLLECTION_PATH =
-  "/api/d0a666d0a28386b0e32bbfce7e7cb034"
-const ORGANIZATION_ITEM_PATH = "/api/753141f73576493060226a97e10e5129"
-const ORGANIZATION_ACTIVATE_PATH = "/api/c03895dc1f9b360291e584250f95698d"
-const ORGANIZATION_MEMBERS_PATH = "/api/7b0f23a6be26ae90246195281519d66d"
-
 export const listOrganizations = async (): Promise<Organization[]> => {
-  const response = await fetch(ORGANIZATIONS_COLLECTION_PATH, {
+  const response = await fetch("/api/organizations", {
     method: "GET",
   })
 
@@ -25,7 +19,7 @@ export const listOrganizations = async (): Promise<Organization[]> => {
 export const createOrganization = async (
   input: CreateOrganizationInput
 ): Promise<Organization> => {
-  const response = await fetch(ORGANIZATIONS_COLLECTION_PATH, {
+  const response = await fetch("/api/organizations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -39,7 +33,7 @@ export const createOrganization = async (
 }
 
 export const getOrganization = async (id: string): Promise<Organization> => {
-  const response = await fetch(`${ORGANIZATION_ITEM_PATH}/${id}`, {
+  const response = await fetch(`/api/organizations/${id}`, {
     method: "GET",
   })
 
@@ -54,7 +48,7 @@ export const updateOrganization = async (
   id: string,
   input: UpdateOrganizationInput
 ): Promise<Organization> => {
-  const response = await fetch(`${ORGANIZATION_ITEM_PATH}/${id}`, {
+  const response = await fetch(`/api/organizations/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -70,7 +64,7 @@ export const updateOrganization = async (
 export const activateOrganization = async (
   id: string
 ): Promise<Organization> => {
-  const response = await fetch(`${ORGANIZATION_ACTIVATE_PATH}/${id}`, {
+  const response = await fetch(`/api/organizations/${id}/activate`, {
     method: "POST",
   })
 
@@ -82,7 +76,7 @@ export const activateOrganization = async (
 }
 
 export const deleteOrganization = async (id: string): Promise<void> => {
-  const response = await fetch(`${ORGANIZATION_ITEM_PATH}/${id}`, {
+  const response = await fetch(`/api/organizations/${id}`, {
     method: "DELETE",
   })
 
@@ -95,14 +89,11 @@ export const addOrganizationMember = async (
   organizationId: string,
   userId: string
 ): Promise<void> => {
-  const response = await fetch(
-    `${ORGANIZATION_MEMBERS_PATH}/${organizationId}/members`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    }
-  )
+  const response = await fetch(`/api/organizations/${organizationId}/members`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+  })
 
   if (!response.ok) {
     throw new Error("Failed to add organization member")
@@ -114,7 +105,7 @@ export const removeOrganizationMember = async (
   userId: string
 ): Promise<void> => {
   const response = await fetch(
-    `${ORGANIZATION_MEMBERS_PATH}/${organizationId}/members/${userId}`,
+    `/api/organizations/${organizationId}/members/${userId}`,
     {
       method: "DELETE",
     }

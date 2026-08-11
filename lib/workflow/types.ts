@@ -1,0 +1,61 @@
+import { initPaginate, Paginate } from "@/lib/paginate"
+
+export type WorkflowStatus = "active" | "inactive" | "deleted" | "canceled"
+
+export interface Workflow {
+  id: string
+  name: string
+  description: string
+  status: WorkflowStatus | string
+  organizationId: string
+  scheduleIntervalMinutes: number
+  concurrency: number
+  notificationsEnabled: boolean
+  notifyOnSuccess: boolean
+  notifyOnFailure: boolean
+  notifyOnCancel: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateWorkflowInput {
+  name: string
+  description?: string
+  scheduleIntervalMinutes?: number
+  concurrency?: number
+  notificationsEnabled?: boolean
+  notifyOnSuccess?: boolean
+  notifyOnFailure?: boolean
+  notifyOnCancel?: boolean
+}
+
+export interface UpdateWorkflowInput {
+  name: string
+  description?: string
+  status: string
+  scheduleIntervalMinutes: number
+  concurrency: number
+  notificationsEnabled: boolean
+  notifyOnSuccess: boolean
+  notifyOnFailure: boolean
+  notifyOnCancel: boolean
+}
+
+export interface WorkflowState {
+  workflows: Paginate<Workflow>
+  isLoading: boolean
+  error: string | null
+}
+
+export type WorkflowAction =
+  | { type: "GET_WORKFLOWS"; payload: Paginate<Workflow> }
+  | { type: "GET_WORKFLOWS_ERROR"; payload: string }
+  | { type: "GET_WORKFLOWS_LOADING"; payload: boolean }
+  | { type: "UPSERT_WORKFLOW"; payload: Workflow }
+  | { type: "REMOVE_WORKFLOW"; payload: string }
+
+export const initialWorkflowState: WorkflowState = {
+  workflows: initPaginate<Workflow>(),
+  isLoading: false,
+  error: null,
+}
