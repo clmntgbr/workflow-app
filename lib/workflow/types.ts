@@ -41,6 +41,12 @@ export interface UpdateWorkflowInput {
   notifyOnCancel: boolean
 }
 
+export interface CreateWorkflowStepInput {
+  endpointId: string
+  index: number
+  position: unknown
+}
+
 export interface WorkflowState {
   workflows: Paginate<Workflow>
   isLoading: boolean

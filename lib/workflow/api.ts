@@ -1,5 +1,6 @@
 import { Paginate, PaginateQuery } from "@/lib/paginate"
 import {
+  CreateWorkflowStepInput,
   CreateWorkflowInput,
   UpdateWorkflowInput,
   Workflow,
@@ -97,4 +98,25 @@ export const deleteWorkflow = async (id: string): Promise<void> => {
   if (!response.ok) {
     throw new Error("Failed to delete workflow")
   }
+}
+
+export const createWorkflowStep = async (
+  workflowId: string,
+  input: CreateWorkflowStepInput
+): Promise<unknown> => {
+  const response = await fetch(`/api/workflows/${workflowId}/steps`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      endpointId: input.endpointId,
+      index: input.index,
+      position: input.position,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to create workflow step")
+  }
+
+  return response.json()
 }

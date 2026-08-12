@@ -40,14 +40,14 @@ const endpointBaseSchema = z.object({
   timeout: z
     .number()
     .int()
-    .min(1, "Timeout must be at least 1 ms")
+    .min(0, "Timeout must be at least 0 ms")
     .max(300000, "Timeout must be at most 300000 ms"),
   retryOnFailure: z.boolean(),
   retryCount: z.number().int().min(0).max(10),
   retryDelay: z
     .number()
     .int()
-    .min(1, "Retry delay must be at least 1 ms")
+    .min(0, "Retry delay must be at least 0 ms")
     .max(60000, "Retry delay must be at most 60000 ms"),
 })
 
