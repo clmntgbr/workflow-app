@@ -126,7 +126,13 @@ function CanvasInner({
   })
 
   const handleEdgeDelete = useCallback(async (connectionId: string) => {
-    await propsRef.current.onDeleteConnection(connectionId)
+    setEdges((current) => current.filter((edge) => edge.id !== connectionId))
+
+    try {
+      await propsRef.current.onDeleteConnection(connectionId)
+    } catch {
+      // Parent restores connections; edges sync back via props.
+    }
   }, [])
 
   const handleEditStep = useCallback((step: CanvasStep) => {
@@ -134,7 +140,18 @@ function CanvasInner({
   }, [])
 
   const handleDeleteStep = useCallback(async (stepId: string) => {
-    await propsRef.current.onDeleteStep(stepId)
+    setNodes((current) => current.filter((node) => node.id !== stepId))
+    setEdges((current) =>
+      current.filter(
+        (edge) => edge.source !== stepId && edge.target !== stepId
+      )
+    )
+
+    try {
+      await propsRef.current.onDeleteStep(stepId)
+    } catch {
+      // Parent restores steps/connections; nodes/edges sync back via props.
+    }
   }, [])
 
   const [nodes, setNodes] = useState<Node[]>(() =>

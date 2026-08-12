@@ -4,13 +4,17 @@ import { useEndpoint } from "@/lib/endpoint/context"
 import { useOrganization } from "@/lib/organization/context"
 import { useUser } from "@/lib/user/context"
 import { useWorkflow } from "@/lib/workflow/context"
+import { notifyWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
+import { notifyWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
 import { useCallback, useEffect, useRef } from "react"
 import {
   isUserLifecycleEvent,
   isUserStreamEvent,
   shouldRefetchAllEndpoints,
+  shouldRefetchConnections,
   shouldRefetchOrganizations,
   shouldRefetchSingleEndpoint,
+  shouldRefetchSteps,
   shouldRefetchWorkflows,
 } from "./types"
 import { useCentrifuge } from "./use-centrifuge"
@@ -42,6 +46,14 @@ export function UserCentrifugeListener() {
   const endpointDebounceRef = useRef<
     ReturnType<typeof setTimeout> | undefined
   >(undefined)
+  const stepDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  )
+  const connectionDebounceRef = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined)
+  const pendingStepWorkflowIdsRef = useRef<Set<string>>(new Set())
+  const pendingConnectionWorkflowIdsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     fetchUserRef.current = fetchUser
@@ -80,11 +92,65 @@ export function UserCentrifugeListener() {
     }, REFRESH_DEBOUNCE_MS)
   }, [])
 
+  const debouncedRefreshSteps = useCallback((workflowId?: string) => {
+    if (workflowId) {
+      pendingStepWorkflowIdsRef.current.add(workflowId)
+    } else {
+      pendingStepWorkflowIdsRef.current.clear()
+      pendingStepWorkflowIdsRef.current.add("*")
+    }
+
+    if (stepDebounceRef.current) clearTimeout(stepDebounceRef.current)
+    stepDebounceRef.current = setTimeout(() => {
+      const workflowIds = Array.from(pendingStepWorkflowIdsRef.current)
+      pendingStepWorkflowIdsRef.current.clear()
+
+      if (workflowIds.includes("*")) {
+        notifyWorkflowStepsRefetch()
+        return
+      }
+
+      for (const id of workflowIds) {
+        notifyWorkflowStepsRefetch(id)
+      }
+    }, REFRESH_DEBOUNCE_MS)
+  }, [])
+
+  const debouncedRefreshConnections = useCallback((workflowId?: string) => {
+    if (workflowId) {
+      pendingConnectionWorkflowIdsRef.current.add(workflowId)
+    } else {
+      pendingConnectionWorkflowIdsRef.current.clear()
+      pendingConnectionWorkflowIdsRef.current.add("*")
+    }
+
+    if (connectionDebounceRef.current) {
+      clearTimeout(connectionDebounceRef.current)
+    }
+    connectionDebounceRef.current = setTimeout(() => {
+      const workflowIds = Array.from(pendingConnectionWorkflowIdsRef.current)
+      pendingConnectionWorkflowIdsRef.current.clear()
+
+      if (workflowIds.includes("*")) {
+        notifyWorkflowConnectionsRefetch()
+        return
+      }
+
+      for (const id of workflowIds) {
+        notifyWorkflowConnectionsRefetch(id)
+      }
+    }, REFRESH_DEBOUNCE_MS)
+  }, [])
+
   useEffect(() => {
     return () => {
       if (orgDebounceRef.current) clearTimeout(orgDebounceRef.current)
       if (workflowDebounceRef.current) clearTimeout(workflowDebounceRef.current)
       if (endpointDebounceRef.current) clearTimeout(endpointDebounceRef.current)
+      if (stepDebounceRef.current) clearTimeout(stepDebounceRef.current)
+      if (connectionDebounceRef.current) {
+        clearTimeout(connectionDebounceRef.current)
+      }
     }
   }, [])
 
@@ -119,6 +185,14 @@ export function UserCentrifugeListener() {
         }
       }
 
+      if (shouldRefetchSteps(data)) {
+        debouncedRefreshSteps(data.workflowId)
+      }
+
+      if (shouldRefetchConnections(data)) {
+        debouncedRefreshConnections(data.workflowId)
+      }
+
       if (isUserLifecycleEvent(data)) {
         void fetchUserRef.current()
       }
@@ -127,6 +201,8 @@ export function UserCentrifugeListener() {
       debouncedRefreshOrganizations,
       debouncedRefreshWorkflows,
       debouncedRefreshEndpoints,
+      debouncedRefreshSteps,
+      debouncedRefreshConnections,
     ]
   )
 

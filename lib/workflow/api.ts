@@ -133,7 +133,19 @@ export const updateWorkflowStep = async (
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
+      body: JSON.stringify({
+        name: input.name,
+        description: input.description ?? "",
+        url: input.url,
+        method: input.method,
+        headers: input.headers ?? {},
+        query: input.query ?? {},
+        body: input.body ?? {},
+        timeout: input.timeout,
+        retryOnFailure: input.retryOnFailure,
+        retryCount: input.retryCount,
+        retryDelay: input.retryDelay,
+      }),
     }
   )
 

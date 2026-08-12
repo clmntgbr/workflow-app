@@ -24,7 +24,13 @@ import {
   updateWorkflowStep,
   WorkflowNotFoundError,
 } from "@/lib/workflow/api"
-import { Workflow, WorkflowConnection } from "@/lib/workflow/types"
+import { subscribeWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
+import { subscribeWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
+import {
+  UpdateWorkflowStepInput,
+  Workflow,
+  WorkflowConnection,
+} from "@/lib/workflow/types"
 import { ArrowLeftIcon, SettingsIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -52,6 +58,41 @@ function pickString(
     if (typeof value === "string") return value
   }
   return null
+}
+
+function pickNumber(
+  record: Record<string, unknown>,
+  keys: string[],
+  fallback = 0
+): number {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === "number" && Number.isFinite(value)) return value
+  }
+  return fallback
+}
+
+function pickBoolean(
+  record: Record<string, unknown>,
+  keys: string[],
+  fallback = false
+): boolean {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === "boolean") return value
+  }
+  return fallback
+}
+
+function parseStringRecord(value: unknown): Record<string, string> {
+  const record = asRecord(value)
+  if (!record) return {}
+
+  const result: Record<string, string> = {}
+  for (const [key, entry] of Object.entries(record)) {
+    if (typeof entry === "string") result[key] = entry
+  }
+  return result
 }
 
 function listFromPayload(payload: unknown): unknown[] {
@@ -108,6 +149,8 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         const id = pickString(record, ["id", "stepId", "step_id"])
         const endpointId = pickString(record, ["endpointId", "endpoint_id"])
         const stepName = pickString(record, ["name", "stepName", "step_name"])
+        const url = pickString(record, ["url", "path"])
+        const method = pickString(record, ["method"])
         const indexRaw =
           typeof record.index === "string" || typeof record.index === "number"
             ? String(record.index)
@@ -117,15 +160,51 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         if (!id || !endpointId || !position) return null
 
         const endpoint = endpointById.get(endpointId)
+        const descriptionValue = record.description
+        const description =
+          typeof descriptionValue === "string"
+            ? descriptionValue
+            : descriptionValue === null
+              ? null
+              : (endpoint?.description ?? null)
 
         return {
           id,
           ...(indexRaw ? { index: indexRaw } : {}),
           name: stepName ?? endpoint?.name ?? endpointId,
+          description,
           endpointId,
-          method: endpoint?.method ?? "GET",
-          path: endpoint?.url ?? "/",
-          description: endpoint?.description ?? null,
+          method: method ?? endpoint?.method ?? "GET",
+          path: url ?? endpoint?.url ?? "/",
+          headers: parseStringRecord(record.headers),
+          query: parseStringRecord(record.query),
+          body: record.body ?? endpoint?.body ?? {},
+          timeout: pickNumber(
+            record,
+            ["timeout", "timeoutMs", "timeout_ms"],
+            endpoint?.timeout ?? 30000
+          ),
+          retryOnFailure: pickBoolean(
+            record,
+            ["retryOnFailure", "retry_on_failure"],
+            endpoint?.retryOnFailure ?? false
+          ),
+          retryCount: pickNumber(
+            record,
+            ["retryCount", "retry_count"],
+            endpoint?.retryCount ?? 0
+          ),
+          retryDelay: pickNumber(
+            record,
+            ["retryDelay", "retryDelayMs", "retry_delay_ms"],
+            endpoint?.retryDelay ?? 1000
+          ),
+          executionOrder: pickNumber(record, [
+            "executionOrder",
+            "execution_order",
+          ]),
+          treeIndex: pickNumber(record, ["treeIndex", "tree_index"]),
+          status: pickString(record, ["status"]) ?? undefined,
           x: position.x,
           y: position.y,
         } as CanvasStep
@@ -220,6 +299,18 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     }
   }, [activeOrganization?.id, loadSteps, loadConnections])
 
+  useEffect(() => {
+    return subscribeWorkflowStepsRefetch(workflowId, () => {
+      void loadSteps()
+    })
+  }, [workflowId, loadSteps])
+
+  useEffect(() => {
+    return subscribeWorkflowConnectionsRefetch(workflowId, () => {
+      void loadConnections()
+    })
+  }, [workflowId, loadConnections])
+
   if (!activeOrganization?.id || isLoading) {
     return (
       <div className="h-full space-y-4 overflow-auto p-6">
@@ -257,7 +348,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         endpointId: input.endpointId,
         position: input.position,
       })
-      await Promise.all([loadSteps(), loadConnections()])
       toast.success("Step created")
     } catch (creationError) {
       toast.error(
@@ -301,7 +391,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   }) => {
     try {
       const created = await createWorkflowConnection(workflowId, input)
-      await loadConnections()
+      toast.success("Connection created")
       return created
     } catch (saveError) {
       toast.error(
@@ -314,10 +404,15 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   }
 
   const handleDeleteConnection = async (connectionId: string) => {
+    const previousConnections = connections
+    setConnections((current) =>
+      current.filter((connection) => connection.id !== connectionId)
+    )
+
     try {
       await deleteWorkflowConnection(workflowId, connectionId)
-      await loadConnections()
     } catch (deleteError) {
+      setConnections(previousConnections)
       toast.error(
         deleteError instanceof Error
           ? deleteError.message
@@ -332,15 +427,11 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     setIsStepDrawerOpen(true)
   }
 
-  const handleUpdateStep = async (input: {
-    name: string
-    endpointId: string
-  }) => {
+  const handleUpdateStep = async (input: UpdateWorkflowStepInput) => {
     if (!selectedStep) return
 
     try {
       await updateWorkflowStep(workflowId, selectedStep.id, input)
-      await Promise.all([loadSteps(), loadConnections()])
       toast.success("Step updated")
     } catch (updateError) {
       toast.error(
@@ -353,15 +444,35 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   }
 
   const handleDeleteStep = async (stepId: string) => {
+    const previousSteps = steps
+    const previousConnections = connections
+    const wasEditing = selectedStep?.id === stepId
+
+    setSteps((current) => current.filter((step) => step.id !== stepId))
+    setConnections((current) =>
+      current.filter(
+        (connection) =>
+          connection.sourceStepId !== stepId &&
+          connection.targetStepId !== stepId
+      )
+    )
+    if (wasEditing) {
+      setIsStepDrawerOpen(false)
+      setSelectedStep(null)
+    }
+
     try {
       await deleteWorkflowStep(workflowId, stepId)
-      await Promise.all([loadSteps(), loadConnections()])
-      if (selectedStep?.id === stepId) {
-        setIsStepDrawerOpen(false)
-        setSelectedStep(null)
-      }
-      toast.success("Step deleted")
     } catch (deleteError) {
+      setSteps(previousSteps)
+      setConnections(previousConnections)
+      if (wasEditing) {
+        const restored = previousSteps.find((step) => step.id === stepId)
+        if (restored) {
+          setSelectedStep(restored)
+          setIsStepDrawerOpen(true)
+        }
+      }
       toast.error(
         deleteError instanceof Error
           ? deleteError.message

@@ -1,6 +1,8 @@
 "use client"
 
 import CustomInput from "@/components/custom-input"
+import CustomSwitch from "@/components/custom-switch"
+import CustomTextarea from "@/components/custom-textarea"
 import { Button } from "@/components/ui/button"
 import {
   Drawer,
@@ -9,17 +11,156 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { Field } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useEndpoint } from "@/lib/endpoint/context"
+import { Separator } from "@/components/ui/separator"
 import { CanvasStep } from "@/components/workflow/step-node"
-import { Loader2Icon } from "lucide-react"
+import { useEndpoint } from "@/lib/endpoint/context"
+import {
+  KeyValuePair,
+  recordToKeyValuePairs,
+} from "@/lib/endpoint/utils"
+import { cn } from "@/lib/utils"
+import {
+  stepFormSchema,
+  StepFormValues,
+  toUpdateWorkflowStepPayload,
+} from "@/lib/workflow/step-schema"
+import { UpdateWorkflowStepInput } from "@/lib/workflow/types"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
+import { Controller, useForm, useWatch } from "react-hook-form"
+
+const HTTP_METHODS = [
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "HEAD",
+  "OPTIONS",
+] as const
+
+const emptyFormValues: StepFormValues = {
+  name: "",
+  description: "",
+  endpointId: "",
+  url: "",
+  method: "GET",
+  body: "{}",
+  headers: [],
+  query: [],
+  timeout: 30000,
+  retryOnFailure: false,
+  retryCount: 0,
+  retryDelay: 1000,
+}
+
+function getStepFormValues(step?: CanvasStep | null): StepFormValues {
+  if (!step) return emptyFormValues
+
+  const method = HTTP_METHODS.includes(
+    step.method.toUpperCase() as (typeof HTTP_METHODS)[number]
+  )
+    ? (step.method.toUpperCase() as StepFormValues["method"])
+    : "GET"
+
+  return {
+    name: step.name,
+    description: step.description ?? "",
+    endpointId: step.endpointId,
+    url: step.path,
+    method,
+    body: JSON.stringify(step.body ?? {}, null, 2),
+    headers: recordToKeyValuePairs(step.headers),
+    query: recordToKeyValuePairs(step.query),
+    timeout: Math.max(1, step.timeout || 30000),
+    retryOnFailure: step.retryOnFailure,
+    retryCount: step.retryCount,
+    retryDelay: Math.max(1, step.retryDelay || 1000),
+  }
+}
+
+function KeyValueEditor({
+  label,
+  description,
+  pairs,
+  onChange,
+}: {
+  label: string
+  description: string
+  pairs: KeyValuePair[]
+  onChange: (pairs: KeyValuePair[]) => void
+}) {
+  const updatePair = (
+    index: number,
+    field: keyof KeyValuePair,
+    value: string
+  ) => {
+    onChange(
+      pairs.map((pair, pairIndex) =>
+        pairIndex === index ? { ...pair, [field]: value } : pair
+      )
+    )
+  }
+
+  const addPair = () => {
+    onChange([...pairs, { key: "", value: "" }])
+  }
+
+  const removePair = (index: number) => {
+    onChange(pairs.filter((_, pairIndex) => pairIndex !== index))
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <Label>{label}</Label>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <div className="space-y-2">
+        {pairs.map((pair, index) => (
+          <div key={`${label}-${index}`} className="flex items-center gap-2">
+            <Input
+              value={pair.key}
+              placeholder="Key"
+              onChange={(event) => updatePair(index, "key", event.target.value)}
+              className="h-9"
+            />
+            <Input
+              value={pair.value}
+              placeholder="Value"
+              onChange={(event) =>
+                updatePair(index, "value", event.target.value)
+              }
+              className="h-9"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => removePair(index)}
+              aria-label="Remove entry"
+            >
+              <Trash2Icon className="size-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <Button type="button" variant="outline" size="sm" onClick={addPair}>
+        <PlusIcon className="size-4" />
+        Add entry
+      </Button>
+    </div>
+  )
+}
 
 interface StepDrawerProps {
   step: CanvasStep | null
   isOpen: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (input: { name: string; endpointId: string }) => Promise<void>
+  onSave: (input: UpdateWorkflowStepInput) => Promise<void>
 }
 
 export function StepDrawer({
@@ -29,26 +170,41 @@ export function StepDrawer({
   onSave,
 }: StepDrawerProps) {
   const { endpoints } = useEndpoint()
-  const [name, setName] = useState("")
-  const [endpointId, setEndpointId] = useState("")
   const [isSaving, setIsSaving] = useState(false)
 
+  const {
+    handleSubmit,
+    reset,
+    control,
+    setValue,
+    formState: { errors },
+  } = useForm<StepFormValues>({
+    resolver: zodResolver(stepFormSchema),
+    defaultValues: emptyFormValues,
+  })
+
+  const retryOnFailure = useWatch({
+    control,
+    name: "retryOnFailure",
+  })
+
   useEffect(() => {
-    if (!isOpen || !step) return
-    setName(step.name)
-    setEndpointId(step.endpointId)
-  }, [isOpen, step])
+    if (!isOpen) return
+    reset(getStepFormValues(step))
+  }, [isOpen, step, reset])
 
-  const handleClose = () => onOpenChange(false)
+  const onClose = () => {
+    reset(getStepFormValues(step))
+    onOpenChange(false)
+  }
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-    if (!step || !name.trim() || !endpointId) return
+  const onSubmit = async (data: StepFormValues) => {
+    if (!step) return
 
     setIsSaving(true)
     try {
-      await onSave({ name: name.trim(), endpointId })
-      handleClose()
+      await onSave(toUpdateWorkflowStepPayload(data))
+      onClose()
     } finally {
       setIsSaving(false)
     }
@@ -56,74 +212,391 @@ export function StepDrawer({
 
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right">
-      <DrawerContent className="flex h-full w-[480px]! max-w-[90vw]! flex-col">
+      <DrawerContent className="flex h-full w-[80vw]! max-w-[80vw]! flex-col">
         <DrawerHeader className="sr-only">
           <DrawerTitle>Edit Step</DrawerTitle>
         </DrawerHeader>
-
-        <form
-          onSubmit={handleSubmit}
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          <div className="min-h-0 flex-1 space-y-6 overflow-auto px-6 py-8">
-            <div className="space-y-1">
-              <h2 className="font-semibold">Edit Step</h2>
-              <p className="text-sm text-muted-foreground">
-                Update the step name and linked endpoint.
-              </p>
-            </div>
-
-            <Field>
-              <CustomInput
-                id="step-name"
-                isRequired
-                label="Name"
-                description="Displayed name of the step"
-                value={name}
-                onChange={setName}
-                hasCharacterLimit
-                maxLength={255}
-              />
-            </Field>
-
-            <Field>
-              <div className="space-y-2">
-                <Label htmlFor="step-endpoint">Endpoint</Label>
-                <select
-                  id="step-endpoint"
-                  value={endpointId}
-                  onChange={(event) => setEndpointId(event.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-                >
-                  {endpoints.members.map((endpoint) => (
-                    <option key={endpoint.id} value={endpoint.id}>
-                      {endpoint.method} · {endpoint.name}
-                    </option>
-                  ))}
-                </select>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <form
+            id="step-form"
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <div className="min-h-0 flex-1 overflow-auto px-6 py-8">
+              <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
+                <div className="space-y-1">
+                  <h2 className="font-semibold">General Information</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Define the step name, URL, and HTTP method.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-6 md:col-span-2">
+                  <Field>
+                    <Controller
+                      name="name"
+                      control={control}
+                      render={({ field }) => (
+                        <CustomInput
+                          id="step-name"
+                          isRequired
+                          label="Name"
+                          hasError={!!errors.name}
+                          errorMessage={errors.name?.message}
+                          description="The name of the step"
+                          value={field.value ?? ""}
+                          hasCharacterLimit
+                          maxLength={255}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    />
+                  </Field>
+                  <Field>
+                    <Controller
+                      name="description"
+                      control={control}
+                      render={({ field }) => (
+                        <CustomTextarea
+                          id="step-description"
+                          label="Description"
+                          hasError={!!errors.description}
+                          errorMessage={errors.description?.message}
+                          description="Optional notes about this step"
+                          value={field.value ?? ""}
+                          hasCharacterLimit
+                          maxLength={2000}
+                          onChange={field.onChange}
+                          textareaClassName="min-h-24"
+                        />
+                      )}
+                    />
+                  </Field>
+                  <Field>
+                    <Controller
+                      name="endpointId"
+                      control={control}
+                      render={({ field }) => (
+                        <div className="space-y-2">
+                          <Label htmlFor="step-endpoint">
+                            Prefill from endpoint
+                          </Label>
+                          <select
+                            id="step-endpoint"
+                            value={field.value ?? ""}
+                            onChange={(event) => {
+                              const nextEndpointId = event.target.value
+                              field.onChange(nextEndpointId)
+                              const endpoint = endpoints.members.find(
+                                (item) => item.id === nextEndpointId
+                              )
+                              if (!endpoint) return
+                              setValue("name", endpoint.name)
+                              setValue(
+                                "description",
+                                endpoint.description ?? ""
+                              )
+                              setValue("url", endpoint.url)
+                              setValue(
+                                "method",
+                                (HTTP_METHODS.includes(
+                                  endpoint.method.toUpperCase() as (typeof HTTP_METHODS)[number]
+                                )
+                                  ? endpoint.method.toUpperCase()
+                                  : "GET") as StepFormValues["method"]
+                              )
+                              setValue(
+                                "body",
+                                JSON.stringify(endpoint.body ?? {}, null, 2)
+                              )
+                              setValue(
+                                "headers",
+                                recordToKeyValuePairs(endpoint.headers)
+                              )
+                              setValue(
+                                "query",
+                                recordToKeyValuePairs(endpoint.query)
+                              )
+                              setValue(
+                                "timeout",
+                                Math.max(1, endpoint.timeout || 30000)
+                              )
+                              setValue(
+                                "retryOnFailure",
+                                endpoint.retryOnFailure
+                              )
+                              setValue("retryCount", endpoint.retryCount)
+                              setValue(
+                                "retryDelay",
+                                Math.max(1, endpoint.retryDelay || 1000)
+                              )
+                            }}
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                          >
+                            {endpoints.members.map((endpoint) => (
+                              <option key={endpoint.id} value={endpoint.id}>
+                                {endpoint.method} · {endpoint.name}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-muted-foreground">
+                            Changing this only prefills the form. The source
+                            endpoint id is not updated by the API.
+                          </p>
+                        </div>
+                      )}
+                    />
+                  </Field>
+                  <Field>
+                    <Controller
+                      name="url"
+                      control={control}
+                      render={({ field }) => (
+                        <CustomInput
+                          id="step-url"
+                          isRequired
+                          label="URL"
+                          hasError={!!errors.url}
+                          errorMessage={errors.url?.message}
+                          description="Full request URL"
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    />
+                  </Field>
+                  <Field>
+                    <Controller
+                      name="method"
+                      control={control}
+                      render={({ field }) => (
+                        <div className="space-y-2">
+                          <Label htmlFor="step-method">Method</Label>
+                          <select
+                            id="step-method"
+                            value={field.value}
+                            onChange={field.onChange}
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                          >
+                            {HTTP_METHODS.map((method) => (
+                              <option key={method} value={method}>
+                                {method}
+                              </option>
+                            ))}
+                          </select>
+                          {errors.method?.message ? (
+                            <p className="text-xs text-destructive">
+                              {errors.method.message}
+                            </p>
+                          ) : null}
+                        </div>
+                      )}
+                    />
+                  </Field>
+                  {step?.index || step?.executionOrder !== undefined ? (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      {step.index ? (
+                        <div className="space-y-1 rounded-lg border px-3 py-2">
+                          <p className="text-xs text-muted-foreground">Index</p>
+                          <p className="font-mono text-sm">{step.index}</p>
+                        </div>
+                      ) : null}
+                      {step.executionOrder !== undefined ? (
+                        <div className="space-y-1 rounded-lg border px-3 py-2">
+                          <p className="text-xs text-muted-foreground">
+                            Execution order
+                          </p>
+                          <p className="font-mono text-sm">
+                            {step.executionOrder}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               </div>
-            </Field>
-          </div>
 
-          <div className="shrink-0 border-t bg-background px-6 py-4">
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClose}
-                disabled={isSaving}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSaving || !name.trim()}>
-                Update
-                {isSaving ? (
-                  <Loader2Icon className="ml-2 h-4 w-4 animate-spin" />
-                ) : null}
-              </Button>
+              <Separator className="my-10" />
+
+              <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
+                <div className="space-y-1">
+                  <h2 className="font-semibold">Request</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Configure headers and query parameters.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-6 md:col-span-2">
+                  <Controller
+                    name="headers"
+                    control={control}
+                    render={({ field }) => (
+                      <KeyValueEditor
+                        label="Headers"
+                        description="Optional HTTP headers"
+                        pairs={field.value ?? []}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                  <Controller
+                    name="query"
+                    control={control}
+                    render={({ field }) => (
+                      <KeyValueEditor
+                        label="Query"
+                        description="Optional query string parameters"
+                        pairs={field.value ?? []}
+                        onChange={field.onChange}
+                      />
+                    )}
+                  />
+                  <Field>
+                    <Controller
+                      name="body"
+                      control={control}
+                      render={({ field }) => (
+                        <CustomTextarea
+                          id="step-body"
+                          isRequired
+                          label="Body (JSON)"
+                          hasError={!!errors.body}
+                          errorMessage={errors.body?.message}
+                          description="Raw JSON request body"
+                          value={field.value ?? "{}"}
+                          onChange={field.onChange}
+                          textareaClassName="min-h-40 font-mono text-xs"
+                        />
+                      )}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <Separator className="my-10" />
+
+              <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
+                <div className="space-y-1">
+                  <h2 className="font-semibold">Execution</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Timeout and retry settings in milliseconds.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:col-span-2">
+                  <Field>
+                    <Controller
+                      name="timeout"
+                      control={control}
+                      render={({ field }) => (
+                        <CustomInput
+                          id="step-timeout"
+                          isRequired
+                          label="Timeout (ms)"
+                          hasError={!!errors.timeout}
+                          errorMessage={errors.timeout?.message}
+                          description="Request timeout"
+                          value={String(field.value ?? 0)}
+                          onChange={(value) =>
+                            field.onChange(Number.parseInt(value || "0", 10))
+                          }
+                        />
+                      )}
+                    />
+                  </Field>
+                  <div
+                    className={cn(
+                      "flex flex-row items-center justify-between gap-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 sm:col-span-2 dark:border-zinc-700 dark:bg-zinc-900"
+                    )}
+                  >
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <Label htmlFor="step-retry-on-failure">
+                        Retry on failure
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Retry the request when it fails
+                      </p>
+                    </div>
+                    <Controller
+                      name="retryOnFailure"
+                      control={control}
+                      render={({ field }) => (
+                        <CustomSwitch
+                          id="step-retry-on-failure"
+                          value={field.value ?? false}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    />
+                  </div>
+                  <Field>
+                    <Controller
+                      name="retryCount"
+                      control={control}
+                      render={({ field }) => (
+                        <CustomInput
+                          id="step-retry-count"
+                          isRequired
+                          label="Retry count"
+                          hasError={!!errors.retryCount}
+                          errorMessage={errors.retryCount?.message}
+                          description="Number of retries"
+                          value={String(field.value ?? 0)}
+                          disabled={!retryOnFailure}
+                          onChange={(value) =>
+                            field.onChange(Number.parseInt(value || "0", 10))
+                          }
+                        />
+                      )}
+                    />
+                  </Field>
+                  <Field>
+                    <Controller
+                      name="retryDelay"
+                      control={control}
+                      render={({ field }) => (
+                        <CustomInput
+                          id="step-retry-delay"
+                          isRequired
+                          label="Retry delay (ms)"
+                          hasError={!!errors.retryDelay}
+                          errorMessage={errors.retryDelay?.message}
+                          description="Delay between retries"
+                          value={String(field.value ?? 0)}
+                          disabled={!retryOnFailure}
+                          onChange={(value) =>
+                            field.onChange(Number.parseInt(value || "0", 10))
+                          }
+                        />
+                      )}
+                    />
+                  </Field>
+                </div>
+              </div>
             </div>
-          </div>
-        </form>
+
+            <div className="shrink-0 border-t bg-background px-6 py-4">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={onClose}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="w-full sm:w-auto"
+                  disabled={isSaving || !step}
+                >
+                  Update
+                  {isSaving ? (
+                    <Loader2Icon className="ml-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                </Button>
+              </div>
+            </div>
+          </form>
+        </div>
       </DrawerContent>
     </Drawer>
   )

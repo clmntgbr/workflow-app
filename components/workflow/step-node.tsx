@@ -10,10 +10,20 @@ export type CanvasStep = {
   id: string
   index?: string
   name: string
+  description: string | null
   endpointId: string
   method: string
   path: string
-  description: string | null
+  headers: Record<string, string>
+  query: Record<string, string>
+  body: unknown
+  timeout: number
+  retryOnFailure: boolean
+  retryCount: number
+  retryDelay: number
+  executionOrder?: number
+  treeIndex?: number
+  status?: string
   x: number
   y: number
 }

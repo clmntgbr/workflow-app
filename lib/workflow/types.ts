@@ -48,7 +48,16 @@ export interface CreateWorkflowStepInput {
 
 export interface UpdateWorkflowStepInput {
   name: string
-  endpointId: string
+  description?: string
+  url: string
+  method: string
+  headers?: Record<string, string>
+  query?: Record<string, string>
+  body?: Record<string, unknown>
+  timeout: number
+  retryOnFailure: boolean
+  retryCount: number
+  retryDelay: number
 }
 
 export interface WorkflowConnection {
