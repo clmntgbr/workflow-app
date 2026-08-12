@@ -14,20 +14,20 @@ export async function GET(_request: Request, context: RouteContext) {
     if ("error" in auth) return auth.error
 
     const { id } = await context.params
-    const response = await fetch(`${BACKEND_API_URL}/api/workflows/${id}/steps`, {
-      method: "GET",
-      headers: createAuthHeaders(auth.token),
-    })
+    const response = await fetch(
+      `${BACKEND_API_URL}/api/workflows/${id}/connections`,
+      {
+        method: "GET",
+        headers: createAuthHeaders(auth.token),
+      }
+    )
 
     if (!response.ok) {
-      return NextResponse.json(
-        { success: false, data: await response.json() },
-        { status: response.status }
-      )
+      return NextResponse.json({ success: false }, { status: response.status })
     }
 
     const data = await response.json()
-    return NextResponse.json(data, { status: response.status })
+    return NextResponse.json(data)
   } catch {
     return NextResponse.json({ success: false }, { status: 500 })
   }
@@ -41,17 +41,17 @@ export async function POST(request: Request, context: RouteContext) {
     const { id } = await context.params
     const body = await request.text()
 
-    const response = await fetch(`${BACKEND_API_URL}/api/workflows/${id}/steps`, {
-      method: "POST",
-      headers: createAuthHeaders(auth.token),
-      body,
-    })
+    const response = await fetch(
+      `${BACKEND_API_URL}/api/workflows/${id}/connections`,
+      {
+        method: "POST",
+        headers: createAuthHeaders(auth.token),
+        body,
+      }
+    )
 
     if (!response.ok) {
-      return NextResponse.json(
-        { success: false, data: await response.json() },
-        { status: response.status }
-      )
+      return NextResponse.json({ success: false }, { status: response.status })
     }
 
     const data = await response.json()

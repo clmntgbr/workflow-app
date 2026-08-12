@@ -43,8 +43,18 @@ export interface UpdateWorkflowInput {
 
 export interface CreateWorkflowStepInput {
   endpointId: string
-  index: number
   position: unknown
+}
+
+export interface WorkflowConnection {
+  id: string
+  sourceStepId: string
+  targetStepId: string
+}
+
+export interface CreateWorkflowConnectionInput {
+  sourceStepId: string
+  targetStepId: string
 }
 
 export interface WorkflowState {

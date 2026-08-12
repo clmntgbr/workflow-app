@@ -1,9 +1,11 @@
 import { Paginate, PaginateQuery } from "@/lib/paginate"
 import {
+  CreateWorkflowConnectionInput,
   CreateWorkflowStepInput,
   CreateWorkflowInput,
   UpdateWorkflowInput,
   Workflow,
+  WorkflowConnection,
 } from "./types"
 
 function buildQueryString(query?: PaginateQuery): string {
@@ -109,7 +111,6 @@ export const createWorkflowStep = async (
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       endpointId: input.endpointId,
-      index: input.index,
       position: input.position,
     }),
   })
@@ -119,4 +120,84 @@ export const createWorkflowStep = async (
   }
 
   return response.json()
+}
+
+export const updateStepPosition = async (
+  workflowId: string,
+  stepId: string,
+  input: { position: { x: number; y: number } }
+): Promise<unknown> => {
+  const response = await fetch(
+    `/api/workflows/${workflowId}/steps/${stepId}/position`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error("Failed to update step position")
+  }
+
+  return response.json()
+}
+
+export const getWorkflowSteps = async (workflowId: string): Promise<unknown> => {
+  const response = await fetch(`/api/workflows/${workflowId}/steps`, {
+    method: "GET",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to get workflow steps")
+  }
+
+  return response.json()
+}
+
+export const createWorkflowConnection = async (
+  workflowId: string,
+  input: CreateWorkflowConnectionInput
+): Promise<WorkflowConnection> => {
+  const response = await fetch(`/api/workflows/${workflowId}/connections`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to create workflow connection")
+  }
+
+  return response.json()
+}
+
+export const getWorkflowConnections = async (
+  workflowId: string
+): Promise<unknown> => {
+  const response = await fetch(`/api/workflows/${workflowId}/connections`, {
+    method: "GET",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to get workflow connections")
+  }
+
+  return response.json()
+}
+
+export const deleteWorkflowConnection = async (
+  workflowId: string,
+  connectionId: string
+): Promise<void> => {
+  const response = await fetch(
+    `/api/workflows/${workflowId}/connections/${connectionId}`,
+    {
+      method: "DELETE",
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error("Failed to delete workflow connection")
+  }
 }
