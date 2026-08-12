@@ -60,6 +60,18 @@ export class WorkflowNotFoundError extends Error {
   }
 }
 
+export class WorkflowWrongOrganizationError extends Error {
+  organizationId: string
+  organizationName: string
+
+  constructor(organizationId: string, organizationName: string) {
+    super("Workflow belongs to another organization")
+    this.name = "WorkflowWrongOrganizationError"
+    this.organizationId = organizationId
+    this.organizationName = organizationName
+  }
+}
+
 export const getWorkflow = async (id: string): Promise<Workflow> => {
   const response = await fetch(`/api/workflows/${id}`, {
     method: "GET",
@@ -67,6 +79,27 @@ export const getWorkflow = async (id: string): Promise<Workflow> => {
 
   if (response.status === 404) {
     throw new WorkflowNotFoundError()
+  }
+
+  if (response.status === 409) {
+    const data = (await response.json().catch(() => null)) as {
+      code?: string
+      organizationId?: string
+      organizationName?: string
+    } | null
+
+    if (
+      data?.code === "WRONG_ORGANIZATION" &&
+      typeof data.organizationId === "string" &&
+      typeof data.organizationName === "string"
+    ) {
+      throw new WorkflowWrongOrganizationError(
+        data.organizationId,
+        data.organizationName
+      )
+    }
+
+    throw new Error("Failed to get workflow")
   }
 
   if (!response.ok) {

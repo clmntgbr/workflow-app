@@ -11,6 +11,7 @@ import { CanvasStep } from "@/components/workflow/step-node"
 import { StepDrawer } from "@/components/workflow/step-drawer"
 import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
 import { WorkflowNotFoundView } from "@/components/workflow/workflow-not-found-view"
+import { SwitchOrganizationDialog } from "@/components/workflow/switch-organization-dialog"
 import { useEndpoint } from "@/lib/endpoint/context"
 import { Endpoint } from "@/lib/endpoint/types"
 import { useOrganization } from "@/lib/organization/context"
@@ -25,6 +26,7 @@ import {
   updateStepPosition,
   updateWorkflowStep,
   WorkflowNotFoundError,
+  WorkflowWrongOrganizationError,
 } from "@/lib/workflow/api"
 import { subscribeWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
 import { subscribeWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
@@ -124,13 +126,20 @@ function parsePosition(position: unknown): Point | null {
 
 export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const router = useRouter()
-  const { activeOrganization } = useOrganization()
+  const { activeOrganization, activateOrganization, organizations } =
+    useOrganization()
   const { endpoints, isLoading: isEndpointsLoading } = useEndpoint()
 
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isNotFound, setIsNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [wrongOrganization, setWrongOrganization] = useState<{
+    organizationId: string
+    organizationName: string
+  } | null>(null)
+  const [isSwitchOrganizationOpen, setIsSwitchOrganizationOpen] =
+    useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [selectedStep, setSelectedStep] = useState<CanvasStep | null>(null)
   const [isStepDrawerOpen, setIsStepDrawerOpen] = useState(false)
@@ -254,6 +263,8 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     const load = async () => {
       setIsLoading(true)
       setIsNotFound(false)
+      setWrongOrganization(null)
+      setIsSwitchOrganizationOpen(false)
       setError(null)
 
       try {
@@ -261,6 +272,17 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         if (!cancelled) setWorkflow(next)
       } catch (err) {
         if (cancelled) return
+
+        if (err instanceof WorkflowWrongOrganizationError) {
+          setWrongOrganization({
+            organizationId: err.organizationId,
+            organizationName: err.organizationName,
+          })
+          setIsSwitchOrganizationOpen(true)
+          setWorkflow(null)
+          setIsLoading(false)
+          return
+        }
 
         if (err instanceof WorkflowNotFoundError) {
           setIsNotFound(true)
@@ -324,6 +346,52 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         <Skeleton className="h-4 w-96" />
         <Skeleton className="h-40 w-full" />
       </div>
+    )
+  }
+
+  if (wrongOrganization) {
+    const knownOrg = organizations.find(
+      (organization) => organization.id === wrongOrganization.organizationId
+    )
+
+    return (
+      <>
+        <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-6 text-center">
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold">Wrong organization</h1>
+            <p className="max-w-md text-sm text-muted-foreground">
+              This workflow belongs to{" "}
+              <span className="font-medium text-foreground">
+                {knownOrg?.name ?? wrongOrganization.organizationName}
+              </span>
+              . Switch organization to open it.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Button variant="outline" asChild>
+              <Link href="/">
+                <ArrowLeftIcon className="size-4" />
+                Back to workflows
+              </Link>
+            </Button>
+            <Button onClick={() => setIsSwitchOrganizationOpen(true)}>
+              Switch organization
+            </Button>
+          </div>
+        </div>
+        <SwitchOrganizationDialog
+          open={isSwitchOrganizationOpen}
+          onOpenChange={setIsSwitchOrganizationOpen}
+          organizationName={
+            knownOrg?.name ?? wrongOrganization.organizationName
+          }
+          onConfirm={async () => {
+            await activateOrganization(wrongOrganization.organizationId)
+            setWrongOrganization(null)
+            setIsSwitchOrganizationOpen(false)
+          }}
+        />
+      </>
     )
   }
 

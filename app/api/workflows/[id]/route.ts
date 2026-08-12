@@ -20,7 +20,8 @@ export async function GET(_request: Request, context: RouteContext) {
     })
 
     if (!response.ok) {
-      return NextResponse.json({ success: false }, { status: response.status })
+      const data = await response.json().catch(() => ({ success: false }))
+      return NextResponse.json(data, { status: response.status })
     }
 
     const data = await response.json()
