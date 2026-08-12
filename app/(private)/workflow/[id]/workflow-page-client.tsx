@@ -3,7 +3,9 @@
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
-import { getWorkflow } from "@/lib/workflow/api"
+import { WorkflowNotFoundView } from "@/components/workflow/workflow-not-found-view"
+import { useOrganization } from "@/lib/organization/context"
+import { getWorkflow, WorkflowNotFoundError } from "@/lib/workflow/api"
 import { Workflow } from "@/lib/workflow/types"
 import { ArrowLeftIcon, SettingsIcon } from "lucide-react"
 import Link from "next/link"
@@ -16,25 +18,37 @@ interface WorkflowPageClientProps {
 
 export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const router = useRouter()
+  const { activeOrganization } = useOrganization()
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isNotFound, setIsNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   useEffect(() => {
+    if (!activeOrganization?.id) return
+
     let cancelled = false
 
     const load = async () => {
       setIsLoading(true)
+      setIsNotFound(false)
       setError(null)
+
       try {
         const next = await getWorkflow(workflowId)
         if (!cancelled) setWorkflow(next)
-      } catch {
-        if (!cancelled) {
-          setError("Failed to load workflow")
+      } catch (err) {
+        if (cancelled) return
+
+        if (err instanceof WorkflowNotFoundError) {
+          setIsNotFound(true)
           setWorkflow(null)
+          return
         }
+
+        setError("Failed to load workflow")
+        setWorkflow(null)
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -45,9 +59,9 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     return () => {
       cancelled = true
     }
-  }, [workflowId])
+  }, [workflowId, activeOrganization?.id])
 
-  if (isLoading) {
+  if (!activeOrganization?.id || isLoading) {
     return (
       <div className="space-y-4 p-6">
         <Skeleton className="h-8 w-64" />
@@ -57,11 +71,15 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     )
   }
 
+  if (isNotFound) {
+    return <WorkflowNotFoundView />
+  }
+
   if (error || !workflow) {
     return (
       <div className="space-y-4 p-6">
         <p className="text-sm text-muted-foreground">
-          {error ?? "Workflow not found"}
+          {error ?? "Failed to load workflow"}
         </p>
         <Button variant="outline" asChild>
           <Link href="/">

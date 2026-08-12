@@ -49,10 +49,21 @@ export const createWorkflow = async (
   return response.json()
 }
 
+export class WorkflowNotFoundError extends Error {
+  constructor() {
+    super("Workflow not found")
+    this.name = "WorkflowNotFoundError"
+  }
+}
+
 export const getWorkflow = async (id: string): Promise<Workflow> => {
   const response = await fetch(`/api/workflows/${id}`, {
     method: "GET",
   })
+
+  if (response.status === 404) {
+    throw new WorkflowNotFoundError()
+  }
 
   if (!response.ok) {
     throw new Error("Failed to get workflow")
