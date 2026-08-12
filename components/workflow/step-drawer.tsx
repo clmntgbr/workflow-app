@@ -3,6 +3,7 @@
 import CustomInput from "@/components/custom-input"
 import CustomSwitch from "@/components/custom-switch"
 import CustomTextarea from "@/components/custom-textarea"
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Drawer,
@@ -161,6 +162,8 @@ interface StepDrawerProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   onSave: (input: UpdateWorkflowStepInput) => Promise<void>
+  onDelete?: (stepId: string) => Promise<void>
+  onDeleted?: () => void
 }
 
 export function StepDrawer({
@@ -168,9 +171,12 @@ export function StepDrawer({
   isOpen,
   onOpenChange,
   onSave,
+  onDelete,
+  onDeleted,
 }: StepDrawerProps) {
   const { endpoints } = useEndpoint()
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   const {
     handleSubmit,
@@ -211,6 +217,7 @@ export function StepDrawer({
   }
 
   return (
+    <>
     <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right">
       <DrawerContent className="flex h-full w-[80vw]! max-w-[80vw]! flex-col">
         <DrawerHeader className="sr-only">
@@ -573,31 +580,62 @@ export function StepDrawer({
             </div>
 
             <div className="shrink-0 border-t bg-background px-6 py-4">
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  onClick={onClose}
-                  disabled={isSaving}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="w-full sm:w-auto"
-                  disabled={isSaving || !step}
-                >
-                  Update
-                  {isSaving ? (
-                    <Loader2Icon className="ml-2 h-4 w-4 animate-spin" />
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  {step && onDelete ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => setIsDeleteOpen(true)}
+                      disabled={isSaving}
+                    >
+                      <Trash2Icon className="h-4 w-4" />
+                      Delete
+                    </Button>
                   ) : null}
-                </Button>
+                </div>
+                <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={onClose}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="w-full sm:w-auto"
+                    disabled={isSaving || !step}
+                  >
+                    Update
+                    {isSaving ? (
+                      <Loader2Icon className="ml-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                  </Button>
+                </div>
               </div>
             </div>
           </form>
         </div>
       </DrawerContent>
     </Drawer>
+
+      {step && onDelete ? (
+        <DeleteConfirmDialog
+          open={isDeleteOpen}
+          onOpenChange={setIsDeleteOpen}
+          title="Delete step"
+          description="This action cannot be undone. The step and its connections will be removed."
+          onConfirm={() => onDelete(step.id)}
+          onDeleted={() => {
+            onClose()
+            onDeleted?.()
+          }}
+          errorMessage="Failed to delete step. Please try again."
+        />
+      ) : null}
+    </>
   )
 }

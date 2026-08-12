@@ -600,6 +600,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           if (!open) setSelectedStep(null)
         }}
         onSave={handleUpdateStep}
+        onDelete={handleDeleteStep}
       />
 
       <EndpointDrawer
