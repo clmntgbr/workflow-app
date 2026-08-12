@@ -17,6 +17,7 @@ export interface Endpoint {
   description: string | null
   url: string
   method: EndpointMethod | string
+  body: unknown
   headers: Record<string, string>
   query: Record<string, string>
   timeout: number
@@ -34,6 +35,7 @@ export interface CreateEndpointInput {
   description?: string
   url: string
   method: string
+  body?: unknown
   headers?: Record<string, string>
   query?: Record<string, string>
   timeout?: number
@@ -47,6 +49,7 @@ export interface UpdateEndpointInput {
   description?: string
   url: string
   method: string
+  body?: unknown
   headers?: Record<string, string>
   query?: Record<string, string>
   timeout: number

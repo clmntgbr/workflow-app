@@ -6,6 +6,15 @@ const keyValuePairSchema = z.object({
   value: z.string(),
 })
 
+function isValidJson(value: string): boolean {
+  try {
+    JSON.parse(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
 const endpointBaseSchema = z.object({
   name: z
     .string()
@@ -22,6 +31,10 @@ const endpointBaseSchema = z.object({
     "HEAD",
     "OPTIONS",
   ]),
+  body: z
+    .string()
+    .min(1, "Body is required")
+    .refine(isValidJson, "Body must be valid JSON"),
   headers: z.array(keyValuePairSchema),
   query: z.array(keyValuePairSchema),
   timeout: z
@@ -58,6 +71,7 @@ export function toCreateEndpointPayload(values: CreateEndpointFormValues) {
     description: values.description ?? "",
     url: values.url,
     method: values.method,
+    body: JSON.parse(values.body),
     headers: keyValuePairsToRecord(values.headers),
     query: keyValuePairsToRecord(values.query),
     timeout: values.timeout,

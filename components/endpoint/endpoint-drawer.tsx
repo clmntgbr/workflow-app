@@ -49,6 +49,7 @@ const emptyFormValues: EndpointFormValues = {
   description: "",
   url: "",
   method: "GET",
+  body: "{}",
   headers: [],
   query: [],
   timeout: 30000,
@@ -65,6 +66,7 @@ function getEndpointFormValues(endpoint?: Endpoint | null): EndpointFormValues {
     description: endpoint.description ?? "",
     url: endpoint.url,
     method: endpoint.method as EndpointFormValues["method"],
+    body: JSON.stringify(endpoint.body ?? {}, null, 2),
     headers: recordToKeyValuePairs(endpoint.headers),
     query: recordToKeyValuePairs(endpoint.query),
     timeout: endpoint.timeout,
@@ -393,6 +395,25 @@ export function EndpointDrawer({
                       />
                     )}
                   />
+                  <Field>
+                    <Controller
+                      name="body"
+                      control={control}
+                      render={({ field }) => (
+                        <CustomTextarea
+                          id="endpoint-body"
+                          isRequired
+                          label="Body (JSON)"
+                          hasError={!!errors.body}
+                          errorMessage={errors.body?.message}
+                          description="Raw JSON request body"
+                          value={field.value ?? "{}"}
+                          onChange={field.onChange}
+                          textareaClassName="min-h-40 font-mono text-xs"
+                        />
+                      )}
+                    />
+                  </Field>
                 </div>
               </div>
 
