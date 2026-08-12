@@ -2,6 +2,11 @@
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  EndpointDragPayload,
+  WorkflowCanvas,
+} from "@/components/workflow/workflow-canvas"
+import { CanvasStep } from "@/components/workflow/step-node"
 import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
 import { WorkflowNotFoundView } from "@/components/workflow/workflow-not-found-view"
 import { useEndpoint } from "@/lib/endpoint/context"
@@ -20,26 +25,11 @@ import { Workflow, WorkflowConnection } from "@/lib/workflow/types"
 import { ArrowLeftIcon, SettingsIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 
 interface WorkflowPageClientProps {
   workflowId: string
-}
-
-type PlacedStep = {
-  id: string
-  index: string
-  name: string
-  endpointId: string
-  endpointName: string
-  x: number
-  y: number
-}
-
-type RenderedConnection = WorkflowConnection & {
-  source: PlacedStep
-  target: PlacedStep
 }
 
 type Point = { x: number; y: number }
@@ -50,7 +40,10 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null
 }
 
-function pickString(record: Record<string, unknown>, keys: string[]): string | null {
+function pickString(
+  record: Record<string, unknown>,
+  keys: string[]
+): string | null {
   for (const key of keys) {
     const value = record[key]
     if (typeof value === "string") return value
@@ -83,13 +76,6 @@ function parsePosition(position: unknown): Point | null {
   return { x, y }
 }
 
-function clampPoint(point: Point, bounds: DOMRect): Point {
-  return {
-    x: Math.max(0, Math.min(bounds.width, Number(point.x.toFixed(2)))),
-    y: Math.max(0, Math.min(bounds.height, Number(point.y.toFixed(2)))),
-  }
-}
-
 export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const router = useRouter()
   const { activeOrganization } = useOrganization()
@@ -100,25 +86,14 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [isNotFound, setIsNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-
-  const [draggedEndpointId, setDraggedEndpointId] = useState<string | null>(null)
-  const [draggedStepId, setDraggedStepId] = useState<string | null>(null)
-  const [dropPreview, setDropPreview] = useState<Point | null>(null)
-
-  const [isCreatingStep, setIsCreatingStep] = useState(false)
-  const [isSavingConnection, setIsSavingConnection] = useState(false)
-  const [steps, setSteps] = useState<PlacedStep[]>([])
+  const [steps, setSteps] = useState<CanvasStep[]>([])
   const [connections, setConnections] = useState<WorkflowConnection[]>([])
-  const [sourceConnectionStepId, setSourceConnectionStepId] =
-    useState<string | null>(null)
 
-  const gridRef = useRef<HTMLDivElement | null>(null)
-
-  const endpointNameById = new Map(
-    endpoints.members.map((endpoint) => [endpoint.id, endpoint.name])
+  const endpointById = new Map(
+    endpoints.members.map((endpoint) => [endpoint.id, endpoint])
   )
 
-  const loadSteps = async () => {
+  const loadSteps = useCallback(async () => {
     const payload = await getWorkflowSteps(workflowId)
     const nextSteps = listFromPayload(payload)
       .map((item) => {
@@ -128,30 +103,29 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         const id = pickString(record, ["id", "stepId", "step_id"])
         const endpointId = pickString(record, ["endpointId", "endpoint_id"])
         const stepName = pickString(record, ["name", "stepName", "step_name"])
-        const indexRaw =
-          typeof record.index === "string" || typeof record.index === "number"
-            ? String(record.index)
-            : null
         const position = parsePosition(record.position)
 
-        if (!id || !endpointId || !indexRaw || !position) return null
+        if (!id || !endpointId || !position) return null
+
+        const endpoint = endpointById.get(endpointId)
 
         return {
           id,
-          index: indexRaw,
-          name: stepName ?? endpointNameById.get(endpointId) ?? endpointId,
+          name: stepName ?? endpoint?.name ?? endpointId,
           endpointId,
-          endpointName: endpointNameById.get(endpointId) ?? endpointId,
+          method: endpoint?.method ?? "GET",
+          path: endpoint?.url ?? "/",
+          description: endpoint?.description ?? null,
           x: position.x,
           y: position.y,
-        } satisfies PlacedStep
+        } satisfies CanvasStep
       })
-      .filter((value): value is PlacedStep => value !== null)
+      .filter((value): value is CanvasStep => value !== null)
 
     setSteps(nextSteps)
-  }
+  }, [workflowId, endpoints.members])
 
-  const loadConnections = async () => {
+  const loadConnections = useCallback(async () => {
     const payload = await getWorkflowConnections(workflowId)
     const nextConnections = listFromPayload(payload)
       .map((item) => {
@@ -175,19 +149,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       .filter((value): value is WorkflowConnection => value !== null)
 
     setConnections(nextConnections)
-  }
-
-  const recomputeExecutionFromConnections = async (items: PlacedStep[]) => {
-    if (items.length === 0) return
-
-    await Promise.all(
-      items.map((step) =>
-        updateStepPosition(workflowId, step.id, {
-          position: { x: step.x, y: step.y },
-        })
-      )
-    )
-  }
+  }, [workflowId])
 
   useEffect(() => {
     if (!activeOrganization?.id) return
@@ -246,7 +208,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     return () => {
       cancelled = true
     }
-  }, [workflowId, activeOrganization?.id, endpoints.members.length])
+  }, [activeOrganization?.id, loadSteps, loadConnections])
 
   if (!activeOrganization?.id || isLoading) {
     return (
@@ -276,52 +238,14 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     )
   }
 
-  const handleMoveStep = async (stepId: string, position: Point) => {
-    const step = steps.find((placed) => placed.id === stepId)
-    if (!step) return
-
-    const previous = { x: step.x, y: step.y }
-
-    setSteps((current) =>
-      current.map((item) =>
-        item.id === stepId ? { ...item, x: position.x, y: position.y } : item
-      )
-    )
-
-    try {
-      await updateStepPosition(workflowId, stepId, {
-        position,
-      })
-    } catch (moveError) {
-      setSteps((current) =>
-        current.map((item) =>
-          item.id === stepId ? { ...item, x: previous.x, y: previous.y } : item
-        )
-      )
-      toast.error(
-        moveError instanceof Error ? moveError.message : "Failed to move step"
-      )
-    } finally {
-      setDraggedStepId(null)
-      setDropPreview(null)
-    }
-  }
-
-  const handleDropEndpoint = async (position: Point, endpointIdFromDrop?: string) => {
-    const endpointId = endpointIdFromDrop || draggedEndpointId
-    if (!endpointId || isCreatingStep) return
-
-    const endpoint = endpoints.members.find((member) => member.id === endpointId)
-    if (!endpoint) {
-      toast.error("Endpoint not found")
-      return
-    }
-
-    setIsCreatingStep(true)
+  const handleCreateStep = async (input: {
+    endpointId: string
+    position: Point
+  }) => {
     try {
       await createWorkflowStep(workflowId, {
-        endpointId: endpoint.id,
-        position,
+        endpointId: input.endpointId,
+        position: input.position,
       })
       await Promise.all([loadSteps(), loadConnections()])
       toast.success("Step created")
@@ -331,77 +255,67 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           ? creationError.message
           : "Failed to create step"
       )
-    } finally {
-      setIsCreatingStep(false)
-      setDraggedEndpointId(null)
-      setDropPreview(null)
+      throw creationError
     }
   }
 
-  const handleSelectConnectionSource = (stepId: string) => {
-    setSourceConnectionStepId((current) => (current === stepId ? null : stepId))
-  }
+  const handleMoveStep = async (stepId: string, position: Point) => {
+    const previous = steps.find((step) => step.id === stepId)
+    if (!previous) return
 
-  const handleCreateConnection = async (targetStepId: string) => {
-    if (!sourceConnectionStepId || isSavingConnection) return
-    if (sourceConnectionStepId === targetStepId) {
-      toast.error("Source and target steps must be different")
-      return
-    }
-
-    const exists = connections.some(
-      (connection) =>
-        connection.sourceStepId === sourceConnectionStepId &&
-        connection.targetStepId === targetStepId
+    setSteps((current) =>
+      current.map((step) =>
+        step.id === stepId ? { ...step, x: position.x, y: position.y } : step
+      )
     )
-    if (exists) {
-      toast.error("Connection already exists")
-      return
-    }
 
-    setIsSavingConnection(true)
     try {
-      await createWorkflowConnection(workflowId, {
-        sourceStepId: sourceConnectionStepId,
-        targetStepId,
-      })
-      await recomputeExecutionFromConnections(steps)
-      await Promise.all([loadSteps(), loadConnections()])
-      setSourceConnectionStepId(null)
+      await updateStepPosition(workflowId, stepId, { position })
+    } catch (moveError) {
+      setSteps((current) =>
+        current.map((step) =>
+          step.id === stepId
+            ? { ...step, x: previous.x, y: previous.y }
+            : step
+        )
+      )
+      toast.error(
+        moveError instanceof Error ? moveError.message : "Failed to move step"
+      )
+    }
+  }
+
+  const handleCreateConnection = async (input: {
+    sourceStepId: string
+    targetStepId: string
+  }) => {
+    try {
+      const created = await createWorkflowConnection(workflowId, input)
+      await loadConnections()
+      return created
     } catch (saveError) {
       toast.error(
         saveError instanceof Error
           ? saveError.message
           : "Failed to create connection"
       )
-    } finally {
-      setIsSavingConnection(false)
+      throw saveError
     }
   }
 
   const handleDeleteConnection = async (connectionId: string) => {
     try {
       await deleteWorkflowConnection(workflowId, connectionId)
-      await recomputeExecutionFromConnections(steps)
-      await Promise.all([loadSteps(), loadConnections()])
+      await loadConnections()
     } catch (deleteError) {
       toast.error(
         deleteError instanceof Error
           ? deleteError.message
           : "Failed to delete connection"
       )
+      throw deleteError
     }
   }
-
-  const stepById = new Map(steps.map((step) => [step.id, step]))
-  const renderedConnections: RenderedConnection[] = connections
-    .map((connection) => {
-      const source = stepById.get(connection.sourceStepId)
-      const target = stepById.get(connection.targetStepId)
-      if (!source || !target) return null
-      return { ...connection, source, target }
-    })
-    .filter((item): item is RenderedConnection => item !== null)
 
   return (
     <div className="space-y-6 p-6">
@@ -437,8 +351,8 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         <aside className="space-y-3 rounded-lg border p-4">
           <h2 className="text-sm font-semibold">Endpoints</h2>
           <p className="text-xs text-muted-foreground">
-            Drag/drop endpoints. For connections: click bottom point on source,
-            then top point on target.
+            Drag an endpoint onto the canvas. Connect steps by dragging from a
+            bottom handle to a top handle.
           </p>
           {isEndpointsLoading && endpoints.members.length === 0 ? (
             <div className="space-y-2">
@@ -454,14 +368,20 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
                 <li key={endpoint.id}>
                   <button
                     type="button"
-                    draggable={!isCreatingStep}
+                    draggable
                     onDragStart={(event) => {
-                      event.dataTransfer.setData("text/plain", endpoint.id)
-                      setDraggedEndpointId(endpoint.id)
-                    }}
-                    onDragEnd={() => {
-                      setDraggedEndpointId(null)
-                      setDropPreview(null)
+                      const payload: EndpointDragPayload = {
+                        id: endpoint.id,
+                        name: endpoint.name,
+                        method: endpoint.method,
+                        path: endpoint.url,
+                        description: endpoint.description,
+                      }
+                      event.dataTransfer.setData(
+                        "application/workflow-endpoint",
+                        JSON.stringify(payload)
+                      )
+                      event.dataTransfer.effectAllowed = "copy"
                     }}
                     className="flex w-full items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-left hover:bg-muted/50"
                   >
@@ -479,155 +399,16 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         </aside>
 
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold">Workflow Grid</h2>
-          <div
-            ref={gridRef}
-            onDragOver={(event) => {
-              event.preventDefault()
-              const bounds = gridRef.current?.getBoundingClientRect()
-              if (!bounds || isCreatingStep) return
-
-              const next = clampPoint(
-                {
-                  x: event.clientX - bounds.left,
-                  y: event.clientY - bounds.top,
-                },
-                bounds
-              )
-              setDropPreview(next)
-            }}
-            onDragLeave={() => setDropPreview(null)}
-            onDrop={(event) => {
-              event.preventDefault()
-              const bounds = gridRef.current?.getBoundingClientRect()
-              if (!bounds) return
-
-              const point = clampPoint(
-                {
-                  x: event.clientX - bounds.left,
-                  y: event.clientY - bounds.top,
-                },
-                bounds
-              )
-
-              const movingStepId = event.dataTransfer.getData("application/step-id")
-              if (movingStepId) {
-                void handleMoveStep(movingStepId, point)
-                return
-              }
-
-              const endpointId = event.dataTransfer.getData("text/plain")
-              void handleDropEndpoint(point, endpointId)
-            }}
-            className="relative h-[520px] rounded-lg border bg-background"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle, hsl(var(--muted-foreground)/0.25) 1px, transparent 1px)",
-              backgroundSize: "24px 24px",
-            }}
-          >
-            {dropPreview ? (
-              <div
-                className="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-background"
-                style={{ left: `${dropPreview.x}px`, top: `${dropPreview.y}px` }}
-              />
-            ) : null}
-
-            {renderedConnections.map((connection) => {
-              const dx = connection.target.x - connection.source.x
-              const dy = connection.target.y - connection.source.y
-              const length = Math.hypot(dx, dy)
-              const angle = (Math.atan2(dy, dx) * 180) / Math.PI
-
-              return (
-                <div
-                  key={`${connection.id}-line`}
-                  className="pointer-events-none absolute z-10 h-[2px] origin-left bg-primary"
-                  style={{
-                    left: `${connection.source.x}px`,
-                    top: `${connection.source.y}px`,
-                    width: `${length}px`,
-                    transform: `rotate(${angle}deg)`,
-                  }}
-                />
-              )
-            })}
-
-            {renderedConnections.map((connection) => {
-              const middleX = (connection.source.x + connection.target.x) / 2
-              const middleY = (connection.source.y + connection.target.y) / 2
-              return (
-                <button
-                  key={`${connection.id}-delete`}
-                  type="button"
-                  className="absolute z-30 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-background px-2 py-0.5 text-[10px] shadow-sm hover:bg-muted"
-                  style={{ left: `${middleX}px`, top: `${middleY}px` }}
-                  onClick={() => void handleDeleteConnection(connection.id)}
-                  aria-label="Delete connection"
-                >
-                  x
-                </button>
-              )
-            })}
-
-            {steps.map((step) => (
-              <div
-                key={step.id}
-                draggable
-                onDragStart={(event) => {
-                  event.dataTransfer.setData("application/step-id", step.id)
-                  event.dataTransfer.effectAllowed = "move"
-                  setDraggedStepId(step.id)
-                }}
-                onDragEnd={() => {
-                  setDraggedStepId(null)
-                  setDropPreview(null)
-                }}
-                className={`absolute z-20 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-md border bg-background px-2 py-1 shadow-sm active:cursor-grabbing ${
-                  draggedStepId === step.id ? "opacity-50" : ""
-                }`}
-                style={{ left: `${step.x}px`, top: `${step.y}px` }}
-              >
-                <button
-                  type="button"
-                  className={`absolute -top-2 left-1/2 size-3 -translate-x-1/2 rounded-full border ${
-                    sourceConnectionStepId
-                      ? "border-primary bg-primary/20"
-                      : "border-muted-foreground/60 bg-background"
-                  }`}
-                  onMouseDown={(event) => event.stopPropagation()}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    void handleCreateConnection(step.id)
-                  }}
-                  aria-label="Connect to this step"
-                />
-
-                <p className="max-w-44 truncate text-xs font-medium">{step.name}</p>
-
-                <button
-                  type="button"
-                  className={`absolute -bottom-2 left-1/2 size-3 -translate-x-1/2 rounded-full border ${
-                    sourceConnectionStepId === step.id
-                      ? "border-primary bg-primary"
-                      : "border-muted-foreground/60 bg-background"
-                  }`}
-                  onMouseDown={(event) => event.stopPropagation()}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    handleSelectConnectionSource(step.id)
-                  }}
-                  aria-label="Use as source connection"
-                />
-              </div>
-            ))}
-
-            {steps.length === 0 ? (
-              <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-muted-foreground">
-                Drop an endpoint anywhere on the dotted grid.
-              </div>
-            ) : null}
-          </div>
+          <h2 className="text-sm font-semibold">Workflow Canvas</h2>
+          <WorkflowCanvas
+            workflowId={workflowId}
+            steps={steps}
+            connections={connections}
+            onCreateStep={handleCreateStep}
+            onMoveStep={handleMoveStep}
+            onCreateConnection={handleCreateConnection}
+            onDeleteConnection={handleDeleteConnection}
+          />
         </section>
       </div>
 
