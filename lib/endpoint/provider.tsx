@@ -5,6 +5,7 @@ import { useOrganization } from "@/lib/organization/context"
 import { useCallback, useEffect, useReducer } from "react"
 import {
   createEndpoint as createEndpointRequest,
+  deleteEndpoint as deleteEndpointRequest,
   getEndpoint,
   listEndpoints,
   updateEndpoint as updateEndpointRequest,
@@ -66,6 +67,11 @@ export function EndpointProvider({ children }: { children: React.ReactNode }) {
     []
   )
 
+  const removeEndpoint = useCallback(async (id: string) => {
+    await deleteEndpointRequest(id)
+    dispatch({ type: "REMOVE_ENDPOINT", payload: id })
+  }, [])
+
   const setEditingEndpointId = useCallback((id: string | null) => {
     dispatch({ type: "SET_EDITING_ENDPOINT_ID", payload: id })
   }, [])
@@ -82,6 +88,7 @@ export function EndpointProvider({ children }: { children: React.ReactNode }) {
         fetchEndpoint,
         createEndpoint,
         updateEndpoint,
+        removeEndpoint,
         setEditingEndpointId,
       }}
     >

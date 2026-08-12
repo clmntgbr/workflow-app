@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { EndpointDrawer } from "@/components/endpoint/endpoint-drawer"
 import {
   EndpointDragPayload,
   WorkflowCanvas,
@@ -11,6 +12,7 @@ import { StepDrawer } from "@/components/workflow/step-drawer"
 import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
 import { WorkflowNotFoundView } from "@/components/workflow/workflow-not-found-view"
 import { useEndpoint } from "@/lib/endpoint/context"
+import { Endpoint } from "@/lib/endpoint/types"
 import { useOrganization } from "@/lib/organization/context"
 import {
   createWorkflowConnection,
@@ -132,6 +134,10 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [selectedStep, setSelectedStep] = useState<CanvasStep | null>(null)
   const [isStepDrawerOpen, setIsStepDrawerOpen] = useState(false)
+  const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(
+    null
+  )
+  const [isEndpointDrawerOpen, setIsEndpointDrawerOpen] = useState(false)
   const [steps, setSteps] = useState<CanvasStep[]>([])
   const [connections, setConnections] = useState<WorkflowConnection[]>([])
 
@@ -537,6 +543,10 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
                     <button
                       type="button"
                       draggable
+                      onClick={() => {
+                        setSelectedEndpoint(endpoint)
+                        setIsEndpointDrawerOpen(true)
+                      }}
                       onDragStart={(event) => {
                         const payload: EndpointDragPayload = {
                           id: endpoint.id,
@@ -590,6 +600,20 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           if (!open) setSelectedStep(null)
         }}
         onSave={handleUpdateStep}
+      />
+
+      <EndpointDrawer
+        endpoint={selectedEndpoint}
+        isOpen={isEndpointDrawerOpen}
+        onOpenChange={(open) => {
+          setIsEndpointDrawerOpen(open)
+          if (!open) setSelectedEndpoint(null)
+        }}
+        onSaved={(endpoint) => setSelectedEndpoint(endpoint)}
+        onDeleted={() => {
+          setIsEndpointDrawerOpen(false)
+          setSelectedEndpoint(null)
+        }}
       />
 
       <WorkflowDrawer

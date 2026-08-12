@@ -14,6 +14,7 @@ export interface EndpointContextType extends EndpointState {
   fetchEndpoint: (id: string) => Promise<Endpoint>
   createEndpoint: (input: CreateEndpointInput) => Promise<Endpoint>
   updateEndpoint: (id: string, input: UpdateEndpointInput) => Promise<Endpoint>
+  removeEndpoint: (id: string) => Promise<void>
   setEditingEndpointId: (id: string | null) => void
 }
 

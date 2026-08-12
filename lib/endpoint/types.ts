@@ -71,6 +71,7 @@ export type EndpointAction =
   | { type: "GET_ENDPOINTS_ERROR"; payload: string }
   | { type: "GET_ENDPOINTS_LOADING"; payload: boolean }
   | { type: "UPSERT_ENDPOINT"; payload: Endpoint }
+  | { type: "REMOVE_ENDPOINT"; payload: string }
   | { type: "SET_EDITING_ENDPOINT_ID"; payload: string | null }
 
 export const initialEndpointState: EndpointState = {

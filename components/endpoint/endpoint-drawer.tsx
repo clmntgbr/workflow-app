@@ -3,6 +3,7 @@
 import CustomInput from "@/components/custom-input"
 import CustomSwitch from "@/components/custom-switch"
 import CustomTextarea from "@/components/custom-textarea"
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Drawer,
@@ -157,6 +158,7 @@ interface EndpointDrawerProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   onSaved?: (endpoint: Endpoint) => void
+  onDeleted?: () => void
 }
 
 export function EndpointDrawer({
@@ -164,11 +166,17 @@ export function EndpointDrawer({
   isOpen,
   onOpenChange,
   onSaved,
+  onDeleted,
 }: EndpointDrawerProps) {
-  const { createEndpoint, updateEndpoint, setEditingEndpointId } =
-    useEndpoint()
+  const {
+    createEndpoint,
+    updateEndpoint,
+    removeEndpoint,
+    setEditingEndpointId,
+  } = useEndpoint()
   const isCreate = !endpoint
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   const {
     handleSubmit,
@@ -228,6 +236,7 @@ export function EndpointDrawer({
   }
 
   return (
+    <>
     <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right">
       <DrawerContent className="flex h-full w-[80vw]! max-w-[80vw]! flex-col">
         <DrawerHeader className="sr-only">
@@ -519,31 +528,62 @@ export function EndpointDrawer({
             </div>
 
             <div className="shrink-0 border-t bg-background px-6 py-4">
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  onClick={onClose}
-                  disabled={isSaving}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="w-full sm:w-auto"
-                  disabled={isSaving}
-                >
-                  {isCreate ? "Create" : "Update"}
-                  {isSaving ? (
-                    <Loader2Icon className="ml-2 h-4 w-4 animate-spin" />
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  {!isCreate && endpoint ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => setIsDeleteOpen(true)}
+                      disabled={isSaving}
+                    >
+                      <Trash2Icon className="h-4 w-4" />
+                      Delete
+                    </Button>
                   ) : null}
-                </Button>
+                </div>
+                <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={onClose}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="w-full sm:w-auto"
+                    disabled={isSaving}
+                  >
+                    {isCreate ? "Create" : "Update"}
+                    {isSaving ? (
+                      <Loader2Icon className="ml-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                  </Button>
+                </div>
               </div>
             </div>
           </form>
         </div>
       </DrawerContent>
     </Drawer>
+
+      {!isCreate && endpoint ? (
+        <DeleteConfirmDialog
+          open={isDeleteOpen}
+          onOpenChange={setIsDeleteOpen}
+          title="Delete endpoint"
+          description="This action cannot be undone. The endpoint will be permanently removed."
+          onConfirm={() => removeEndpoint(endpoint.id)}
+          onDeleted={() => {
+            onClose()
+            onDeleted?.()
+          }}
+          errorMessage="Failed to delete endpoint. Please try again."
+        />
+      ) : null}
+    </>
   )
 }

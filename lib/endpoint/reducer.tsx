@@ -45,6 +45,24 @@ export const endpointReducer = (
         error: null,
       }
     }
+    case "REMOVE_ENDPOINT": {
+      const members = state.endpoints.members.filter(
+        (endpoint) => endpoint.id !== action.payload
+      )
+      return {
+        ...state,
+        endpoints: {
+          ...state.endpoints,
+          members,
+          total: Math.max(0, state.endpoints.total - 1),
+        },
+        editingEndpointId:
+          state.editingEndpointId === action.payload
+            ? null
+            : state.editingEndpointId,
+        error: null,
+      }
+    }
     case "SET_EDITING_ENDPOINT_ID":
       return {
         ...state,

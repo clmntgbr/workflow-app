@@ -77,3 +77,13 @@ export const updateEndpoint = async (
 
   return response.json()
 }
+
+export const deleteEndpoint = async (id: string): Promise<void> => {
+  const response = await fetch(`/api/endpoints/${id}`, {
+    method: "DELETE",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to delete endpoint")
+  }
+}

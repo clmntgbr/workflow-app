@@ -116,6 +116,7 @@ export function EndpointList() {
         onSaved={(endpoint) => {
           if (drawerMode === "edit") setSelectedEndpointId(endpoint.id)
         }}
+        onDeleted={closeDrawer}
       />
     </div>
   )
