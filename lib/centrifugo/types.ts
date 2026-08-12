@@ -100,6 +100,7 @@ export function shouldRefetchWorkflows(event: UserStreamEvent): boolean {
 export function shouldRefetchAllEndpoints(event: UserStreamEvent): boolean {
   return (
     event.type === "endpoint.created" ||
+    event.type === "endpoint.deleted" ||
     event.type === "user.active_organization_changed" ||
     event.type === "organization.created"
   )
