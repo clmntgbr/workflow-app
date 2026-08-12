@@ -1,5 +1,6 @@
 import { AppHeader } from "@/components/layout/app-header"
 import { UserCentrifugeListener } from "@/lib/centrifugo/user-centrifuge-listener"
+import { EndpointProvider } from "@/lib/endpoint/provider"
 import { OrganizationProvider } from "@/lib/organization/provider"
 import { ThemeProvider } from "@/lib/theme/theme-provider"
 import { UserProvider } from "@/lib/user/provider"
@@ -21,10 +22,12 @@ export default function PrivateLayout({
       <UserProvider>
         <OrganizationProvider>
           <WorkflowProvider>
-            <UserCentrifugeListener />
-            <AppHeader />
-            <div className="mx-auto px-0">{children}</div>
-            <Toaster />
+            <EndpointProvider>
+              <UserCentrifugeListener />
+              <AppHeader />
+              <div className="mx-auto px-0">{children}</div>
+              <Toaster />
+            </EndpointProvider>
           </WorkflowProvider>
         </OrganizationProvider>
       </UserProvider>

@@ -1,4 +1,4 @@
-export type RealtimeResource = "user" | "organization" | "workflow"
+export type RealtimeResource = "user" | "organization" | "workflow" | "endpoint"
 
 export type RealtimeVerb =
   | "created"
@@ -15,11 +15,12 @@ export interface UserStreamEvent {
   type: RealtimeEventType
   userId?: string
   organizationId?: string
+  endpointId?: string
   name?: string
   status?: string
 }
 
-const RESOURCES = new Set<string>(["user", "organization", "workflow"])
+const RESOURCES = new Set<string>(["user", "organization", "workflow", "endpoint"])
 
 const VERBS = new Set<string>([
   "created",
@@ -79,6 +80,18 @@ export function shouldRefetchWorkflows(event: UserStreamEvent): boolean {
     event.type === "user.active_organization_changed" ||
     event.type === "organization.created"
   )
+}
+
+export function shouldRefetchAllEndpoints(event: UserStreamEvent): boolean {
+  return (
+    event.type === "endpoint.created" ||
+    event.type === "user.active_organization_changed" ||
+    event.type === "organization.created"
+  )
+}
+
+export function shouldRefetchSingleEndpoint(event: UserStreamEvent): boolean {
+  return event.type === "endpoint.updated"
 }
 
 /** Builds `users:{internalUserId}` — prefer `channel` from `/api/realtime/connection`. */
