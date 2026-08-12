@@ -24,8 +24,10 @@ export default function PrivateLayout({
           <WorkflowProvider>
             <EndpointProvider>
               <UserCentrifugeListener />
-              <AppHeader />
-              <div className="mx-auto px-0">{children}</div>
+              <div className="flex h-svh flex-col overflow-hidden">
+                <AppHeader />
+                <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
+              </div>
               <Toaster />
             </EndpointProvider>
           </WorkflowProvider>

@@ -12,7 +12,7 @@ import {
 
 export function AppHeader() {
   return (
-    <header className="flex h-16 items-center justify-between gap-4 p-4">
+    <header className="flex h-16 items-center justify-between gap-4 border-b border-gray-200 p-4 sticky top-0 z-10 bg-white">
       <div className="flex items-center gap-3">
         <SignedIn>
           <OrganizationSwitcher />
@@ -29,7 +29,6 @@ export function AppHeader() {
         </SignedOut>
         <SignedIn>
           <UserButton />
-          <SignOutButton />
         </SignedIn>
       </div>
     </header>

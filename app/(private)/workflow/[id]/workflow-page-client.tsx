@@ -7,6 +7,7 @@ import {
   WorkflowCanvas,
 } from "@/components/workflow/workflow-canvas"
 import { CanvasStep } from "@/components/workflow/step-node"
+import { StepDrawer } from "@/components/workflow/step-drawer"
 import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
 import { WorkflowNotFoundView } from "@/components/workflow/workflow-not-found-view"
 import { useEndpoint } from "@/lib/endpoint/context"
@@ -15,10 +16,12 @@ import {
   createWorkflowConnection,
   createWorkflowStep,
   deleteWorkflowConnection,
+  deleteWorkflowStep,
   getWorkflow,
   getWorkflowConnections,
   getWorkflowSteps,
   updateStepPosition,
+  updateWorkflowStep,
   WorkflowNotFoundError,
 } from "@/lib/workflow/api"
 import { Workflow, WorkflowConnection } from "@/lib/workflow/types"
@@ -86,6 +89,8 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [isNotFound, setIsNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [selectedStep, setSelectedStep] = useState<CanvasStep | null>(null)
+  const [isStepDrawerOpen, setIsStepDrawerOpen] = useState(false)
   const [steps, setSteps] = useState<CanvasStep[]>([])
   const [connections, setConnections] = useState<WorkflowConnection[]>([])
 
@@ -103,6 +108,10 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         const id = pickString(record, ["id", "stepId", "step_id"])
         const endpointId = pickString(record, ["endpointId", "endpoint_id"])
         const stepName = pickString(record, ["name", "stepName", "step_name"])
+        const indexRaw =
+          typeof record.index === "string" || typeof record.index === "number"
+            ? String(record.index)
+            : undefined
         const position = parsePosition(record.position)
 
         if (!id || !endpointId || !position) return null
@@ -111,6 +120,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
         return {
           id,
+          ...(indexRaw ? { index: indexRaw } : {}),
           name: stepName ?? endpoint?.name ?? endpointId,
           endpointId,
           method: endpoint?.method ?? "GET",
@@ -118,7 +128,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           description: endpoint?.description ?? null,
           x: position.x,
           y: position.y,
-        } satisfies CanvasStep
+        } as CanvasStep
       })
       .filter((value): value is CanvasStep => value !== null)
 
@@ -212,7 +222,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
   if (!activeOrganization?.id || isLoading) {
     return (
-      <div className="space-y-4 p-6">
+      <div className="h-full space-y-4 overflow-auto p-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-96" />
         <Skeleton className="h-40 w-full" />
@@ -224,7 +234,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
   if (error || !workflow) {
     return (
-      <div className="space-y-4 p-6">
+      <div className="h-full space-y-4 overflow-auto p-6">
         <p className="text-sm text-muted-foreground">
           {error ?? "Failed to load workflow"}
         </p>
@@ -317,25 +327,68 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     }
   }
 
+  const handleEditStep = (step: CanvasStep) => {
+    setSelectedStep(step)
+    setIsStepDrawerOpen(true)
+  }
+
+  const handleUpdateStep = async (input: {
+    name: string
+    endpointId: string
+  }) => {
+    if (!selectedStep) return
+
+    try {
+      await updateWorkflowStep(workflowId, selectedStep.id, input)
+      await Promise.all([loadSteps(), loadConnections()])
+      toast.success("Step updated")
+    } catch (updateError) {
+      toast.error(
+        updateError instanceof Error
+          ? updateError.message
+          : "Failed to update step"
+      )
+      throw updateError
+    }
+  }
+
+  const handleDeleteStep = async (stepId: string) => {
+    try {
+      await deleteWorkflowStep(workflowId, stepId)
+      await Promise.all([loadSteps(), loadConnections()])
+      if (selectedStep?.id === stepId) {
+        setIsStepDrawerOpen(false)
+        setSelectedStep(null)
+      }
+      toast.success("Step deleted")
+    } catch (deleteError) {
+      toast.error(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Failed to delete step"
+      )
+      throw deleteError
+    }
+  }
+
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 space-y-2">
-          <Button variant="ghost" size="sm" className="-ms-2" asChild>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between gap-4 border-b px-4 py-2">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button variant="ghost" size="sm" asChild>
             <Link href="/">
               <ArrowLeftIcon className="size-4" />
               Workflows
             </Link>
           </Button>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="truncate text-xl font-semibold">{workflow.name}</h1>
-            <span className="rounded-md border px-2 py-0.5 text-xs capitalize text-muted-foreground">
-              {workflow.status}
-            </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-sm font-semibold">{workflow.name}</h1>
+              <span className="rounded-md border px-2 py-0.5 text-[10px] capitalize text-muted-foreground">
+                {workflow.status}
+              </span>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {workflow.description || "No description"}
-          </p>
         </div>
         <Button
           variant="outline"
@@ -347,59 +400,63 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
-        <aside className="space-y-3 rounded-lg border p-4">
-          <h2 className="text-sm font-semibold">Endpoints</h2>
-          <p className="text-xs text-muted-foreground">
-            Drag an endpoint onto the canvas. Connect steps by dragging from a
-            bottom handle to a top handle.
-          </p>
-          {isEndpointsLoading && endpoints.members.length === 0 ? (
-            <div className="space-y-2">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-            </div>
-          ) : endpoints.members.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No endpoints available.</p>
-          ) : (
-            <ul className="space-y-2">
-              {endpoints.members.map((endpoint) => (
-                <li key={endpoint.id}>
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={(event) => {
-                      const payload: EndpointDragPayload = {
-                        id: endpoint.id,
-                        name: endpoint.name,
-                        method: endpoint.method,
-                        path: endpoint.url,
-                        description: endpoint.description,
-                      }
-                      event.dataTransfer.setData(
-                        "application/workflow-endpoint",
-                        JSON.stringify(payload)
-                      )
-                      event.dataTransfer.effectAllowed = "copy"
-                    }}
-                    className="flex w-full items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-left hover:bg-muted/50"
-                  >
-                    <span className="truncate text-sm font-medium">
-                      {endpoint.name}
-                    </span>
-                    <span className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
-                      {endpoint.method}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <aside className="flex w-72 shrink-0 flex-col border-r bg-background">
+          <div className="shrink-0 space-y-1 border-b px-4 py-3">
+            <h2 className="text-sm font-semibold">Endpoints</h2>
+            <p className="text-xs text-muted-foreground">
+              Drag onto the canvas to add a step.
+            </p>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            {isEndpointsLoading && endpoints.members.length === 0 ? (
+              <div className="space-y-2">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : endpoints.members.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No endpoints available.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {endpoints.members.map((endpoint) => (
+                  <li key={endpoint.id}>
+                    <button
+                      type="button"
+                      draggable
+                      onDragStart={(event) => {
+                        const payload: EndpointDragPayload = {
+                          id: endpoint.id,
+                          name: endpoint.name,
+                          method: endpoint.method,
+                          path: endpoint.url,
+                          description: endpoint.description,
+                        }
+                        event.dataTransfer.setData(
+                          "application/workflow-endpoint",
+                          JSON.stringify(payload)
+                        )
+                        event.dataTransfer.effectAllowed = "copy"
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-left hover:bg-muted/50"
+                    >
+                      <span className="truncate text-sm font-medium">
+                        {endpoint.name}
+                      </span>
+                      <span className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
+                        {endpoint.method}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </aside>
 
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold">Workflow Canvas</h2>
+        <div className="min-h-0 min-w-0 flex-1">
           <WorkflowCanvas
             workflowId={workflowId}
             steps={steps}
@@ -408,9 +465,21 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
             onMoveStep={handleMoveStep}
             onCreateConnection={handleCreateConnection}
             onDeleteConnection={handleDeleteConnection}
+            onEditStep={handleEditStep}
+            onDeleteStep={handleDeleteStep}
           />
-        </section>
+        </div>
       </div>
+
+      <StepDrawer
+        step={selectedStep}
+        isOpen={isStepDrawerOpen}
+        onOpenChange={(open) => {
+          setIsStepDrawerOpen(open)
+          if (!open) setSelectedStep(null)
+        }}
+        onSave={handleUpdateStep}
+      />
 
       <WorkflowDrawer
         workflow={workflow}

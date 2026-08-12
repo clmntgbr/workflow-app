@@ -4,6 +4,7 @@ import {
   CreateWorkflowStepInput,
   CreateWorkflowInput,
   UpdateWorkflowInput,
+  UpdateWorkflowStepInput,
   Workflow,
   WorkflowConnection,
 } from "./types"
@@ -120,6 +121,43 @@ export const createWorkflowStep = async (
   }
 
   return response.json()
+}
+
+export const updateWorkflowStep = async (
+  workflowId: string,
+  stepId: string,
+  input: UpdateWorkflowStepInput
+): Promise<unknown> => {
+  const response = await fetch(
+    `/api/workflows/${workflowId}/steps/${stepId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error("Failed to update workflow step")
+  }
+
+  return response.json()
+}
+
+export const deleteWorkflowStep = async (
+  workflowId: string,
+  stepId: string
+): Promise<void> => {
+  const response = await fetch(
+    `/api/workflows/${workflowId}/steps/${stepId}`,
+    {
+      method: "DELETE",
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error("Failed to delete workflow step")
+  }
 }
 
 export const updateStepPosition = async (

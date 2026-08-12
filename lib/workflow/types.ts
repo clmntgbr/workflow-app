@@ -46,6 +46,11 @@ export interface CreateWorkflowStepInput {
   position: unknown
 }
 
+export interface UpdateWorkflowStepInput {
+  name: string
+  endpointId: string
+}
+
 export interface WorkflowConnection {
   id: string
   sourceStepId: string

@@ -1,10 +1,14 @@
 "use client"
 
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { cn } from "@/lib/utils"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
+import { PencilIcon, Trash2Icon } from "lucide-react"
+import { useState } from "react"
 
 export type CanvasStep = {
   id: string
+  index?: string
   name: string
   endpointId: string
   method: string
@@ -16,6 +20,8 @@ export type CanvasStep = {
 
 export type StepNodeData = {
   step: CanvasStep
+  onEdit: (step: CanvasStep) => void
+  onDelete: (stepId: string) => Promise<void>
 }
 
 const METHOD_STYLES: Record<string, string> = {
@@ -29,28 +35,97 @@ const METHOD_STYLES: Record<string, string> = {
 }
 
 export function StepNode({ data }: NodeProps) {
-  const step = (data as StepNodeData).step
+  const { step, onEdit, onDelete } = data as unknown as StepNodeData
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const method = (step.method || "GET").toUpperCase()
   const methodClass =
     METHOD_STYLES[method] ?? "bg-muted text-muted-foreground border-border"
 
   return (
-    <div className="w-64 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm">
+    <>
       <Handle
         type="target"
         position={Position.Top}
-        className="!size-2.5 !border-gray-300 !bg-white"
+        className="!z-50 !size-2.5 !border-gray-300 !bg-foreground"
       />
 
-      <p className="truncate text-[13px] font-semibold text-foreground">
-        {step.name}
-      </p>
+      <div
+        className={cn(
+          "group relative flex w-64 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card py-2 pr-12 pl-2 transition-all duration-200",
+          "hover:shadow-sm"
+        )}
+        onClick={() => onEdit(step)}
+      >
+        <div
+          className={cn(
+            "absolute top-1/2 -right-2 z-10 flex -translate-y-1/2 flex-col gap-1",
+            "opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+          )}
+        >
+          <button
+            type="button"
+            aria-label="Edit step"
+            className="nodrag nopan flex size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={(event) => {
+              event.stopPropagation()
+              onEdit(step)
+            }}
+          >
+            <PencilIcon className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Delete step"
+            className="nodrag nopan flex size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
+            onClick={(event) => {
+              event.stopPropagation()
+              setIsDeleteOpen(true)
+            }}
+          >
+            <Trash2Icon className="size-3.5" />
+          </button>
+        </div>
+
+        {step.index ? (
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[9px] font-medium text-muted-foreground">
+            {step.index}
+          </span>
+        ) : null}
+
+        <span
+          className={cn(
+            "shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+            methodClass
+          )}
+        >
+          {method}
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold text-foreground">
+            {step.name}
+          </p>
+          <p className="truncate font-mono text-[11px] text-muted-foreground">
+            {step.path}
+          </p>
+        </div>
+      </div>
 
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!size-2.5 !border-gray-300 !bg-white"
+        className="!z-50 !size-2.5 !border-gray-300 !bg-foreground"
       />
-    </div>
+
+      <DeleteConfirmDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        title="Delete step"
+        description="This action cannot be undone. The step and all its connections will be permanently removed from the workflow."
+        onConfirm={() => onDelete(step.id)}
+        onDeleted={() => undefined}
+        errorMessage="Failed to delete step. Please try again."
+      />
+    </>
   )
 }

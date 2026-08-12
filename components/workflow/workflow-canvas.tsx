@@ -53,14 +53,24 @@ interface WorkflowCanvasProps {
     targetStepId: string
   }) => Promise<WorkflowConnection>
   onDeleteConnection: (connectionId: string) => Promise<void>
+  onEditStep: (step: CanvasStep) => void
+  onDeleteStep: (stepId: string) => Promise<void>
 }
 
-function makeNodes(steps: CanvasStep[]): Node[] {
+function makeNodes(
+  steps: CanvasStep[],
+  onEdit: (step: CanvasStep) => void,
+  onDelete: (stepId: string) => Promise<void>
+): Node[] {
   return steps.map((step) => ({
     id: step.id,
     type: "stepNode",
     position: { x: step.x, y: step.y },
-    data: { step } satisfies StepNodeData,
+    data: {
+      step,
+      onEdit,
+      onDelete,
+    } satisfies StepNodeData,
   }))
 }
 
@@ -85,6 +95,8 @@ function CanvasInner({
   onMoveStep,
   onCreateConnection,
   onDeleteConnection,
+  onEditStep,
+  onDeleteStep,
 }: WorkflowCanvasProps) {
   const { screenToFlowPosition } = useReactFlow()
   const propsRef = useRef({
@@ -95,6 +107,8 @@ function CanvasInner({
     onMoveStep,
     onCreateConnection,
     onDeleteConnection,
+    onEditStep,
+    onDeleteStep,
   })
 
   useLayoutEffect(() => {
@@ -106,6 +120,8 @@ function CanvasInner({
       onMoveStep,
       onCreateConnection,
       onDeleteConnection,
+      onEditStep,
+      onDeleteStep,
     }
   })
 
@@ -113,20 +129,30 @@ function CanvasInner({
     await propsRef.current.onDeleteConnection(connectionId)
   }, [])
 
-  const [nodes, setNodes] = useState<Node[]>(() => makeNodes(steps))
+  const handleEditStep = useCallback((step: CanvasStep) => {
+    propsRef.current.onEditStep(step)
+  }, [])
+
+  const handleDeleteStep = useCallback(async (stepId: string) => {
+    await propsRef.current.onDeleteStep(stepId)
+  }, [])
+
+  const [nodes, setNodes] = useState<Node[]>(() =>
+    makeNodes(steps, handleEditStep, handleDeleteStep)
+  )
   const [edges, setEdges] = useState<Edge[]>(() =>
     makeEdges(connections, handleEdgeDelete)
   )
 
   useEffect(() => {
     setNodes((previous) => {
-      const next = makeNodes(steps)
+      const next = makeNodes(steps, handleEditStep, handleDeleteStep)
       return next.map((node) => {
         const existing = previous.find((item) => item.id === node.id)
         return existing ? { ...node, position: existing.position } : node
       })
     })
-  }, [steps])
+  }, [steps, handleEditStep, handleDeleteStep])
 
   useEffect(() => {
     setEdges(makeEdges(connections, handleEdgeDelete))
@@ -200,7 +226,7 @@ function CanvasInner({
   }, [])
 
   return (
-    <div className="relative h-[640px] min-h-0 w-full flex-1 overflow-hidden rounded-lg border bg-[#f8f9fb]">
+    <div className="relative h-full min-h-0 w-full flex-1 overflow-hidden bg-[#f8f9fb]">
       <ReactFlow
         className="h-full w-full"
         nodes={nodes}
@@ -230,7 +256,9 @@ function CanvasInner({
 export function WorkflowCanvas(props: WorkflowCanvasProps) {
   return (
     <ReactFlowProvider>
-      <CanvasInner {...props} />
+      <div className="flex h-full min-h-0 flex-1 flex-col">
+        <CanvasInner {...props} />
+      </div>
     </ReactFlowProvider>
   )
 }
