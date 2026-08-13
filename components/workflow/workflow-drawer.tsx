@@ -12,12 +12,18 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { Field } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { useWorkflow } from "@/lib/workflow/context"
-import { workflowSchema } from "@/lib/workflow/schema"
-import { Workflow } from "@/lib/workflow/types"
+import {
+  toCreateWorkflowPayload,
+  toDatetimeLocalValue,
+  toUpdateWorkflowPayload,
+  workflowSchema,
+} from "@/lib/workflow/schema"
+import { ScheduleType, ScheduleUnit, Workflow } from "@/lib/workflow/types"
 import { hasNotificationTarget } from "@/lib/workflow/utils"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, Trash2Icon } from "lucide-react"
@@ -27,9 +33,38 @@ import z from "zod"
 
 type WorkflowFormValues = z.infer<typeof workflowSchema>
 
+const SCHEDULE_TYPES: { value: ScheduleType; label: string }[] = [
+  { value: "none", label: "None (manual only)" },
+  { value: "recurring", label: "Recurring" },
+  { value: "once", label: "Once" },
+]
+
+const SCHEDULE_UNITS: { value: ScheduleUnit; label: string }[] = [
+  { value: "minute", label: "Minutes" },
+  { value: "hour", label: "Hours" },
+  { value: "day", label: "Days" },
+  { value: "week", label: "Weeks" },
+  { value: "month", label: "Months" },
+  { value: "year", label: "Years" },
+]
+
+const TIMEZONES = [
+  "UTC",
+  "Europe/Paris",
+  "Europe/London",
+  "America/New_York",
+  "America/Los_Angeles",
+  "Asia/Tokyo",
+]
+
 const emptyFormValues: WorkflowFormValues = {
   name: "",
   description: "",
+  scheduleType: "none",
+  scheduleIntervalValue: 1,
+  scheduleIntervalUnit: "hour",
+  scheduleAt: "",
+  scheduleTimezone: "UTC",
   notificationsEnabled: false,
   notifyOnSuccess: false,
   notifyOnFailure: false,
@@ -49,9 +84,24 @@ function getWorkflowFormValues(
 ): WorkflowFormValues {
   if (!workflow) return emptyFormValues
 
+  const scheduleType = SCHEDULE_TYPES.some(
+    (item) => item.value === workflow.scheduleType
+  )
+    ? (workflow.scheduleType as ScheduleType)
+    : "none"
+
   return {
     name: workflow.name,
     description: workflow.description ?? "",
+    scheduleType,
+    scheduleIntervalValue: workflow.scheduleIntervalValue || 1,
+    scheduleIntervalUnit: SCHEDULE_UNITS.some(
+      (item) => item.value === workflow.scheduleIntervalUnit
+    )
+      ? (workflow.scheduleIntervalUnit as ScheduleUnit)
+      : "hour",
+    scheduleAt: toDatetimeLocalValue(workflow.scheduleAt),
+    scheduleTimezone: workflow.scheduleTimezone || "UTC",
     notificationsEnabled: workflow.notificationsEnabled ?? false,
     notifyOnSuccess: workflow.notifyOnSuccess ?? false,
     notifyOnFailure: workflow.notifyOnFailure ?? false,
@@ -83,6 +133,10 @@ export function WorkflowDrawer({
     defaultValues: getWorkflowFormValues(workflow),
   })
 
+  const scheduleType = useWatch({
+    control,
+    name: "scheduleType",
+  })
   const notificationsEnabled = useWatch({
     control,
     name: "notificationsEnabled",
@@ -118,27 +172,16 @@ export function WorkflowDrawer({
     setIsSaving(true)
     try {
       if (isCreate) {
-        const created = await createWorkflow({
-          name: data.name,
-          description: data.description ?? "",
-          notificationsEnabled: data.notificationsEnabled,
-          notifyOnSuccess: data.notifyOnSuccess,
-          notifyOnFailure: data.notifyOnFailure,
-          notifyOnCancel: data.notifyOnCancel,
-        })
+        const created = await createWorkflow(toCreateWorkflowPayload(data))
         onSaved?.(created)
       } else {
-        const updated = await updateWorkflow(workflow.id, {
-          name: data.name,
-          description: data.description ?? "",
-          status: workflow.status,
-          scheduleIntervalMinutes: workflow.scheduleIntervalMinutes,
-          concurrency: workflow.concurrency,
-          notificationsEnabled: data.notificationsEnabled,
-          notifyOnSuccess: data.notifyOnSuccess,
-          notifyOnFailure: data.notifyOnFailure,
-          notifyOnCancel: data.notifyOnCancel,
-        })
+        const updated = await updateWorkflow(
+          workflow.id,
+          toUpdateWorkflowPayload(data, {
+            status: workflow.status,
+            concurrency: workflow.concurrency,
+          })
+        )
         onSaved?.(updated)
       }
       onClose()
@@ -227,6 +270,188 @@ export function WorkflowDrawer({
                       )}
                     />
                   </Field>
+                </div>
+              </div>
+
+              <Separator className="my-10" />
+
+              <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
+                <div className="space-y-1">
+                  <h2 className="font-semibold">Schedule</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Choose how this workflow is triggered.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-6 md:col-span-2">
+                  <Field>
+                    <Controller
+                      name="scheduleType"
+                      control={control}
+                      render={({ field }) => (
+                        <div className="space-y-2">
+                          <Label htmlFor="workflow-schedule-type">Type</Label>
+                          <select
+                            id="workflow-schedule-type"
+                            value={field.value}
+                            onChange={field.onChange}
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                          >
+                            {SCHEDULE_TYPES.map((type) => (
+                              <option key={type.value} value={type.value}>
+                                {type.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    />
+                  </Field>
+
+                  {scheduleType === "recurring" ? (
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                      <Field>
+                        <Controller
+                          name="scheduleIntervalValue"
+                          control={control}
+                          render={({ field }) => (
+                            <CustomInput
+                              id="workflow-schedule-interval-value"
+                              isRequired
+                              label="Every"
+                              hasError={!!errors.scheduleIntervalValue}
+                              errorMessage={
+                                errors.scheduleIntervalValue?.message
+                              }
+                              description="Minimum interval is 1 minute"
+                              value={String(field.value ?? 1)}
+                              onChange={(value) =>
+                                field.onChange(
+                                  Number.parseInt(value || "1", 10)
+                                )
+                              }
+                            />
+                          )}
+                        />
+                      </Field>
+                      <Field>
+                        <Controller
+                          name="scheduleIntervalUnit"
+                          control={control}
+                          render={({ field }) => (
+                            <div className="space-y-2">
+                              <Label htmlFor="workflow-schedule-interval-unit">
+                                Unit
+                              </Label>
+                              <select
+                                id="workflow-schedule-interval-unit"
+                                value={field.value}
+                                onChange={field.onChange}
+                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                              >
+                                {SCHEDULE_UNITS.map((unit) => (
+                                  <option key={unit.value} value={unit.value}>
+                                    {unit.label}
+                                  </option>
+                                ))}
+                              </select>
+                              {errors.scheduleIntervalUnit?.message ? (
+                                <p className="text-xs text-destructive">
+                                  {errors.scheduleIntervalUnit.message}
+                                </p>
+                              ) : null}
+                            </div>
+                          )}
+                        />
+                      </Field>
+                    </div>
+                  ) : null}
+
+                  {scheduleType === "once" ? (
+                    <Field>
+                      <Controller
+                        name="scheduleAt"
+                        control={control}
+                        render={({ field }) => (
+                          <div className="space-y-2">
+                            <Label htmlFor="workflow-schedule-at">
+                              Run at
+                              <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                              id="workflow-schedule-at"
+                              type="datetime-local"
+                              value={field.value ?? ""}
+                              onChange={(event) =>
+                                field.onChange(event.target.value)
+                              }
+                              className={cn(
+                                "h-9 bg-white shadow-none dark:bg-background",
+                                errors.scheduleAt &&
+                                  "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500/30"
+                              )}
+                            />
+                            {errors.scheduleAt?.message ? (
+                              <p className="text-xs text-destructive">
+                                {errors.scheduleAt.message}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                Exact date and time for a one-off run
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      />
+                    </Field>
+                  ) : null}
+
+                  {scheduleType !== "none" ? (
+                    <Field>
+                      <Controller
+                        name="scheduleTimezone"
+                        control={control}
+                        render={({ field }) => (
+                          <div className="space-y-2">
+                            <Label htmlFor="workflow-schedule-timezone">
+                              Timezone
+                            </Label>
+                            <select
+                              id="workflow-schedule-timezone"
+                              value={field.value}
+                              onChange={field.onChange}
+                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                            >
+                              {[
+                                ...TIMEZONES,
+                                field.value && !TIMEZONES.includes(field.value)
+                                  ? field.value
+                                  : null,
+                              ]
+                                .filter((value): value is string =>
+                                  Boolean(value)
+                                )
+                                .map((timezone) => (
+                                  <option key={timezone} value={timezone}>
+                                    {timezone}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                        )}
+                      />
+                    </Field>
+                  ) : null}
+
+                  {!isCreate && workflow?.nextRunAt ? (
+                    <div className="space-y-1 rounded-lg border px-3 py-2">
+                      <p className="text-xs text-muted-foreground">
+                        Next run
+                      </p>
+                      <p className="font-mono text-sm">
+                        {new Date(workflow.nextRunAt).toLocaleString()}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 

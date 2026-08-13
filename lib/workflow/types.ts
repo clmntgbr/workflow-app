@@ -2,13 +2,28 @@ import { initPaginate, Paginate } from "@/lib/paginate"
 
 export type WorkflowStatus = "active" | "inactive" | "deleted" | "canceled"
 
+export type ScheduleType = "none" | "recurring" | "once"
+
+export type ScheduleUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "month"
+  | "year"
+
 export interface Workflow {
   id: string
   name: string
   description: string
   status: WorkflowStatus | string
   organizationId: string
-  scheduleIntervalMinutes: number
+  scheduleType: ScheduleType | string
+  scheduleIntervalValue: number
+  scheduleIntervalUnit: ScheduleUnit | string
+  scheduleAt: string | null
+  scheduleTimezone: string
+  nextRunAt: string | null
   concurrency: number
   notificationsEnabled: boolean
   notifyOnSuccess: boolean
@@ -21,7 +36,11 @@ export interface Workflow {
 export interface CreateWorkflowInput {
   name: string
   description?: string
-  scheduleIntervalMinutes?: number
+  scheduleType?: ScheduleType
+  scheduleIntervalValue?: number
+  scheduleIntervalUnit?: ScheduleUnit | ""
+  scheduleAt?: string | null
+  scheduleTimezone?: string
   concurrency?: number
   notificationsEnabled?: boolean
   notifyOnSuccess?: boolean
@@ -33,7 +52,11 @@ export interface UpdateWorkflowInput {
   name: string
   description?: string
   status: string
-  scheduleIntervalMinutes: number
+  scheduleType: ScheduleType
+  scheduleIntervalValue: number
+  scheduleIntervalUnit: ScheduleUnit | ""
+  scheduleAt: string | null
+  scheduleTimezone: string
   concurrency: number
   notificationsEnabled: boolean
   notifyOnSuccess: boolean
