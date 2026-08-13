@@ -5,6 +5,8 @@ export type RealtimeResource =
   | "endpoint"
   | "step"
   | "connection"
+  | "workflowRun"
+  | "stepRun"
 
 export type RealtimeVerb =
   | "created"
@@ -13,6 +15,10 @@ export type RealtimeVerb =
   | "active_organization_changed"
   | "member_added"
   | "member_removed"
+  | "started"
+  | "succeeded"
+  | "failed"
+  | "cancelled"
 
 export type RealtimeEventType = `${RealtimeResource}.${RealtimeVerb}`
 
@@ -23,7 +29,9 @@ export interface UserStreamEvent {
   organizationId?: string
   endpointId?: string
   workflowId?: string
+  workflowRunId?: string
   stepId?: string
+  stepRunId?: string
   name?: string
   status?: string
 }
@@ -35,6 +43,8 @@ const RESOURCES = new Set<string>([
   "endpoint",
   "step",
   "connection",
+  "workflowRun",
+  "stepRun",
 ])
 
 const VERBS = new Set<string>([
@@ -44,6 +54,10 @@ const VERBS = new Set<string>([
   "active_organization_changed",
   "member_added",
   "member_removed",
+  "started",
+  "succeeded",
+  "failed",
+  "cancelled",
 ])
 
 export function parseRealtimeType(
@@ -122,6 +136,18 @@ export function shouldRefetchConnections(event: UserStreamEvent): boolean {
   return (
     event.type === "connection.created" ||
     event.type === "connection.deleted"
+  )
+}
+
+export function shouldRefetchWorkflowRuns(event: UserStreamEvent): boolean {
+  return (
+    event.type === "workflowRun.started" ||
+    event.type === "workflowRun.succeeded" ||
+    event.type === "workflowRun.failed" ||
+    event.type === "workflowRun.cancelled" ||
+    event.type === "stepRun.started" ||
+    event.type === "stepRun.succeeded" ||
+    event.type === "stepRun.failed"
   )
 }
 

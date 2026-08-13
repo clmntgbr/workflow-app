@@ -11,7 +11,9 @@ import { CanvasStep } from "@/components/workflow/step-node"
 import { StepDrawer } from "@/components/workflow/step-drawer"
 import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
 import { WorkflowNotFoundView } from "@/components/workflow/workflow-not-found-view"
+import { WorkflowRunsPanel } from "@/components/workflow/workflow-runs-panel"
 import { SwitchOrganizationDialog } from "@/components/workflow/switch-organization-dialog"
+import { cn } from "@/lib/utils"
 import { useEndpoint } from "@/lib/endpoint/context"
 import { Endpoint } from "@/lib/endpoint/types"
 import { useOrganization } from "@/lib/organization/context"
@@ -46,6 +48,8 @@ interface WorkflowPageClientProps {
 }
 
 type Point = { x: number; y: number }
+
+type WorkflowPageTab = "canvas" | "runs"
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object"
@@ -149,6 +153,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [isEndpointDrawerOpen, setIsEndpointDrawerOpen] = useState(false)
   const [steps, setSteps] = useState<CanvasStep[]>([])
   const [connections, setConnections] = useState<WorkflowConnection[]>([])
+  const [activeTab, setActiveTab] = useState<WorkflowPageTab>("canvas")
 
   const endpointById = new Map(
     endpoints.members.map((endpoint) => [endpoint.id, endpoint])
@@ -665,6 +670,40 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
               <span className="rounded-md border px-2 py-0.5 text-[10px] capitalize text-muted-foreground">
                 {workflow.status}
               </span>
+              <div
+                role="tablist"
+                aria-label="Workflow views"
+                className="flex items-center rounded-md border p-0.5"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === "canvas"}
+                  onClick={() => setActiveTab("canvas")}
+                  className={cn(
+                    "rounded-sm px-2.5 py-1 text-xs font-medium transition-colors",
+                    activeTab === "canvas"
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Canvas
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === "runs"}
+                  onClick={() => setActiveTab("runs")}
+                  className={cn(
+                    "rounded-sm px-2.5 py-1 text-xs font-medium transition-colors",
+                    activeTab === "runs"
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Runs
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -678,7 +717,12 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         </Button>
       </div>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 overflow-hidden",
+          activeTab !== "canvas" && "hidden"
+        )}
+      >
         <aside className="flex w-72 shrink-0 flex-col border-r bg-background">
           <div className="shrink-0 space-y-1 border-b px-4 py-3">
             <h2 className="text-sm font-semibold">Endpoints</h2>
@@ -751,6 +795,15 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
             onDeleteStep={handleDeleteStep}
           />
         </div>
+      </div>
+
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-hidden",
+          activeTab !== "runs" && "hidden"
+        )}
+      >
+        <WorkflowRunsPanel workflowId={workflowId} />
       </div>
 
       <StepDrawer

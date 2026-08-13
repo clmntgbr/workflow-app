@@ -21,6 +21,29 @@ export interface StepRunResponseSnapshot {
   body: unknown
 }
 
+/** Timing fields from the API are milliseconds. */
+export interface Insight {
+  id: string
+  stepRunId: string
+  startTime: string | null
+  endTime: string | null
+  queueTime: number | null
+  dnsLookupDuration: number | null
+  tcpConnectionTime: number | null
+  tlsHandshakeTime: number | null
+  ttfb: number | null
+  duration: number | null
+  statusCode: number | null
+  responseSize: number | null
+  requestSize: number | null
+  attemptNumber: number
+  totalAttempts: number
+  errorMessage: string | null
+  errorType: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface StepRun {
   id: string
   workflowRunId: string
@@ -46,6 +69,7 @@ export interface StepRun {
   status: string
   attempt: number
   responseSnapshot: StepRunResponseSnapshot | null
+  insights?: Insight[]
   startedAt: string | null
   finishedAt: string | null
   error: string | null

@@ -6,6 +6,7 @@ import { useUser } from "@/lib/user/context"
 import { useWorkflow } from "@/lib/workflow/context"
 import { notifyWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
 import { notifyWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
+import { notifyWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
 import { useCallback, useEffect, useRef } from "react"
 import {
   isUserLifecycleEvent,
@@ -15,6 +16,7 @@ import {
   shouldRefetchOrganizations,
   shouldRefetchSingleEndpoint,
   shouldRefetchSteps,
+  shouldRefetchWorkflowRuns,
   shouldRefetchWorkflows,
 } from "./types"
 import { useCentrifuge } from "./use-centrifuge"
@@ -52,8 +54,12 @@ export function UserCentrifugeListener() {
   const connectionDebounceRef = useRef<
     ReturnType<typeof setTimeout> | undefined
   >(undefined)
+  const workflowRunDebounceRef = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined)
   const pendingStepWorkflowIdsRef = useRef<Set<string>>(new Set())
   const pendingConnectionWorkflowIdsRef = useRef<Set<string>>(new Set())
+  const pendingWorkflowRunWorkflowIdsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     fetchUserRef.current = fetchUser
@@ -142,6 +148,32 @@ export function UserCentrifugeListener() {
     }, REFRESH_DEBOUNCE_MS)
   }, [])
 
+  const debouncedRefreshWorkflowRuns = useCallback((workflowId?: string) => {
+    if (workflowId) {
+      pendingWorkflowRunWorkflowIdsRef.current.add(workflowId)
+    } else {
+      pendingWorkflowRunWorkflowIdsRef.current.clear()
+      pendingWorkflowRunWorkflowIdsRef.current.add("*")
+    }
+
+    if (workflowRunDebounceRef.current) {
+      clearTimeout(workflowRunDebounceRef.current)
+    }
+    workflowRunDebounceRef.current = setTimeout(() => {
+      const workflowIds = Array.from(pendingWorkflowRunWorkflowIdsRef.current)
+      pendingWorkflowRunWorkflowIdsRef.current.clear()
+
+      if (workflowIds.includes("*")) {
+        notifyWorkflowRunsRefetch()
+        return
+      }
+
+      for (const id of workflowIds) {
+        notifyWorkflowRunsRefetch(id)
+      }
+    }, REFRESH_DEBOUNCE_MS)
+  }, [])
+
   useEffect(() => {
     return () => {
       if (orgDebounceRef.current) clearTimeout(orgDebounceRef.current)
@@ -150,6 +182,9 @@ export function UserCentrifugeListener() {
       if (stepDebounceRef.current) clearTimeout(stepDebounceRef.current)
       if (connectionDebounceRef.current) {
         clearTimeout(connectionDebounceRef.current)
+      }
+      if (workflowRunDebounceRef.current) {
+        clearTimeout(workflowRunDebounceRef.current)
       }
     }
   }, [])
@@ -164,7 +199,9 @@ export function UserCentrifugeListener() {
       console.log("[Centrifugo] event received", {
         type: data.type,
         workflowId: data.workflowId,
+        workflowRunId: data.workflowRunId,
         stepId: data.stepId,
+        stepRunId: data.stepRunId,
         endpointId: data.endpointId,
         organizationId: data.organizationId,
         userId: data.userId,
@@ -203,6 +240,10 @@ export function UserCentrifugeListener() {
         debouncedRefreshConnections(data.workflowId)
       }
 
+      if (shouldRefetchWorkflowRuns(data)) {
+        debouncedRefreshWorkflowRuns(data.workflowId)
+      }
+
       if (isUserLifecycleEvent(data)) {
         void fetchUserRef.current()
       }
@@ -213,6 +254,7 @@ export function UserCentrifugeListener() {
       debouncedRefreshEndpoints,
       debouncedRefreshSteps,
       debouncedRefreshConnections,
+      debouncedRefreshWorkflowRuns,
     ]
   )
 
