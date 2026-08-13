@@ -2,7 +2,7 @@
 
 import { initPaginate, PaginateQuery } from "@/lib/paginate"
 import { useOrganization } from "@/lib/organization/context"
-import { useCallback, useEffect, useReducer } from "react"
+import { useCallback, useEffect, useReducer, useRef } from "react"
 import {
   createEndpoint as createEndpointRequest,
   deleteEndpoint as deleteEndpointRequest,
@@ -21,6 +21,7 @@ import {
 export function EndpointProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(endpointReducer, initialEndpointState)
   const { activeOrganization } = useOrganization()
+  const bootstrappedOrgIdRef = useRef<string | null>(null)
 
   const fetchEndpoints = useCallback(
     async (query?: PaginateQuery) => {
@@ -76,9 +77,30 @@ export function EndpointProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "SET_EDITING_ENDPOINT_ID", payload: id })
   }, [])
 
+  // Bootstrap once when an active org first appears.
+  // Org switches are refreshed by Centrifugo (`user.active_organization_changed`).
   useEffect(() => {
-    void fetchEndpoints()
-  }, [fetchEndpoints])
+    const orgId = activeOrganization?.id ?? null
+
+    if (!orgId) {
+      bootstrappedOrgIdRef.current = null
+      dispatch({ type: "GET_ENDPOINTS", payload: initPaginate() })
+      return
+    }
+
+    if (bootstrappedOrgIdRef.current === orgId) return
+
+    const isFirstBootstrap = bootstrappedOrgIdRef.current === null
+    bootstrappedOrgIdRef.current = orgId
+
+    if (isFirstBootstrap) {
+      void fetchEndpoints()
+      return
+    }
+
+    // Org switched: clear stale list; Centrifugo will refill.
+    dispatch({ type: "GET_ENDPOINTS", payload: initPaginate() })
+  }, [activeOrganization?.id, fetchEndpoints])
 
   return (
     <EndpointContext.Provider

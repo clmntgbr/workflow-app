@@ -161,6 +161,16 @@ export function UserCentrifugeListener() {
         return
       }
 
+      console.log("[Centrifugo] event received", {
+        type: data.type,
+        workflowId: data.workflowId,
+        stepId: data.stepId,
+        endpointId: data.endpointId,
+        organizationId: data.organizationId,
+        userId: data.userId,
+        payload: data,
+      })
+
       if (shouldRefetchOrganizations(data)) {
         debouncedRefreshOrganizations()
       }

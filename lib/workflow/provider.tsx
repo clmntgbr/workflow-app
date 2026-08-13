@@ -2,7 +2,7 @@
 
 import { initPaginate, PaginateQuery } from "@/lib/paginate"
 import { useOrganization } from "@/lib/organization/context"
-import { useCallback, useEffect, useReducer } from "react"
+import { useCallback, useEffect, useReducer, useRef } from "react"
 import {
   createWorkflow as createWorkflowRequest,
   deleteWorkflow as deleteWorkflowRequest,
@@ -20,6 +20,7 @@ import {
 export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(workflowReducer, initialWorkflowState)
   const { activeOrganization } = useOrganization()
+  const bootstrappedOrgIdRef = useRef<string | null>(null)
 
   const fetchWorkflows = useCallback(
     async (query?: PaginateQuery) => {
@@ -47,7 +48,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     [activeOrganization?.id]
   )
 
-  // Mutations only — list refresh comes from Centrifugo / org change.
+  // Mutations only — list refresh comes from Centrifugo.
   const createWorkflow = useCallback(async (input: CreateWorkflowInput) => {
     return createWorkflowRequest(input)
   }, [])
@@ -66,9 +67,30 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "REMOVE_WORKFLOW", payload: id })
   }, [])
 
+  // Bootstrap once when an active org first appears.
+  // Org switches are refreshed by Centrifugo (`user.active_organization_changed`).
   useEffect(() => {
-    void fetchWorkflows()
-  }, [fetchWorkflows])
+    const orgId = activeOrganization?.id ?? null
+
+    if (!orgId) {
+      bootstrappedOrgIdRef.current = null
+      dispatch({ type: "GET_WORKFLOWS", payload: initPaginate() })
+      return
+    }
+
+    if (bootstrappedOrgIdRef.current === orgId) return
+
+    const isFirstBootstrap = bootstrappedOrgIdRef.current === null
+    bootstrappedOrgIdRef.current = orgId
+
+    if (isFirstBootstrap) {
+      void fetchWorkflows()
+      return
+    }
+
+    // Org switched: clear stale list; Centrifugo will refill.
+    dispatch({ type: "GET_WORKFLOWS", payload: initPaginate() })
+  }, [activeOrganization?.id, fetchWorkflows])
 
   return (
     <WorkflowContext.Provider
