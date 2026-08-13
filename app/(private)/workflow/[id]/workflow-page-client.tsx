@@ -416,14 +416,107 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const handleCreateStep = async (input: {
     endpointId: string
     position: Point
+    preview: EndpointDragPayload
   }) => {
+    const endpoint = endpointById.get(input.endpointId)
+    const tempId = `temp-${crypto.randomUUID()}`
+    const optimisticStep: CanvasStep = {
+      id: tempId,
+      name: input.preview.name || endpoint?.name || "Step",
+      description: input.preview.description ?? endpoint?.description ?? null,
+      endpointId: input.endpointId,
+      method: input.preview.method || endpoint?.method || "GET",
+      path: input.preview.path || endpoint?.url || "/",
+      headers: endpoint?.headers ?? {},
+      query: endpoint?.query ?? {},
+      body: endpoint?.body ?? {},
+      timeout: endpoint?.timeout ?? 30000,
+      retryOnFailure: endpoint?.retryOnFailure ?? false,
+      retryCount: endpoint?.retryCount ?? 0,
+      retryDelay: endpoint?.retryDelay ?? 1000,
+      x: input.position.x,
+      y: input.position.y,
+    }
+
+    setSteps((current) => [...current, optimisticStep])
+
     try {
-      await createWorkflowStep(workflowId, {
+      const created = await createWorkflowStep(workflowId, {
         endpointId: input.endpointId,
         position: input.position,
       })
+
+      const record = asRecord(created)
+      const createdId = record
+        ? pickString(record, ["id", "stepId", "step_id"])
+        : null
+      const createdPosition = record ? parsePosition(record.position) : null
+      const createdName = record
+        ? pickString(record, ["name", "stepName", "step_name"])
+        : null
+      const createdMethod = record ? pickString(record, ["method"]) : null
+      const createdUrl = record ? pickString(record, ["url", "path"]) : null
+      const indexRaw =
+        record &&
+        (typeof record.index === "string" || typeof record.index === "number")
+          ? String(record.index)
+          : undefined
+
+      if (createdId) {
+        setSteps((current) =>
+          current.map((step) =>
+            step.id === tempId
+              ? ({
+                  ...step,
+                  id: createdId,
+                  ...(indexRaw ? { index: indexRaw } : {}),
+                  name: createdName ?? step.name,
+                  method: createdMethod ?? step.method,
+                  path: createdUrl ?? step.path,
+                  headers: record
+                    ? parseStringRecord(record.headers)
+                    : step.headers,
+                  query: record ? parseStringRecord(record.query) : step.query,
+                  body: record?.body ?? step.body,
+                  timeout: record
+                    ? pickNumber(
+                        record,
+                        ["timeout", "timeoutMs", "timeout_ms"],
+                        step.timeout
+                      )
+                    : step.timeout,
+                  retryOnFailure: record
+                    ? pickBoolean(
+                        record,
+                        ["retryOnFailure", "retry_on_failure"],
+                        step.retryOnFailure
+                      )
+                    : step.retryOnFailure,
+                  retryCount: record
+                    ? pickNumber(
+                        record,
+                        ["retryCount", "retry_count"],
+                        step.retryCount
+                      )
+                    : step.retryCount,
+                  retryDelay: record
+                    ? pickNumber(
+                        record,
+                        ["retryDelay", "retryDelayMs", "retry_delay_ms"],
+                        step.retryDelay
+                      )
+                    : step.retryDelay,
+                  x: createdPosition?.x ?? step.x,
+                  y: createdPosition?.y ?? step.y,
+                } as CanvasStep)
+              : step
+          )
+        )
+      }
+
       toast.success("Step created")
     } catch (creationError) {
+      setSteps((current) => current.filter((step) => step.id !== tempId))
       toast.error(
         creationError instanceof Error
           ? creationError.message

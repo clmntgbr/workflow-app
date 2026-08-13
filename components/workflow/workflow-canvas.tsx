@@ -43,6 +43,7 @@ interface WorkflowCanvasProps {
   onCreateStep: (input: {
     endpointId: string
     position: { x: number; y: number }
+    preview: EndpointDragPayload
   }) => Promise<void>
   onMoveStep: (
     stepId: string,
@@ -232,6 +233,7 @@ function CanvasInner({
           x: Number(position.x.toFixed(2)),
           y: Number(position.y.toFixed(2)),
         },
+        preview: endpoint,
       })
     },
     [screenToFlowPosition]
