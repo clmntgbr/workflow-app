@@ -1,5 +1,6 @@
 "use client"
 
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { cn } from "@/lib/utils"
@@ -26,7 +27,7 @@ export function VariableAutocompleteField({
   const [cursorPosition, setCursorPosition] = useState(0)
   const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null)
 
   const getTextBeforeCursor = () => {
     return value.substring(0, cursorPosition)
@@ -103,7 +104,7 @@ export function VariableAutocompleteField({
   }
 
   const updateCursorPosition = () => {
-    if (inputRef.current) {
+    if (inputRef.current && inputRef.current.selectionStart !== null) {
       setCursorPosition(inputRef.current.selectionStart)
       updatePopoverPosition()
     }
@@ -113,7 +114,7 @@ export function VariableAutocompleteField({
     <div ref={containerRef} className="relative">
       {isTextarea ? (
         <Textarea
-          ref={inputRef}
+          ref={inputRef as any}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -123,24 +124,21 @@ export function VariableAutocompleteField({
           className={className}
         />
       ) : (
-        <input
-          ref={inputRef}
+        <Input
+          ref={inputRef as React.Ref<HTMLInputElement>}
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onKeyDown={handleKeyDown as any}
           onKeyUp={updateCursorPosition}
           onClick={updateCursorPosition}
           placeholder={placeholder}
-          className={cn(
-            "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30",
-            className
-          )}
+          className={className}
         />
       )}
       {open && filteredVariables.length > 0 && (
         <div
-          className="absolute top-full left-0 z-50 w-[200px] rounded-md border bg-popover shadow-md mt-1"
+          className="absolute top-full left-0 z-50 w-[400px] rounded-md border bg-popover shadow-md mt-1"
           style={{
             top: `${popoverPos.top}px`,
             left: `${popoverPos.left}px`,

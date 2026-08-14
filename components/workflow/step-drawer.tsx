@@ -30,7 +30,7 @@ import {
   toUpdateWorkflowStepPayload,
 } from "@/lib/workflow/step-schema"
 import { UpdateWorkflowStepInput } from "@/lib/workflow/types"
-import { listAvailableVariables } from "@/lib/workflow/variable/api"
+import { listWorkflowVariables } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
@@ -71,22 +71,15 @@ function getStepFormValues(step?: CanvasStep | null): StepFormValues {
     ? (step.method.toUpperCase() as StepFormValues["method"])
     : "GET"
 
-  const body: Record<string, unknown> = (step.body ?? {}) as Record<
-    string,
-    unknown
-  >
-  const headers: Record<string, string> = step.headers ?? {}
-  const query: Record<string, string> = step.query ?? {}
-
   return {
     name: step.name,
     description: step.description ?? "",
     endpointId: step.endpointId,
     url: step.path,
     method,
-    body: JSON.stringify(body, null, 2),
-    headers: recordToKeyValuePairs(headers),
-    query: recordToKeyValuePairs(query),
+    body: JSON.stringify(step.body ?? {}, null, 2),
+    headers: recordToKeyValuePairs(step.headers),
+    query: recordToKeyValuePairs(step.query),
     timeout: Math.max(1, step.timeout || 30000),
     retryOnFailure: step.retryOnFailure,
     retryCount: step.retryCount,
@@ -221,9 +214,9 @@ export function StepDrawer({
 
     const loadVariables = async () => {
       try {
-        const variables = await listAvailableVariables(workflowId, step.id)
+        const allVariables = await listWorkflowVariables(workflowId)
         if (!cancelled) {
-          setAvailableVariables(variables)
+          setAvailableVariables(allVariables)
         }
       } catch (err) {
         if (!cancelled) {
