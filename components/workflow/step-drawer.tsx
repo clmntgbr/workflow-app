@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { CanvasStep } from "@/components/workflow/step-node"
+import { StepVariablesSection } from "@/components/workflow/step-variables-section"
 import { useEndpoint } from "@/lib/endpoint/context"
 import {
   KeyValuePair,
@@ -158,6 +159,7 @@ function KeyValueEditor({
 }
 
 interface StepDrawerProps {
+  workflowId: string
   step: CanvasStep | null
   isOpen: boolean
   onOpenChange: (open: boolean) => void
@@ -167,6 +169,7 @@ interface StepDrawerProps {
 }
 
 export function StepDrawer({
+  workflowId,
   step,
   isOpen,
   onOpenChange,
@@ -575,6 +578,35 @@ export function StepDrawer({
                       )}
                     />
                   </Field>
+                </div>
+              </div>
+
+              <Separator className="my-10" />
+
+              <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
+                <div className="space-y-1">
+                  <h2 className="font-semibold">Variables</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Extract values from this step&apos;s response for later
+                    steps. No picker yet — paste{" "}
+                    <span className="font-mono text-xs">
+                      {"{{variableId}}"}
+                    </span>{" "}
+                    or{" "}
+                    <span className="font-mono text-xs">
+                      {'{"$var":"variableId"}'}
+                    </span>{" "}
+                    manually.
+                  </p>
+                </div>
+                <div className="md:col-span-2">
+                  {step ? (
+                    <StepVariablesSection
+                      workflowId={workflowId}
+                      stepId={step.id}
+                      enabled={!step.id.startsWith("temp-")}
+                    />
+                  ) : null}
                 </div>
               </div>
             </div>

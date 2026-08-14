@@ -807,6 +807,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       </div>
 
       <StepDrawer
+        workflowId={workflowId}
         step={selectedStep}
         isOpen={isStepDrawerOpen}
         onOpenChange={(open) => {
