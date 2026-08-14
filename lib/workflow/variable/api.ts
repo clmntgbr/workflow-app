@@ -41,7 +41,7 @@ export async function listAvailableVariables(
   stepId: string
 ): Promise<WorkflowVariable[]> {
   const response = await fetch(
-    `/api/workflows/${workflowId}/steps/${stepId}/available-variables`,
+    `/api/workflows/${workflowId}/steps/${stepId}/variables`,
     {
       method: "GET",
     }

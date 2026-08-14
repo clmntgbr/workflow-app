@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { CanvasStep } from "@/components/workflow/step-node"
 import { StepVariablesSection } from "@/components/workflow/step-variables-section"
+import { VariableAutocompleteField } from "@/components/workflow/variable-autocomplete-field"
 import { useEndpoint } from "@/lib/endpoint/context"
 import {
   KeyValuePair,
@@ -29,6 +30,8 @@ import {
   toUpdateWorkflowStepPayload,
 } from "@/lib/workflow/step-schema"
 import { UpdateWorkflowStepInput } from "@/lib/workflow/types"
+import { listAvailableVariables } from "@/lib/workflow/variable/api"
+import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -68,15 +71,22 @@ function getStepFormValues(step?: CanvasStep | null): StepFormValues {
     ? (step.method.toUpperCase() as StepFormValues["method"])
     : "GET"
 
+  const body: Record<string, unknown> = (step.body ?? {}) as Record<
+    string,
+    unknown
+  >
+  const headers: Record<string, string> = step.headers ?? {}
+  const query: Record<string, string> = step.query ?? {}
+
   return {
     name: step.name,
     description: step.description ?? "",
     endpointId: step.endpointId,
     url: step.path,
     method,
-    body: JSON.stringify(step.body ?? {}, null, 2),
-    headers: recordToKeyValuePairs(step.headers),
-    query: recordToKeyValuePairs(step.query),
+    body: JSON.stringify(body, null, 2),
+    headers: recordToKeyValuePairs(headers),
+    query: recordToKeyValuePairs(query),
     timeout: Math.max(1, step.timeout || 30000),
     retryOnFailure: step.retryOnFailure,
     retryCount: step.retryCount,
@@ -89,11 +99,13 @@ function KeyValueEditor({
   description,
   pairs,
   onChange,
+  variables = [],
 }: {
   label: string
   description: string
   pairs: KeyValuePair[]
   onChange: (pairs: KeyValuePair[]) => void
+  variables?: WorkflowVariable[]
 }) {
   const updatePair = (
     index: number,
@@ -130,12 +142,11 @@ function KeyValueEditor({
               onChange={(event) => updatePair(index, "key", event.target.value)}
               className="h-9"
             />
-            <Input
+            <VariableAutocompleteField
               value={pair.value}
+              onChange={(value) => updatePair(index, "value", value)}
+              variables={variables}
               placeholder="Value"
-              onChange={(event) =>
-                updatePair(index, "value", event.target.value)
-              }
               className="h-9"
             />
             <Button
@@ -180,6 +191,9 @@ export function StepDrawer({
   const { endpoints } = useEndpoint()
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [availableVariables, setAvailableVariables] = useState<
+    WorkflowVariable[]
+  >([])
 
   const {
     handleSubmit,
@@ -196,6 +210,35 @@ export function StepDrawer({
     control,
     name: "retryOnFailure",
   })
+
+  useEffect(() => {
+    if (!isOpen || !step) {
+      setAvailableVariables([])
+      return
+    }
+
+    let cancelled = false
+
+    const loadVariables = async () => {
+      try {
+        const variables = await listAvailableVariables(workflowId, step.id)
+        if (!cancelled) {
+          setAvailableVariables(variables)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to load available variables:", err)
+          setAvailableVariables([])
+        }
+      }
+    }
+
+    void loadVariables()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, workflowId, step])
 
   useEffect(() => {
     if (!isOpen) return
@@ -444,6 +487,7 @@ export function StepDrawer({
                         description="Optional HTTP headers"
                         pairs={field.value ?? []}
                         onChange={field.onChange}
+                        variables={availableVariables}
                       />
                     )}
                   />
@@ -456,27 +500,38 @@ export function StepDrawer({
                         description="Optional query string parameters"
                         pairs={field.value ?? []}
                         onChange={field.onChange}
+                        variables={availableVariables}
                       />
                     )}
                   />
                   <Field>
+                    <div className="space-y-2">
+                      <Label htmlFor="step-body">
+                        Body (JSON)
+                        <span className="ml-1 text-destructive">*</span>
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Raw JSON request body.
+                      </p>
+                    </div>
                     <Controller
                       name="body"
                       control={control}
                       render={({ field }) => (
-                        <CustomTextarea
-                          id="step-body"
-                          isRequired
-                          label="Body (JSON)"
-                          hasError={!!errors.body}
-                          errorMessage={errors.body?.message}
-                          description="Raw JSON request body"
+                        <VariableAutocompleteField
                           value={field.value ?? "{}"}
                           onChange={field.onChange}
-                          textareaClassName="min-h-40 font-mono text-xs"
+                          variables={availableVariables}
+                          isTextarea
+                          className="min-h-40 font-mono text-xs"
                         />
                       )}
                     />
+                    {errors.body ? (
+                      <p className="text-xs text-destructive">
+                        {errors.body.message}
+                      </p>
+                    ) : null}
                   </Field>
                 </div>
               </div>
@@ -588,15 +643,11 @@ export function StepDrawer({
                   <h2 className="font-semibold">Variables</h2>
                   <p className="text-sm text-muted-foreground">
                     Extract values from this step&apos;s response for later
-                    steps. No picker yet — paste{" "}
+                    steps. Reference variables by key in other steps:{" "}
                     <span className="font-mono text-xs">
-                      {"{{variableId}}"}
-                    </span>{" "}
-                    or{" "}
-                    <span className="font-mono text-xs">
-                      {'{"$var":"variableId"}'}
-                    </span>{" "}
-                    manually.
+                      {"{{myKey}}"}
+                    </span>
+                    .
                   </p>
                 </div>
                 <div className="md:col-span-2">

@@ -58,14 +58,18 @@ export type StepFormValues = z.infer<typeof stepFormSchema>
 export function toUpdateWorkflowStepPayload(
   values: StepFormValues
 ): UpdateWorkflowStepInput {
+  const body = JSON.parse(values.body) as Record<string, unknown>
+  const headers = keyValuePairsToRecord(values.headers)
+  const query = keyValuePairsToRecord(values.query)
+
   return {
     name: values.name,
     description: values.description ?? "",
     url: values.url,
     method: values.method,
-    body: JSON.parse(values.body) as Record<string, unknown>,
-    headers: keyValuePairsToRecord(values.headers),
-    query: keyValuePairsToRecord(values.query),
+    body,
+    headers,
+    query,
     timeout: values.timeout,
     retryOnFailure: values.retryOnFailure,
     retryCount: values.retryCount,
