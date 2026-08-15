@@ -5,7 +5,6 @@ import { OrganizationProvider } from "@/lib/organization/provider"
 import { ThemeProvider } from "@/lib/theme/theme-provider"
 import { UserProvider } from "@/lib/user/provider"
 import { WorkflowProvider } from "@/lib/workflow/provider"
-import { Toaster } from "sonner"
 
 export default function PrivateLayout({
   children,
@@ -28,7 +27,6 @@ export default function PrivateLayout({
                 <AppHeader />
                 <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
               </div>
-              <Toaster />
             </EndpointProvider>
           </WorkflowProvider>
         </OrganizationProvider>

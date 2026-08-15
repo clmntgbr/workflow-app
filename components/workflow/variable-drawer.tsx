@@ -17,7 +17,6 @@ import {
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { Loader2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
-import { toast } from "sonner"
 
 interface VariableDrawerProps {
   workflowId: string
@@ -98,7 +97,6 @@ export function VariableDrawer({
           path,
         })
         onSaved(updated)
-        toast.success("Variable updated")
       } else {
         const created = await createWorkflowVariable(workflowId, {
           stepId,
@@ -108,7 +106,6 @@ export function VariableDrawer({
           path,
         })
         onSaved(created)
-        toast.success("Variable created")
       }
       handleClose()
     } catch (saveError) {

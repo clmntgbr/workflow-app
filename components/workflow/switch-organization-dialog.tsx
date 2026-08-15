@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog"
 import { Loader2Icon } from "lucide-react"
 import { useState } from "react"
-import { toast } from "sonner"
 
 interface SwitchOrganizationDialogProps {
   open: boolean
@@ -33,12 +32,6 @@ export function SwitchOrganizationDialog({
     try {
       await onConfirm()
       onOpenChange(false)
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to switch organization. Please try again."
-      )
     } finally {
       setIsLoading(false)
     }

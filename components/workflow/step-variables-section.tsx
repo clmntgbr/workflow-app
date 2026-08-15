@@ -7,7 +7,6 @@ import { deleteWorkflowVariable } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
-import { toast } from "sonner"
 
 interface StepVariablesSectionProps {
   workflowId: string
@@ -178,7 +177,6 @@ export function StepVariablesSection({
               setEditingVariable(null)
             }
             setDeleteTarget(null)
-            toast.success("Variable deleted")
           }}
           errorMessage="Failed to delete variable. Please try again."
         />

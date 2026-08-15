@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog"
 import { Loader2Icon } from "lucide-react"
 import { useState } from "react"
-import { toast } from "sonner"
 
 interface DeleteConfirmDialogProps {
   open: boolean
@@ -30,7 +29,6 @@ export function DeleteConfirmDialog({
   description,
   onConfirm,
   onDeleted,
-  errorMessage = "Failed to delete. Please try again.",
 }: DeleteConfirmDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
 
@@ -47,12 +45,7 @@ export function DeleteConfirmDialog({
     if (result.status === "fulfilled") {
       onDeleted()
       onOpenChange(false)
-      return
     }
-
-    toast.error(
-      result.reason instanceof Error ? result.reason.message : errorMessage
-    )
   }
 
   return (

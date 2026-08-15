@@ -43,7 +43,6 @@ import { ArrowLeftIcon, SettingsIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
-import { toast } from "sonner"
 
 interface WorkflowPageClientProps {
   workflowId: string
@@ -527,15 +526,8 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           )
         )
       }
-
-      toast.success("Step created")
     } catch (creationError) {
       setSteps((current) => current.filter((step) => step.id !== tempId))
-      toast.error(
-        creationError instanceof Error
-          ? creationError.message
-          : "Failed to create step"
-      )
       throw creationError
     }
   }
@@ -560,9 +552,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
             : step
         )
       )
-      toast.error(
-        moveError instanceof Error ? moveError.message : "Failed to move step"
-      )
     }
   }
 
@@ -572,14 +561,8 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   }) => {
     try {
       const created = await createWorkflowConnection(workflowId, input)
-      toast.success("Connection created")
       return created
     } catch (saveError) {
-      toast.error(
-        saveError instanceof Error
-          ? saveError.message
-          : "Failed to create connection"
-      )
       throw saveError
     }
   }
@@ -594,11 +577,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       await deleteWorkflowConnection(workflowId, connectionId)
     } catch (deleteError) {
       setConnections(previousConnections)
-      toast.error(
-        deleteError instanceof Error
-          ? deleteError.message
-          : "Failed to delete connection"
-      )
       throw deleteError
     }
   }
@@ -613,13 +591,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
     try {
       await updateWorkflowStep(workflowId, selectedStep.id, input)
-      toast.success("Step updated")
     } catch (updateError) {
-      toast.error(
-        updateError instanceof Error
-          ? updateError.message
-          : "Failed to update step"
-      )
       throw updateError
     }
   }
@@ -654,11 +626,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           setIsStepDrawerOpen(true)
         }
       }
-      toast.error(
-        deleteError instanceof Error
-          ? deleteError.message
-          : "Failed to delete step"
-      )
       throw deleteError
     }
   }
