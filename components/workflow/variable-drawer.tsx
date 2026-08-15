@@ -296,6 +296,8 @@ export function VariableDrawer({
             handleClose()
           }}
           errorMessage="Failed to delete variable. Please try again."
+          className="z-[80]"
+          overlayClassName="z-[75]"
         />
       ) : null}
     </Drawer>

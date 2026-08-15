@@ -409,16 +409,28 @@ export function StepDrawer({
                       name="url"
                       control={control}
                       render={({ field }) => (
-                        <CustomInput
-                          id="step-url"
-                          isRequired
-                          label="URL"
-                          hasError={!!errors.url}
-                          errorMessage={errors.url?.message}
-                          description="Full request URL"
-                          value={field.value ?? ""}
-                          onChange={field.onChange}
-                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="step-url">
+                            URL
+                            <span className="ml-1 text-destructive">*</span>
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Full request URL. Use {"{{key}}"} to inject
+                            variables.
+                          </p>
+                          <VariableAutocompleteField
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                            variables={availableVariables}
+                            placeholder="https://api.example.com/resource/{{id}}"
+                            className="h-9"
+                          />
+                          {errors.url ? (
+                            <p className="text-xs text-destructive">
+                              {errors.url.message}
+                            </p>
+                          ) : null}
+                        </div>
                       )}
                     />
                   </Field>

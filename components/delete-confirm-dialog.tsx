@@ -20,6 +20,8 @@ interface DeleteConfirmDialogProps {
   onConfirm: () => Promise<void>
   onDeleted: () => void
   errorMessage?: string
+  className?: string
+  overlayClassName?: string
 }
 
 export function DeleteConfirmDialog({
@@ -29,6 +31,8 @@ export function DeleteConfirmDialog({
   description,
   onConfirm,
   onDeleted,
+  className,
+  overlayClassName,
 }: DeleteConfirmDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
 
@@ -50,7 +54,7 @@ export function DeleteConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className={className} overlayClassName={overlayClassName}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
