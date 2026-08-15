@@ -2,10 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  getWorkflowRun,
-  listWorkflowRunsByWorkflow,
-} from "@/lib/workflow-run/api"
+import { listWorkflowRunsByWorkflow } from "@/lib/workflow-run/api"
 import { subscribeWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
 import { Insight, StepRun, WorkflowRun } from "@/lib/workflow-run/types"
 import { cn } from "@/lib/utils"
@@ -233,17 +230,7 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
           orderBy: "desc",
         })
 
-        const detailed = await Promise.all(
-          list.members.map(async (run) => {
-            try {
-              return await getWorkflowRun(run.id)
-            } catch {
-              return run
-            }
-          })
-        )
-
-        setRuns(detailed)
+        setRuns(list.members)
         setTotalPages(list.totalPages)
         setError(null)
       } catch {
