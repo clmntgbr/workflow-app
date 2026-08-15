@@ -6,8 +6,6 @@ export interface WorkflowVariable {
   path: string
   stepId: string
   workflowId: string
-  isSecret: boolean
-  defaultValue: unknown | null
   lastValue: unknown | null
   createdAt: string
   updatedAt: string
@@ -19,8 +17,6 @@ export interface CreateWorkflowVariableInput {
   key: string
   description?: string
   path: string
-  isSecret?: boolean
-  defaultValue?: unknown | null
 }
 
 export interface UpdateWorkflowVariableInput {
@@ -28,6 +24,4 @@ export interface UpdateWorkflowVariableInput {
   key: string
   description?: string
   path: string
-  isSecret?: boolean
-  defaultValue?: unknown | null
 }
