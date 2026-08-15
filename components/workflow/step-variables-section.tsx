@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { VariableDrawer } from "@/components/workflow/variable-drawer"
 import { deleteWorkflowVariable } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
-import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react"
+import { Braces, PlusIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
 
 interface StepVariablesSectionProps {
@@ -14,15 +14,6 @@ interface StepVariablesSectionProps {
   enabled: boolean
   variables: WorkflowVariable[]
   onVariablesChange: (variables: WorkflowVariable[]) => void
-}
-
-function formatJsonValue(value: unknown | null): string {
-  if (value == null) return ""
-  try {
-    return JSON.stringify(value, null, 2)
-  } catch {
-    return String(value)
-  }
 }
 
 export function StepVariablesSection({
@@ -88,47 +79,33 @@ export function StepVariablesSection({
       ) : (
         <ul className="space-y-2">
           {stepVariables.map((variable) => (
-            <li
-              key={variable.id}
-              className="flex items-start justify-between gap-3 rounded-md border px-3 py-2"
-            >
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="truncate text-sm font-medium">
-                    {variable.name}
-                  </span>
-                  <span className="rounded border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+            <li key={variable.id} className="flex items-stretch gap-2">
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-4 rounded-md border p-2 text-left text-xs outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground"
+                onClick={() => openEdit(variable)}
+              >
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-md border">
+                  <Braces className="size-3.5 shrink-0" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-bold">
                     {variable.key}
                   </span>
-                </div>
-                <p className="truncate font-mono text-xs text-muted-foreground">
-                  {variable.path}
-                </p>
-                {variable.description ? (
-                  <p className="truncate text-xs text-muted-foreground">
-                    {variable.description}
-                  </p>
-                ) : null}
-                {variable.lastValue != null ? (
-                  <p className="truncate font-mono text-[10px] text-muted-foreground">
-                    last: {formatJsonValue(variable.lastValue)}
-                  </p>
-                ) : null}
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
+                  <span className="block truncate">
+                    {variable.name}{" "}
+                    <span className="text-xs text-muted-foreground">
+                      {variable.description}
+                    </span>
+                  </span>
+                </span>
+              </button>
+              <div className="flex shrink-0 items-center rounded-md">
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  aria-label={`Edit ${variable.name}`}
-                  onClick={() => openEdit(variable)}
-                >
-                  <PencilIcon className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   aria-label={`Delete ${variable.name}`}
                   onClick={() => setDeleteTarget(variable)}
                 >
