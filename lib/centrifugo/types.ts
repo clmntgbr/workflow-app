@@ -23,9 +23,9 @@ export type RealtimeVerb =
 
 export type RealtimeEventType = `${RealtimeResource}.${RealtimeVerb}`
 
-/** Centrifugo user-channel payload: `{resource}.{action}`. */
+/** Centrifugo user-channel payload: `{resource}.{action}` (optional `.vN` suffix). */
 export interface UserStreamEvent {
-  type: RealtimeEventType
+  type: string
   userId?: string
   organizationId?: string
   endpointId?: string
@@ -62,14 +62,20 @@ const VERBS = new Set<string>([
   "cancelled",
 ])
 
+/** Strips optional schema version suffix (`workflow.updated.v1` → `workflow.updated`). */
+export function canonicalizeRealtimeType(type: string): string {
+  return type.replace(/\.v\d+$/i, "")
+}
+
 export function parseRealtimeType(
   type: string
 ): { resource: RealtimeResource; verb: RealtimeVerb } | null {
-  const separatorIndex = type.indexOf(".")
+  const normalized = canonicalizeRealtimeType(type)
+  const separatorIndex = normalized.indexOf(".")
   if (separatorIndex <= 0) return null
 
-  const resource = type.slice(0, separatorIndex)
-  const verb = type.slice(separatorIndex + 1)
+  const resource = normalized.slice(0, separatorIndex)
+  const verb = normalized.slice(separatorIndex + 1)
 
   if (!RESOURCES.has(resource) || !VERBS.has(verb)) {
     return null
@@ -79,6 +85,13 @@ export function parseRealtimeType(
     resource: resource as RealtimeResource,
     verb: verb as RealtimeVerb,
   }
+}
+
+export function eventTypeEquals(
+  event: UserStreamEvent,
+  expected: RealtimeEventType
+): boolean {
+  return canonicalizeRealtimeType(event.type) === expected
 }
 
 export function isUserStreamEvent(value: unknown): value is UserStreamEvent {
@@ -99,8 +112,8 @@ export function isUserLifecycleEvent(event: UserStreamEvent): boolean {
 /** Refetch org list only on activate + create. */
 export function shouldRefetchOrganizations(event: UserStreamEvent): boolean {
   return (
-    event.type === "user.active_organization_changed" ||
-    event.type === "organization.created"
+    eventTypeEquals(event, "user.active_organization_changed") ||
+    eventTypeEquals(event, "organization.created")
   )
 }
 
@@ -108,55 +121,59 @@ export function shouldRefetchOrganizations(event: UserStreamEvent): boolean {
 export function shouldRefetchWorkflows(event: UserStreamEvent): boolean {
   return (
     getEventResource(event) === "workflow" ||
-    event.type === "user.active_organization_changed" ||
-    event.type === "organization.created"
+    eventTypeEquals(event, "user.active_organization_changed") ||
+    eventTypeEquals(event, "organization.created")
   )
+}
+
+export function shouldRefetchWorkflowDetail(event: UserStreamEvent): boolean {
+  return eventTypeEquals(event, "workflow.updated")
 }
 
 export function shouldRefetchAllEndpoints(event: UserStreamEvent): boolean {
   return (
-    event.type === "endpoint.created" ||
-    event.type === "endpoint.deleted" ||
-    event.type === "user.active_organization_changed" ||
-    event.type === "organization.created"
+    eventTypeEquals(event, "endpoint.created") ||
+    eventTypeEquals(event, "endpoint.deleted") ||
+    eventTypeEquals(event, "user.active_organization_changed") ||
+    eventTypeEquals(event, "organization.created")
   )
 }
 
 export function shouldRefetchSingleEndpoint(event: UserStreamEvent): boolean {
-  return event.type === "endpoint.updated"
+  return eventTypeEquals(event, "endpoint.updated")
 }
 
 export function shouldRefetchSteps(event: UserStreamEvent): boolean {
   return (
-    event.type === "step.created" ||
-    event.type === "step.updated" ||
-    event.type === "step.deleted"
+    eventTypeEquals(event, "step.created") ||
+    eventTypeEquals(event, "step.updated") ||
+    eventTypeEquals(event, "step.deleted")
   )
 }
 
 export function shouldRefetchConnections(event: UserStreamEvent): boolean {
   return (
-    event.type === "connection.created" ||
-    event.type === "connection.deleted"
+    eventTypeEquals(event, "connection.created") ||
+    eventTypeEquals(event, "connection.deleted")
   )
 }
 
 export function shouldRefetchWorkflowRuns(event: UserStreamEvent): boolean {
   return (
-    event.type === "workflowRun.started" ||
-    event.type === "workflowRun.succeeded" ||
-    event.type === "workflowRun.failed" ||
-    event.type === "workflowRun.cancelled" ||
-    event.type === "stepRun.started" ||
-    event.type === "stepRun.succeeded" ||
-    event.type === "stepRun.failed"
+    eventTypeEquals(event, "workflowRun.started") ||
+    eventTypeEquals(event, "workflowRun.succeeded") ||
+    eventTypeEquals(event, "workflowRun.failed") ||
+    eventTypeEquals(event, "workflowRun.cancelled") ||
+    eventTypeEquals(event, "stepRun.started") ||
+    eventTypeEquals(event, "stepRun.succeeded") ||
+    eventTypeEquals(event, "stepRun.failed")
   )
 }
 
 export function shouldRefetchVariables(event: UserStreamEvent): boolean {
   return (
-    event.type === "variable.created" ||
-    event.type === "variable.updated"
+    eventTypeEquals(event, "variable.created") ||
+    eventTypeEquals(event, "variable.updated")
   )
 }
 

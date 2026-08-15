@@ -7,6 +7,7 @@ import { useWorkflow } from "@/lib/workflow/context"
 import { notifyWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
 import { notifyWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
 import { notifyWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
+import { notifyWorkflowDetailRefetch } from "@/lib/workflow/workflow-realtime"
 import { notifyWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
 import { useCallback, useEffect, useRef } from "react"
 import {
@@ -18,6 +19,7 @@ import {
   shouldRefetchSingleEndpoint,
   shouldRefetchSteps,
   shouldRefetchVariables,
+  shouldRefetchWorkflowDetail,
   shouldRefetchWorkflowRuns,
   shouldRefetchWorkflows,
 } from "./types"
@@ -249,6 +251,10 @@ export function UserCentrifugeListener() {
 
       if (shouldRefetchWorkflows(data)) {
         debouncedRefreshWorkflows()
+      }
+
+      if (shouldRefetchWorkflowDetail(data)) {
+        notifyWorkflowDetailRefetch(data.workflowId)
       }
 
       if (shouldRefetchAllEndpoints(data)) {

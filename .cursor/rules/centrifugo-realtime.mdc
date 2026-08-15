@@ -37,6 +37,7 @@ Handle new events in `lib/centrifugo/types.ts` + `user-centrifuge-listener.tsx`.
 | `user.active_organization_changed` | orgs + workflows + endpoints (+ me via user.*) |
 | `organization.created` | orgs + workflows + endpoints |
 | `workflow.created/updated/deleted` | `GET /api/workflows` |
+| `workflow.updated` | also `GET /api/workflows/:id` (page subscribers via `subscribeWorkflowDetailRefetch`) |
 | `endpoint.created/deleted` | `GET /api/endpoints` |
 | `endpoint.updated` | single `GET /api/endpoints/:id` if editing that id, else list |
 | `step.created/updated/deleted` | `GET .../workflows/:id/steps` (page subscribers) |
@@ -46,6 +47,8 @@ Handle new events in `lib/centrifugo/types.ts` + `user-centrifuge-listener.tsx`.
 | `variable.created/updated` | `GET .../workflows/:id/variables` (page subscribers) + available vars if step drawer open |
 
 Steps/connections: use `subscribeWorkflowStepsRefetch` / `subscribeWorkflowConnectionsRefetch` on the workflow page — scoped by `workflowId` from the event.
+
+Workflow detail: use `subscribeWorkflowDetailRefetch` on the workflow page — scoped by `workflowId` from `workflow.updated`.
 
 Workflow runs: use `subscribeWorkflowRunsRefetch` on the workflow page (keep the panel mounted even when Canvas is visible) — scoped by `workflowId` when present; `stepRun.succeeded/failed` may omit `workflowId` and notify all open workflow-page subscribers.
 

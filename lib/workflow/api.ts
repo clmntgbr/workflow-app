@@ -136,6 +136,30 @@ export const deleteWorkflow = async (id: string): Promise<void> => {
   }
 }
 
+export const activateWorkflow = async (id: string): Promise<Workflow> => {
+  const response = await fetch(`/api/workflows/${id}/activate`, {
+    method: "POST",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to activate workflow")
+  }
+
+  return response.json()
+}
+
+export const deactivateWorkflow = async (id: string): Promise<Workflow> => {
+  const response = await fetch(`/api/workflows/${id}/deactivate`, {
+    method: "POST",
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to deactivate workflow")
+  }
+
+  return response.json()
+}
+
 export const createWorkflowStep = async (
   workflowId: string,
   input: CreateWorkflowStepInput

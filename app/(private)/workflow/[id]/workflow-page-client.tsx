@@ -6,6 +6,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
+import { Switch } from "@/components/ui/switch"
 import { EndpointDrawer } from "@/components/endpoint/endpoint-drawer"
 import { EndpointsSidebar } from "@/components/workflow/endpoints-sidebar"
 import { SidebarEdgeHandle } from "@/components/workflow/sidebar-edge-handle"
@@ -24,8 +25,10 @@ import { useEndpoint } from "@/lib/endpoint/context"
 import { Endpoint } from "@/lib/endpoint/types"
 import { useOrganization } from "@/lib/organization/context"
 import {
+  activateWorkflow,
   createWorkflowConnection,
   createWorkflowStep,
+  deactivateWorkflow,
   deleteWorkflowConnection,
   deleteWorkflowStep,
   getWorkflow,
@@ -46,6 +49,7 @@ import {
 import { listWorkflowVariables } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { subscribeWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
+import { subscribeWorkflowDetailRefetch } from "@/lib/workflow/workflow-realtime"
 import { ArrowLeftIcon, SettingsIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -163,6 +167,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [connections, setConnections] = useState<WorkflowConnection[]>([])
   const [variables, setVariables] = useState<WorkflowVariable[]>([])
   const [activeTab, setActiveTab] = useState<WorkflowPageTab>("canvas")
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false)
 
   const endpointById = new Map(
     endpoints.members.map((endpoint) => [endpoint.id, endpoint])
@@ -364,6 +369,37 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       void loadVariables()
     })
   }, [workflowId, loadVariables])
+
+  useEffect(() => {
+    return subscribeWorkflowDetailRefetch(workflowId, () => {
+      void getWorkflow(workflowId)
+        .then((next) => setWorkflow(next))
+        .catch(() => {})
+    })
+  }, [workflowId])
+
+  const handleStatusToggle = async (nextActive: boolean) => {
+    if (!workflow || isTogglingStatus) return
+
+    const previous = workflow
+    setIsTogglingStatus(true)
+    setWorkflow({
+      ...workflow,
+      status: nextActive ? "active" : "inactive",
+      ...(nextActive ? {} : { nextRunAt: null }),
+    })
+
+    try {
+      const updated = nextActive
+        ? await activateWorkflow(workflowId)
+        : await deactivateWorkflow(workflowId)
+      setWorkflow(updated)
+    } catch {
+      setWorkflow(previous)
+    } finally {
+      setIsTogglingStatus(false)
+    }
+  }
 
   if (!activeOrganization?.id || isLoading) {
     return (
@@ -656,9 +692,22 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="truncate text-sm font-semibold">{workflow.name}</h1>
-              <span className="rounded-md border px-2 py-0.5 text-[10px] capitalize text-muted-foreground">
-                {workflow.status}
-              </span>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={workflow.status === "active"}
+                  disabled={
+                    isTogglingStatus ||
+                    (workflow.status !== "active" &&
+                      workflow.status !== "inactive")
+                  }
+                  onCheckedChange={handleStatusToggle}
+                  aria-label={
+                    workflow.status === "active"
+                      ? "Deactivate workflow"
+                      : "Activate workflow"
+                  }
+                />
+              </div>
               <div
                 role="tablist"
                 aria-label="Workflow views"
