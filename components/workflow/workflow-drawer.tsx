@@ -447,7 +447,7 @@ export function WorkflowDrawer({
                       <p className="text-xs text-muted-foreground">
                         Next run
                       </p>
-                      <p className="font-mono text-sm">
+                      <p className="text-sm">
                         {new Date(workflow.nextRunAt).toLocaleString()}
                       </p>
                     </div>

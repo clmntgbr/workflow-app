@@ -10,6 +10,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { Field } from "@/components/ui/field"
+import { VariablePathField } from "@/components/workflow/variable-path-field"
 import {
   createWorkflowVariable,
   updateWorkflowVariable,
@@ -39,6 +40,14 @@ const emptyForm: VariableFormState = {
   key: "",
   description: "",
   path: "$.",
+}
+
+/** Slug-like keys: lowercase letters, digits, `_` and `-` only. */
+function toVariableKeySlug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9_-]/g, "")
 }
 
 function toFormState(variable: WorkflowVariable | null): VariableFormState {
@@ -85,6 +94,13 @@ export function VariableDrawer({
       return
     }
 
+    if (!/^[a-z0-9_-]+$/.test(key)) {
+      setFormError(
+        "Key must be a slug: lowercase letters, numbers, underscores, and hyphens only"
+      )
+      return
+    }
+
     setIsSaving(true)
     setFormError(null)
 
@@ -122,7 +138,7 @@ export function VariableDrawer({
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right" modal>
       <DrawerContent
-        className="z-[70] flex h-full w-[60vw]! max-w-[60vw]! flex-col"
+        className="z-[70] flex h-full w-[70 vw]! max-w-[70vw]! flex-col"
         overlayClassName="z-[65]"
       >
         <DrawerHeader className="sr-only">
@@ -164,21 +180,26 @@ export function VariableDrawer({
                     id="variable-drawer-key"
                     isRequired
                     label="Key"
-                    description="Unique key within the workflow"
+                    description="Slug used in references like {{my_key}} — lowercase, numbers, _ and - only"
                     value={form.key}
                     hasCharacterLimit
                     maxLength={255}
                     onChange={(value) =>
-                      setForm((current) => ({ ...current, key: value }))
+                      setForm((current) => ({
+                        ...current,
+                        key: toVariableKeySlug(value),
+                      }))
                     }
                   />
                 </Field>
                 <Field>
-                  <CustomInput
+                  <VariablePathField
                     id="variable-drawer-path"
+                    workflowId={workflowId}
+                    stepId={stepId}
                     isRequired
                     label="Path"
-                    description="JSONPath into the response body"
+                    description="JSONPath into the response body — pick from the last successful run or type manually"
                     value={form.path}
                     hasCharacterLimit
                     maxLength={255}

@@ -418,7 +418,7 @@ export function EndpointDrawer({
                           description="Raw JSON request body"
                           value={field.value ?? "{}"}
                           onChange={field.onChange}
-                          textareaClassName="min-h-40 font-mono text-xs"
+                          textareaClassName="min-h-40 text-xs"
                         />
                       )}
                     />

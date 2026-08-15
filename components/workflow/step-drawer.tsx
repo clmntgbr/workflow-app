@@ -455,7 +455,7 @@ export function StepDrawer({
                       {step.index ? (
                         <div className="space-y-1 rounded-lg border px-3 py-2">
                           <p className="text-xs text-muted-foreground">Index</p>
-                          <p className="font-mono text-sm">{step.index}</p>
+                          <p className="text-sm">{step.index}</p>
                         </div>
                       ) : null}
                       {step.executionOrder !== undefined ? (
@@ -463,7 +463,7 @@ export function StepDrawer({
                           <p className="text-xs text-muted-foreground">
                             Execution order
                           </p>
-                          <p className="font-mono text-sm">
+                          <p className="text-sm">
                             {step.executionOrder}
                           </p>
                         </div>
@@ -528,7 +528,7 @@ export function StepDrawer({
                           onChange={field.onChange}
                           variables={availableVariables}
                           isTextarea
-                          className="min-h-40 font-mono text-xs"
+                          className="min-h-40 text-xs"
                         />
                       )}
                     />
@@ -649,7 +649,7 @@ export function StepDrawer({
                   <p className="text-sm text-muted-foreground">
                     Extract values from this step&apos;s response for later
                     steps. Reference variables by key in other steps:{" "}
-                    <span className="font-mono text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {"{{myKey}}"}
                     </span>
                     .

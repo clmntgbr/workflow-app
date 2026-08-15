@@ -165,7 +165,7 @@ function WorkflowRunCard({ run }: { run: WorkflowRun }) {
           )}
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {run.id.slice(0, 8)}
               </span>
               <StatusBadge status={run.status} />

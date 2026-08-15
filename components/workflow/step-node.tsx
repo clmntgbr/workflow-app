@@ -115,7 +115,7 @@ export function StepNode({ data }: NodeProps) {
           <p className="truncate text-[13px] font-semibold text-foreground">
             {step.name}
           </p>
-          <p className="truncate font-mono text-[11px] text-muted-foreground">
+          <p className="truncate text-[11px] text-muted-foreground">
             {step.path}
           </p>
         </div>

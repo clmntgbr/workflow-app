@@ -82,7 +82,7 @@ export function StepVariablesSection({
             <li key={variable.id} className="flex items-stretch gap-2">
               <button
                 type="button"
-                className="flex min-w-0 flex-1 items-center gap-4 rounded-md border p-2 text-left text-xs outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground"
+                className="flex min-w-0 flex-1 items-center gap-4 cursor-pointer rounded-md border p-2 text-left text-xs outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground"
                 onClick={() => openEdit(variable)}
               >
                 <span className="flex size-6 shrink-0 items-center justify-center rounded-md border">
