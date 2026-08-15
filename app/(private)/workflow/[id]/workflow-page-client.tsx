@@ -143,12 +143,12 @@ function parsePosition(position: unknown): Point | null {
 export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
 
-  const TABS = [
+  const Tabs = [
     { label: "Workflow", key: "workflow", Icon: LayersIcon },
     { label: "Analytics", key: "analytics", Icon: HistoryIcon },
   ] as const;
 
-  type Tab = (typeof TABS)[number]["key"];
+  type Tab = (typeof Tabs)[number]["key"];
   const [tab, setTab] = useState<Tab>("workflow");
 
   const router = useRouter()
@@ -720,40 +720,30 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
               </div>
 
               <div className="flex items-center rounded-full border border-border/80 bg-elevated/60 p-[3px]">
-              {TABS.map(({ label, Icon: IconComponent, key }, i) => {
-              const active = key === tab;
-              const prevActive = i > 0 && TABS[i - 1]!.key === tab;
-              return (
-                <div key={label} className="flex items-center">
-                  {i > 0 && (
-                    <span
-                      aria-hidden
+              {Tabs.map(({ label, Icon: IconComponent, key }) => {
+                const active = key === tab;
+                return (
+                  <div key={label} className="flex items-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setTab(key)}
+                      aria-current={active ? "page" : undefined}
+                      aria-label={label}
+                      title={label}
                       className={
-                        "h-4 w-px transition-opacity duration-200 " +
-                        (active || prevActive ? "opacity-0" : "bg-border opacity-100")
+                        "flex h-8 items-center gap-1.5 rounded-full transition-all duration-200 " +
+                        (active
+                          ? "border border-accent/35  px-3.5 font-medium shadow-crisp bg-gray-100"
+                          : "px-3 text-muted-foreground hover:text-foreground bg-white")
                       }
-                    />
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setTab(key)}
-                    aria-current={active ? "page" : undefined}
-                    aria-label={label}
-                    title={label}
-                    className={
-                      "flex h-8 items-center gap-1.5 rounded-full transition-all duration-200 " +
-                      (active
-                        ? "border border-accent/35  px-3.5 font-medium shadow-crisp bg-gray-100"
-                        : "px-3 text-muted-foreground hover:text-foreground bg-white")
-                    }
-                  >
-                    <IconComponent className="size-[15px] shrink-0" />
-                    {active && <span className="text-[13px]">{label}</span>}
-                  </Button>
-                </div>
-              );
-            })}
+                    >
+                      <IconComponent className="size-[15px] shrink-0" />
+                      {active && <span className="text-[13px]">{label}</span>}
+                    </Button>
+                  </div>
+                );
+              })}
                 </div>
             </div>
           </div>
