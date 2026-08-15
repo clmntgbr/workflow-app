@@ -96,12 +96,6 @@ export function StepNode({ data }: NodeProps) {
           </button>
         </div>
 
-        {step.index ? (
-          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[9px] font-medium text-muted-foreground">
-            {step.index}
-          </span>
-        ) : null}
-
         <span
           className={cn(
             "shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",

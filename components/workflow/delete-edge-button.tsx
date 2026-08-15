@@ -6,7 +6,8 @@ import {
   getSmoothStepPath,
   type EdgeProps,
 } from "@xyflow/react"
-import { XIcon } from "lucide-react"
+import { Trash2Icon, TrashIcon, XIcon } from "lucide-react"
+import { Button } from "../ui/button"
 
 export type DeleteEdgeData = {
   onDelete: () => void
@@ -39,9 +40,9 @@ export function DeleteEdgeButton({
     <>
       <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={style} />
       <EdgeLabelRenderer>
-        <button
-          type="button"
-          className="nodrag nopan absolute flex size-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground"
+        <Button
+          variant="destructive"
+          className="nodrag nopan absolute flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white hover:bg-white hover:text-red-700"
           style={{
             left: labelX,
             top: labelY,
@@ -53,8 +54,8 @@ export function DeleteEdgeButton({
           }}
           aria-label="Delete connection"
         >
-          <XIcon className="size-3" />
-        </button>
+          <Trash2Icon className="size-4" />
+        </Button>
       </EdgeLabelRenderer>
     </>
   )
