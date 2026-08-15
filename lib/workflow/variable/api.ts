@@ -22,7 +22,13 @@ async function readErrorMessage(
   fallback: string
 ): Promise<string> {
   try {
-    const data = (await response.json()) as { message?: string }
+    const data = (await response.json()) as {
+      message?: string
+      data?: { message?: string }
+    }
+    if (typeof data.data?.message === "string" && data.data.message.trim()) {
+      return data.data.message
+    }
     if (typeof data.message === "string" && data.message.trim()) {
       return data.message
     }

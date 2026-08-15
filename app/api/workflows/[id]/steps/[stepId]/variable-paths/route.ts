@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     })
 
     if (!response.ok) {
-      return NextResponse.json({ success: false }, { status: response.status })
+      return NextResponse.json({ success: false, data: await response.json() }, { status: response.status })
     }
 
     const data = await response.json()

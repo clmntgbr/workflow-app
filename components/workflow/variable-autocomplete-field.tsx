@@ -29,7 +29,8 @@ function highlightVariablesHtml(text: string): string {
   return escaped.replaceAll(
     /\{\{[a-zA-Z0-9_-]+\}\}/g,
     (match) =>
-      `<span class="font-bold text-green-500 dark:text-green-500">${match}</span>`
+      // Keep font-weight identical to the textarea so caret and glyphs stay aligned.
+      `<span class="text-green-500 dark:text-green-500">${match}</span>`
   )
 }
 
@@ -130,10 +131,17 @@ export function VariableAutocompleteField({
     backdropRef.current.scrollLeft = inputRef.current.scrollLeft
   }
 
+  const textMetricsClassName = cn(
+    "text-sm md:text-xs/relaxed",
+    className?.includes("font-mono") && "font-mono",
+    className?.includes("text-xs") && "text-xs leading-relaxed"
+  )
+
   const fieldClassName = cn(
     "relative z-10 border-0 bg-transparent text-transparent caret-foreground shadow-none",
     "focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent",
     "placeholder:text-muted-foreground",
+    textMetricsClassName,
     className
   )
 
@@ -154,10 +162,9 @@ export function VariableAutocompleteField({
           className={cn(
             "pointer-events-none absolute inset-0 z-0 overflow-hidden text-foreground",
             isTextarea
-              ? "whitespace-pre-wrap break-words px-2 py-2 text-sm md:text-xs/relaxed"
-              : "flex items-center overflow-hidden whitespace-pre px-2 text-sm md:text-xs/relaxed",
-            className?.includes("font-mono") && "font-mono",
-            className?.includes("text-xs") && "text-xs"
+              ? "whitespace-pre-wrap break-words px-2 py-2"
+              : "flex items-center overflow-hidden whitespace-pre px-2",
+            textMetricsClassName
           )}
           dangerouslySetInnerHTML={{ __html: highlightedHtml || "&nbsp;" }}
         />
@@ -170,9 +177,10 @@ export function VariableAutocompleteField({
             onKeyDown={handleKeyDown}
             onKeyUp={updateCursorPosition}
             onClick={updateCursorPosition}
+            onSelect={updateCursorPosition}
             onScroll={syncBackdropScroll}
             placeholder={placeholder}
-            className={fieldClassName}
+            className={cn("break-words", fieldClassName)}
           />
         ) : (
           <Input
@@ -183,6 +191,7 @@ export function VariableAutocompleteField({
             onKeyDown={handleKeyDown}
             onKeyUp={updateCursorPosition}
             onClick={updateCursorPosition}
+            onSelect={updateCursorPosition}
             placeholder={placeholder}
             className={cn("h-9 w-full", fieldClassName)}
           />

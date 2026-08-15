@@ -26,7 +26,7 @@ export async function PUT(request: Request, context: RouteContext) {
     )
 
     if (!response.ok) {
-      return NextResponse.json({ success: false }, { status: response.status })
+      return NextResponse.json({ success: false, data: await response.json() }, { status: response.status })
     }
 
     const data = await response.json()
@@ -51,7 +51,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
     )
 
     if (!response.ok) {
-      return NextResponse.json({ success: false }, { status: response.status })
+      return NextResponse.json({ success: false, data: await response.json() }, { status: response.status })
     }
 
     return new NextResponse(null, { status: response.status })

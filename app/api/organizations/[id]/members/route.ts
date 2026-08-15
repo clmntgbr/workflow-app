@@ -25,7 +25,7 @@ export async function POST(request: Request, context: RouteContext) {
     )
 
     if (!response.ok) {
-      return NextResponse.json({ success: false }, { status: response.status })
+      return NextResponse.json({ success: false, data: await response.json() }, { status: response.status })
     }
 
     return new NextResponse(null, { status: response.status })
