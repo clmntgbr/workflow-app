@@ -17,6 +17,22 @@ interface VariableAutocompleteFieldProps {
   isTextarea?: boolean
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+}
+
+function highlightVariablesHtml(text: string): string {
+  const escaped = escapeHtml(text)
+  return escaped.replaceAll(
+    /\{\{[a-zA-Z0-9_-]+\}\}/g,
+    (match) =>
+      `<span class="font-bold text-green-500 dark:text-green-500">${match}</span>`
+  )
+}
+
 export function VariableAutocompleteField({
   value,
   onChange,
@@ -31,6 +47,7 @@ export function VariableAutocompleteField({
   const [popoverTop, setPopoverTop] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null)
+  const backdropRef = useRef<HTMLDivElement>(null)
 
   const getTextBeforeCursor = () => value.substring(0, cursorPosition)
   const getTextAfterCursor = () => value.substring(cursorPosition)
@@ -45,9 +62,10 @@ export function VariableAutocompleteField({
 
   const filteredVariables =
     partialKey !== null
-      ? variables.filter((variable) =>
-          variable.key.toLowerCase().includes(partialKey.toLowerCase()) ||
-          variable.name.toLowerCase().includes(partialKey.toLowerCase())
+      ? variables.filter(
+          (variable) =>
+            variable.key.toLowerCase().includes(partialKey.toLowerCase()) ||
+            variable.name.toLowerCase().includes(partialKey.toLowerCase())
         )
       : []
 
@@ -106,32 +124,70 @@ export function VariableAutocompleteField({
     }
   }
 
+  const syncBackdropScroll = () => {
+    if (!isTextarea || !inputRef.current || !backdropRef.current) return
+    backdropRef.current.scrollTop = inputRef.current.scrollTop
+    backdropRef.current.scrollLeft = inputRef.current.scrollLeft
+  }
+
+  const fieldClassName = cn(
+    "relative z-10 border-0 bg-transparent text-transparent caret-foreground shadow-none",
+    "focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent",
+    "placeholder:text-muted-foreground",
+    className
+  )
+
+  const highlightedHtml = highlightVariablesHtml(value) + (isTextarea ? "\n" : "")
+
   return (
     <div ref={containerRef} className={cn("relative w-full", wrapperClassName)}>
-      {isTextarea ? (
-        <Textarea
-          ref={inputRef as React.Ref<HTMLTextAreaElement>}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={handleKeyDown}
-          onKeyUp={updateCursorPosition}
-          onClick={updateCursorPosition}
-          placeholder={placeholder}
-          className={className}
+      <div
+        className={cn(
+          "relative w-full rounded-md border border-input bg-input/20 dark:bg-input/30",
+          "focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30",
+          isTextarea ? "overflow-hidden" : "h-9"
+        )}
+      >
+        <div
+          ref={backdropRef}
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-0 z-0 overflow-hidden text-foreground",
+            isTextarea
+              ? "whitespace-pre-wrap break-words px-2 py-2 text-sm md:text-xs/relaxed"
+              : "flex items-center overflow-hidden whitespace-pre px-2 text-sm md:text-xs/relaxed",
+            className?.includes("font-mono") && "font-mono",
+            className?.includes("text-xs") && "text-xs"
+          )}
+          dangerouslySetInnerHTML={{ __html: highlightedHtml || "&nbsp;" }}
         />
-      ) : (
-        <Input
-          ref={inputRef as React.Ref<HTMLInputElement>}
-          type="text"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={handleKeyDown}
-          onKeyUp={updateCursorPosition}
-          onClick={updateCursorPosition}
-          placeholder={placeholder}
-          className={cn("w-full", className)}
-        />
-      )}
+
+        {isTextarea ? (
+          <Textarea
+            ref={inputRef as React.Ref<HTMLTextAreaElement>}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={handleKeyDown}
+            onKeyUp={updateCursorPosition}
+            onClick={updateCursorPosition}
+            onScroll={syncBackdropScroll}
+            placeholder={placeholder}
+            className={fieldClassName}
+          />
+        ) : (
+          <Input
+            ref={inputRef as React.Ref<HTMLInputElement>}
+            type="text"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={handleKeyDown}
+            onKeyUp={updateCursorPosition}
+            onClick={updateCursorPosition}
+            placeholder={placeholder}
+            className={cn("h-9 w-full", fieldClassName)}
+          />
+        )}
+      </div>
 
       {open && filteredVariables.length > 0 ? (
         <div
@@ -154,19 +210,17 @@ export function VariableAutocompleteField({
                   handleSelectVariable(variable.key)
                 }}
               >
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-md border ">
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-md border">
                   <Braces className="size-3.5 shrink-0" />
                 </span>
                 <span className="min-w-0 flex-1 text-left">
-                  <span className="block truncate font-bold">
-                    {variable.key}
-                  </span>
+                  <span className="block truncate font-bold">{variable.key}</span>
                   <span className="block truncate">
-                    {variable.name} <span className="text-xs text-muted-foreground">
-                    {variable.description}
+                    {variable.name}{" "}
+                    <span className="text-xs text-muted-foreground">
+                      {variable.description}
+                    </span>
                   </span>
-                  </span>
-                 
                 </span>
               </button>
             ))}
