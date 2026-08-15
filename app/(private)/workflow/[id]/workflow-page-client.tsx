@@ -50,7 +50,7 @@ import { listWorkflowVariables } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { subscribeWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
 import { subscribeWorkflowDetailRefetch } from "@/lib/workflow/workflow-realtime"
-import { ArrowLeftIcon, SettingsIcon } from "lucide-react"
+import { ArrowLeftIcon, History, HistoryIcon, Layers, LayersIcon, ScrollText, SettingsIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState, type CSSProperties } from "react"
@@ -141,6 +141,16 @@ function parsePosition(position: unknown): Point | null {
 }
 
 export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
+
+
+  const TABS = [
+    { label: "Workflow", key: "workflow", Icon: LayersIcon },
+    { label: "Analytics", key: "analytics", Icon: HistoryIcon },
+  ] as const;
+
+  type Tab = (typeof TABS)[number]["key"];
+  const [tab, setTab] = useState<Tab>("workflow");
+
   const router = useRouter()
   const { activeOrganization, activateOrganization, organizations } =
     useOrganization()
@@ -708,40 +718,43 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
                   }
                 />
               </div>
-              <div
-                role="tablist"
-                aria-label="Workflow views"
-                className="flex items-center rounded-md border p-0.5"
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === "canvas"}
-                  onClick={() => setActiveTab("canvas")}
-                  className={cn(
-                    "rounded-sm px-2.5 py-1 text-xs font-medium transition-colors",
-                    activeTab === "canvas"
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+
+              <div className="flex items-center rounded-full border border-border/80 bg-elevated/60 p-[3px]">
+              {TABS.map(({ label, Icon: IconComponent, key }, i) => {
+              const active = key === tab;
+              const prevActive = i > 0 && TABS[i - 1]!.key === tab;
+              return (
+                <div key={label} className="flex items-center">
+                  {i > 0 && (
+                    <span
+                      aria-hidden
+                      className={
+                        "h-4 w-px transition-opacity duration-200 " +
+                        (active || prevActive ? "opacity-0" : "bg-border opacity-100")
+                      }
+                    />
                   )}
-                >
-                  Canvas
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === "runs"}
-                  onClick={() => setActiveTab("runs")}
-                  className={cn(
-                    "rounded-sm px-2.5 py-1 text-xs font-medium transition-colors",
-                    activeTab === "runs"
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Runs
-                </button>
-              </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setTab(key)}
+                    aria-current={active ? "page" : undefined}
+                    aria-label={label}
+                    title={label}
+                    className={
+                      "flex h-8 items-center gap-1.5 rounded-full transition-all duration-200 " +
+                      (active
+                        ? "border border-accent/35  px-3.5 font-medium shadow-crisp bg-gray-100"
+                        : "px-3 text-muted-foreground hover:text-foreground bg-white")
+                    }
+                  >
+                    <IconComponent className="size-[15px] shrink-0" />
+                    {active && <span className="text-[13px]">{label}</span>}
+                  </Button>
+                </div>
+              );
+            })}
+                </div>
             </div>
           </div>
         </div>
@@ -758,7 +771,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       <div
         className={cn(
           "relative min-h-0 flex-1 overflow-hidden",
-          activeTab !== "canvas" && "hidden"
+          tab !== "workflow" && "hidden"
         )}
       >
         <SidebarProvider
@@ -792,7 +805,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       <div
         className={cn(
           "min-h-0 flex-1 overflow-hidden",
-          activeTab !== "runs" && "hidden"
+          tab !== "analytics" && "hidden"
         )}
       >
         <WorkflowRunsPanel workflowId={workflowId} />
