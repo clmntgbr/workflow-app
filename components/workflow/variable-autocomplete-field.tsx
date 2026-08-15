@@ -154,13 +154,13 @@ export function VariableAutocompleteField({
               <button
                 key={variable.id}
                 type="button"
-                className="relative flex w-full min-h-7 cursor-default items-center gap-2 rounded-md p-2 text-xs outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+                className="relative flex w-full min-h-7 cursor-default items-center gap-4 rounded-md p-2 text-xs outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
                 onMouseDown={(event) => {
                   event.preventDefault()
                   handleSelectVariable(variable.key)
                 }}
               >
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-md border">
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-md border ">
                   <Braces className="size-3.5 shrink-0" />
                 </span>
                 <span className="min-w-0 flex-1 text-left">
