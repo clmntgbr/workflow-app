@@ -6,6 +6,7 @@ import { useUser } from "@/lib/user/context"
 import { useWorkflow } from "@/lib/workflow/context"
 import { notifyWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
 import { notifyWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
+import { notifyWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
 import { notifyWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
 import { useCallback, useEffect, useRef } from "react"
 import {
@@ -16,6 +17,7 @@ import {
   shouldRefetchOrganizations,
   shouldRefetchSingleEndpoint,
   shouldRefetchSteps,
+  shouldRefetchVariables,
   shouldRefetchWorkflowRuns,
   shouldRefetchWorkflows,
 } from "./types"
@@ -57,9 +59,13 @@ export function UserCentrifugeListener() {
   const workflowRunDebounceRef = useRef<
     ReturnType<typeof setTimeout> | undefined
   >(undefined)
+  const variableDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  )
   const pendingStepWorkflowIdsRef = useRef<Set<string>>(new Set())
   const pendingConnectionWorkflowIdsRef = useRef<Set<string>>(new Set())
   const pendingWorkflowRunWorkflowIdsRef = useRef<Set<string>>(new Set())
+  const pendingVariableWorkflowIdsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     fetchUserRef.current = fetchUser
@@ -174,6 +180,32 @@ export function UserCentrifugeListener() {
     }, REFRESH_DEBOUNCE_MS)
   }, [])
 
+  const debouncedRefreshVariables = useCallback((workflowId?: string) => {
+    if (workflowId) {
+      pendingVariableWorkflowIdsRef.current.add(workflowId)
+    } else {
+      pendingVariableWorkflowIdsRef.current.clear()
+      pendingVariableWorkflowIdsRef.current.add("*")
+    }
+
+    if (variableDebounceRef.current) {
+      clearTimeout(variableDebounceRef.current)
+    }
+    variableDebounceRef.current = setTimeout(() => {
+      const workflowIds = Array.from(pendingVariableWorkflowIdsRef.current)
+      pendingVariableWorkflowIdsRef.current.clear()
+
+      if (workflowIds.includes("*")) {
+        notifyWorkflowVariablesRefetch()
+        return
+      }
+
+      for (const id of workflowIds) {
+        notifyWorkflowVariablesRefetch(id)
+      }
+    }, REFRESH_DEBOUNCE_MS)
+  }, [])
+
   useEffect(() => {
     return () => {
       if (orgDebounceRef.current) clearTimeout(orgDebounceRef.current)
@@ -185,6 +217,9 @@ export function UserCentrifugeListener() {
       }
       if (workflowRunDebounceRef.current) {
         clearTimeout(workflowRunDebounceRef.current)
+      }
+      if (variableDebounceRef.current) {
+        clearTimeout(variableDebounceRef.current)
       }
     }
   }, [])
@@ -244,6 +279,10 @@ export function UserCentrifugeListener() {
         debouncedRefreshWorkflowRuns(data.workflowId)
       }
 
+      if (shouldRefetchVariables(data)) {
+        debouncedRefreshVariables(data.workflowId)
+      }
+
       if (isUserLifecycleEvent(data)) {
         void fetchUserRef.current()
       }
@@ -255,6 +294,7 @@ export function UserCentrifugeListener() {
       debouncedRefreshSteps,
       debouncedRefreshConnections,
       debouncedRefreshWorkflowRuns,
+      debouncedRefreshVariables,
     ]
   )
 

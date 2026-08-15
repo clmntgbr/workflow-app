@@ -7,6 +7,7 @@ export type RealtimeResource =
   | "connection"
   | "workflowRun"
   | "stepRun"
+  | "variable"
 
 export type RealtimeVerb =
   | "created"
@@ -45,6 +46,7 @@ const RESOURCES = new Set<string>([
   "connection",
   "workflowRun",
   "stepRun",
+  "variable",
 ])
 
 const VERBS = new Set<string>([
@@ -148,6 +150,13 @@ export function shouldRefetchWorkflowRuns(event: UserStreamEvent): boolean {
     event.type === "stepRun.started" ||
     event.type === "stepRun.succeeded" ||
     event.type === "stepRun.failed"
+  )
+}
+
+export function shouldRefetchVariables(event: UserStreamEvent): boolean {
+  return (
+    event.type === "variable.created" ||
+    event.type === "variable.updated"
   )
 }
 

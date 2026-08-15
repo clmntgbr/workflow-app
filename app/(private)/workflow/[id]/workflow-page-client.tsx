@@ -39,6 +39,7 @@ import {
 } from "@/lib/workflow/types"
 import { listWorkflowVariables } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
+import { subscribeWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
 import { ArrowLeftIcon, SettingsIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -351,6 +352,12 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       void loadConnections()
     })
   }, [workflowId, loadConnections])
+
+  useEffect(() => {
+    return subscribeWorkflowVariablesRefetch(workflowId, () => {
+      void loadVariables()
+    })
+  }, [workflowId, loadVariables])
 
   if (!activeOrganization?.id || isLoading) {
     return (

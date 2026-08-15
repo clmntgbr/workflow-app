@@ -32,6 +32,7 @@ import {
 import { UpdateWorkflowStepInput } from "@/lib/workflow/types"
 import { listAvailableVariables } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
+import { subscribeWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -237,6 +238,16 @@ export function StepDrawer({
     return () => {
       cancelled = true
     }
+  }, [isOpen, workflowId, step])
+
+  useEffect(() => {
+    if (!isOpen || !step || step.id.startsWith("temp-")) return
+
+    return subscribeWorkflowVariablesRefetch(workflowId, () => {
+      void listAvailableVariables(workflowId, step.id)
+        .then(setAvailableVariables)
+        .catch(() => setAvailableVariables([]))
+    })
   }, [isOpen, workflowId, step])
 
   const onClose = () => {
