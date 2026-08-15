@@ -132,6 +132,12 @@ export function StepVariablesSection({
           if (!open) setEditingVariable(null)
         }}
         onSaved={handleSaved}
+        onDeleted={(variableId) => {
+          onVariablesChange(
+            variables.filter((variable) => variable.id !== variableId)
+          )
+          setEditingVariable(null)
+        }}
       />
 
       {deleteTarget ? (
