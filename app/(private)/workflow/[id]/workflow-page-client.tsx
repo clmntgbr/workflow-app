@@ -2,7 +2,13 @@
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  SidebarInset,
+  SidebarProvider,
+} from "@/components/ui/sidebar"
 import { EndpointDrawer } from "@/components/endpoint/endpoint-drawer"
+import { EndpointsSidebar } from "@/components/workflow/endpoints-sidebar"
+import { SidebarEdgeHandle } from "@/components/workflow/sidebar-edge-handle"
 import {
   EndpointDragPayload,
   WorkflowCanvas,
@@ -43,7 +49,7 @@ import { subscribeWorkflowVariablesRefetch } from "@/lib/workflow/variable/varia
 import { ArrowLeftIcon, SettingsIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, type CSSProperties } from "react"
 
 interface WorkflowPageClientProps {
   workflowId: string
@@ -134,7 +140,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const router = useRouter()
   const { activeOrganization, activateOrganization, organizations } =
     useOrganization()
-  const { endpoints, isLoading: isEndpointsLoading } = useEndpoint()
+  const { endpoints } = useEndpoint()
 
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -702,82 +708,36 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
       <div
         className={cn(
-          "flex min-h-0 flex-1 overflow-hidden",
+          "relative min-h-0 flex-1 overflow-hidden",
           activeTab !== "canvas" && "hidden"
         )}
       >
-        <aside className="flex w-72 shrink-0 flex-col border-r bg-background">
-          <div className="shrink-0 space-y-1 border-b px-4 py-3">
-            <h2 className="text-sm font-semibold">Endpoints</h2>
-            <p className="text-xs text-muted-foreground">
-              Drag onto the canvas to add a step.
-            </p>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            {isEndpointsLoading && endpoints.members.length === 0 ? (
-              <div className="space-y-2">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : endpoints.members.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No endpoints available.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {endpoints.members.map((endpoint) => (
-                  <li key={endpoint.id}>
-                    <button
-                      type="button"
-                      draggable
-                      onClick={() => {
-                        setSelectedEndpoint(endpoint)
-                        setIsEndpointDrawerOpen(true)
-                      }}
-                      onDragStart={(event) => {
-                        const payload: EndpointDragPayload = {
-                          id: endpoint.id,
-                          name: endpoint.name,
-                          method: endpoint.method,
-                          path: endpoint.url,
-                          description: endpoint.description,
-                        }
-                        event.dataTransfer.setData(
-                          "application/workflow-endpoint",
-                          JSON.stringify(payload)
-                        )
-                        event.dataTransfer.effectAllowed = "copy"
-                      }}
-                      className="flex w-full items-center justify-between gap-3 rounded-md border bg-background px-3 py-2 text-left hover:bg-muted/50"
-                    >
-                      <span className="truncate text-sm font-medium">
-                        {endpoint.name}
-                      </span>
-                      <span className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
-                        {endpoint.method}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </aside>
-
-        <div className="min-h-0 min-w-0 flex-1">
-          <WorkflowCanvas
-            workflowId={workflowId}
-            steps={steps}
-            connections={connections}
-            onCreateStep={handleCreateStep}
-            onMoveStep={handleMoveStep}
-            onCreateConnection={handleCreateConnection}
-            onDeleteConnection={handleDeleteConnection}
-            onEditStep={handleEditStep}
-            onDeleteStep={handleDeleteStep}
+        <SidebarProvider
+          defaultOpen={false}
+          className="relative min-h-0 h-full flex-1"
+          style={{ "--sidebar-width": "18rem" } as CSSProperties}
+        >
+          <EndpointsSidebar
+            onSelectEndpoint={(endpoint) => {
+              setSelectedEndpoint(endpoint)
+              setIsEndpointDrawerOpen(true)
+            }}
           />
-        </div>
+          <SidebarEdgeHandle />
+          <SidebarInset className="min-h-0 min-w-0 overflow-hidden p-0">
+            <WorkflowCanvas
+              workflowId={workflowId}
+              steps={steps}
+              connections={connections}
+              onCreateStep={handleCreateStep}
+              onMoveStep={handleMoveStep}
+              onCreateConnection={handleCreateConnection}
+              onDeleteConnection={handleDeleteConnection}
+              onEditStep={handleEditStep}
+              onDeleteStep={handleDeleteStep}
+            />
+          </SidebarInset>
+        </SidebarProvider>
       </div>
 
       <div
