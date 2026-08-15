@@ -5,7 +5,11 @@ import {
   UpdateEndpointInput,
 } from "./types"
 
-function buildQueryString(query?: PaginateQuery): string {
+export type EndpointListQuery = PaginateQuery & {
+  method?: string | string[]
+}
+
+function buildQueryString(query?: EndpointListQuery): string {
   if (!query) return ""
 
   const params = new URLSearchParams()
@@ -15,12 +19,21 @@ function buildQueryString(query?: PaginateQuery): string {
   if (query.orderBy) params.set("orderBy", query.orderBy)
   if (query.search) params.set("search", query.search)
 
+  const methods = Array.isArray(query.method)
+    ? query.method
+    : query.method
+      ? [query.method]
+      : []
+  for (const method of methods) {
+    if (method) params.append("method", method)
+  }
+
   const serialized = params.toString()
   return serialized ? `?${serialized}` : ""
 }
 
 export const listEndpoints = async (
-  query?: PaginateQuery
+  query?: EndpointListQuery
 ): Promise<Paginate<Endpoint>> => {
   const response = await fetch(`/api/endpoints${buildQueryString(query)}`, {
     method: "GET",
