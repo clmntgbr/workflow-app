@@ -28,7 +28,7 @@ export function VariableAutocompleteField({
 }: VariableAutocompleteFieldProps) {
   const [open, setOpen] = useState(false)
   const [cursorPosition, setCursorPosition] = useState(0)
-  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 })
+  const [popoverTop, setPopoverTop] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null)
 
@@ -66,10 +66,7 @@ export function VariableAutocompleteField({
     const rect = inputRef.current.getBoundingClientRect()
     const containerRect = containerRef.current.getBoundingClientRect()
 
-    setPopoverPos({
-      top: rect.bottom - containerRect.top + 4,
-      left: rect.left - containerRect.left,
-    })
+    setPopoverTop(rect.bottom - containerRect.top + 4)
   }
 
   const handleSelectVariable = (variableKey: string) => {
@@ -139,12 +136,9 @@ export function VariableAutocompleteField({
       {open && filteredVariables.length > 0 ? (
         <div
           className={cn(
-            "absolute z-50 min-w-56 overflow-hidden rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10"
+            "absolute inset-x-0 z-50 w-full overflow-hidden rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10"
           )}
-          style={{
-            top: `${popoverPos.top}px`,
-            left: `${popoverPos.left}px`,
-          }}
+          style={{ top: `${popoverTop}px` }}
         >
           <div className="px-2 py-1.5 text-xs text-muted-foreground">
             Variables
