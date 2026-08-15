@@ -1,5 +1,6 @@
 import { createAuthHeaders } from "@/lib/create-auth-headers"
 import { requireAuth } from "@/lib/require-auth"
+import { proxyBackendError } from "@/lib/proxy-backend-error"
 import { NextResponse } from "next/server"
 
 const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL
@@ -23,7 +24,7 @@ export async function GET(_request: Request, context: RouteContext) {
     )
 
     if (!response.ok) {
-      return NextResponse.json({ success: false, data: await response.json() }, { status: response.status })
+      return proxyBackendError(response)
     }
 
     const data = await response.json()
@@ -50,7 +51,7 @@ export async function PUT(request: Request, context: RouteContext) {
     )
 
     if (!response.ok) {
-      return NextResponse.json({ success: false, data: await response.json() }, { status: response.status })
+      return proxyBackendError(response)
     }
 
     const data = await response.json()
@@ -75,7 +76,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
     )
 
     if (!response.ok) {
-      return NextResponse.json({ success: false, data: await response.json() }, { status: response.status })
+      return proxyBackendError(response)
     }
 
     return new NextResponse(null, { status: response.status })

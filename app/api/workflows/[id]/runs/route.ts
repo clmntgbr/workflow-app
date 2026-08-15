@@ -1,5 +1,6 @@
 import { createAuthHeaders } from "@/lib/create-auth-headers"
 import { requireAuth } from "@/lib/require-auth"
+import { proxyBackendError } from "@/lib/proxy-backend-error"
 import { NextRequest, NextResponse } from "next/server"
 
 const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     })
 
     if (!response.ok) {
-      return NextResponse.json({ success: false, data: await response.json() }, { status: response.status })
+      return proxyBackendError(response)
     }
 
     const data = await response.json()
