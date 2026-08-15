@@ -30,7 +30,7 @@ import {
   toUpdateWorkflowStepPayload,
 } from "@/lib/workflow/step-schema"
 import { UpdateWorkflowStepInput } from "@/lib/workflow/types"
-import { listWorkflowVariables } from "@/lib/workflow/variable/api"
+import { listAvailableVariables } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
@@ -133,7 +133,7 @@ function KeyValueEditor({
               value={pair.key}
               placeholder="Key"
               onChange={(event) => updatePair(index, "key", event.target.value)}
-              className="h-9"
+              className="h-9 min-w-0 flex-1"
             />
             <VariableAutocompleteField
               value={pair.value}
@@ -141,11 +141,13 @@ function KeyValueEditor({
               variables={variables}
               placeholder="Value"
               className="h-9"
+              wrapperClassName="min-w-0 flex-1"
             />
             <Button
               type="button"
               variant="ghost"
               size="icon"
+              className="shrink-0"
               onClick={() => removePair(index)}
               aria-label="Remove entry"
             >
@@ -165,6 +167,8 @@ function KeyValueEditor({
 interface StepDrawerProps {
   workflowId: string
   step: CanvasStep | null
+  variables: WorkflowVariable[]
+  onVariablesChange: (variables: WorkflowVariable[]) => void
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   onSave: (input: UpdateWorkflowStepInput) => Promise<void>
@@ -175,6 +179,8 @@ interface StepDrawerProps {
 export function StepDrawer({
   workflowId,
   step,
+  variables,
+  onVariablesChange,
   isOpen,
   onOpenChange,
   onSave,
@@ -205,38 +211,33 @@ export function StepDrawer({
   })
 
   useEffect(() => {
-    if (!isOpen || !step) {
+    if (!isOpen) return
+    reset(getStepFormValues(step))
+  }, [isOpen, step, reset])
+
+  useEffect(() => {
+    if (!isOpen || !step || step.id.startsWith("temp-")) {
       setAvailableVariables([])
       return
     }
 
     let cancelled = false
 
-    const loadVariables = async () => {
+    const load = async () => {
       try {
-        const allVariables = await listWorkflowVariables(workflowId)
-        if (!cancelled) {
-          setAvailableVariables(allVariables)
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error("Failed to load available variables:", err)
-          setAvailableVariables([])
-        }
+        const next = await listAvailableVariables(workflowId, step.id)
+        if (!cancelled) setAvailableVariables(next)
+      } catch {
+        if (!cancelled) setAvailableVariables([])
       }
     }
 
-    void loadVariables()
+    void load()
 
     return () => {
       cancelled = true
     }
   }, [isOpen, workflowId, step])
-
-  useEffect(() => {
-    if (!isOpen) return
-    reset(getStepFormValues(step))
-  }, [isOpen, step, reset])
 
   const onClose = () => {
     reset(getStepFormValues(step))
@@ -637,7 +638,7 @@ export function StepDrawer({
                   <p className="text-sm text-muted-foreground">
                     Extract values from this step&apos;s response for later
                     steps. Reference variables by key in other steps:{" "}
-                    <span className="font-mono text-xs">
+                    <span className="font-mono text-xs text-muted-foreground">
                       {"{{myKey}}"}
                     </span>
                     .
@@ -649,6 +650,8 @@ export function StepDrawer({
                       workflowId={workflowId}
                       stepId={step.id}
                       enabled={!step.id.startsWith("temp-")}
+                      variables={variables}
+                      onVariablesChange={onVariablesChange}
                     />
                   ) : null}
                 </div>

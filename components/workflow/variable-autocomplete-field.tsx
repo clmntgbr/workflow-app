@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { cn } from "@/lib/utils"
+import { Braces } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 interface VariableAutocompleteFieldProps {
@@ -12,6 +13,7 @@ interface VariableAutocompleteFieldProps {
   variables: WorkflowVariable[]
   placeholder?: string
   className?: string
+  wrapperClassName?: string
   isTextarea?: boolean
 }
 
@@ -21,6 +23,7 @@ export function VariableAutocompleteField({
   variables,
   placeholder,
   className,
+  wrapperClassName,
   isTextarea = false,
 }: VariableAutocompleteFieldProps) {
   const [open, setOpen] = useState(false)
@@ -29,15 +32,9 @@ export function VariableAutocompleteField({
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null)
 
-  const getTextBeforeCursor = () => {
-    return value.substring(0, cursorPosition)
-  }
+  const getTextBeforeCursor = () => value.substring(0, cursorPosition)
+  const getTextAfterCursor = () => value.substring(cursorPosition)
 
-  const getTextAfterCursor = () => {
-    return value.substring(cursorPosition)
-  }
-
-  // Find if we're after {{ and get the partial key
   const getPartialKey = () => {
     const beforeCursor = getTextBeforeCursor()
     const match = beforeCursor.match(/\{\{([a-zA-Z0-9_-]*)$/)
@@ -46,12 +43,13 @@ export function VariableAutocompleteField({
 
   const partialKey = getPartialKey()
 
-  // Filter variables by partial key
-  const filteredVariables = partialKey !== null
-    ? variables.filter((v) =>
-        v.key.toLowerCase().includes(partialKey.toLowerCase())
-      )
-    : []
+  const filteredVariables =
+    partialKey !== null
+      ? variables.filter((variable) =>
+          variable.key.toLowerCase().includes(partialKey.toLowerCase()) ||
+          variable.name.toLowerCase().includes(partialKey.toLowerCase())
+        )
+      : []
 
   useEffect(() => {
     if (partialKey !== null && filteredVariables.length > 0) {
@@ -78,15 +76,14 @@ export function VariableAutocompleteField({
     const beforeCursor = getTextBeforeCursor()
     const afterCursor = getTextAfterCursor()
 
-    // Remove the partial key after {{
     const withoutPartial = beforeCursor.replace(/\{\{[a-zA-Z0-9_-]*$/, "")
-    const newValue = `${withoutPartial}{{${variableKey}}}${afterCursor}`
-    const newCursorPos = withoutPartial.length + `{{${variableKey}}}`.length
+    const insertion = `{{${variableKey}}}`
+    const newValue = `${withoutPartial}${insertion}${afterCursor}`
+    const newCursorPos = withoutPartial.length + insertion.length
 
     onChange(newValue)
     setOpen(false)
 
-    // Move cursor after the closing }}
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.selectionStart = newCursorPos
@@ -96,10 +93,12 @@ export function VariableAutocompleteField({
     }, 0)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
-    if (open && e.key === "Escape") {
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>
+  ) => {
+    if (open && event.key === "Escape") {
       setOpen(false)
-      e.preventDefault()
+      event.preventDefault()
     }
   }
 
@@ -111,12 +110,12 @@ export function VariableAutocompleteField({
   }
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className={cn("relative w-full", wrapperClassName)}>
       {isTextarea ? (
         <Textarea
-          ref={inputRef as any}
+          ref={inputRef as React.Ref<HTMLTextAreaElement>}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(event) => onChange(event.target.value)}
           onKeyDown={handleKeyDown}
           onKeyUp={updateCursorPosition}
           onClick={updateCursorPosition}
@@ -128,44 +127,58 @@ export function VariableAutocompleteField({
           ref={inputRef as React.Ref<HTMLInputElement>}
           type="text"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown as any}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={handleKeyDown}
           onKeyUp={updateCursorPosition}
           onClick={updateCursorPosition}
           placeholder={placeholder}
-          className={className}
+          className={cn("w-full", className)}
         />
       )}
-      {open && filteredVariables.length > 0 && (
+
+      {open && filteredVariables.length > 0 ? (
         <div
-          className="absolute top-full left-0 z-50 w-[400px] rounded-md border bg-popover shadow-md mt-1"
+          className={cn(
+            "absolute z-50 min-w-56 overflow-hidden rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10"
+          )}
           style={{
             top: `${popoverPos.top}px`,
             left: `${popoverPos.left}px`,
           }}
         >
-          <div className="max-h-[300px] overflow-auto">
-            {filteredVariables.length === 0 ? (
-              <div className="px-2 py-2 text-sm text-muted-foreground">
-                No variables found
-              </div>
-            ) : (
-              <div className="space-y-1 p-1">
-                {filteredVariables.map((variable) => (
-                  <button
-                    key={variable.id}
-                    type="button"
-                    className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer font-mono text-xs"
-                    onClick={() => handleSelectVariable(variable.key)}
-                  >
+          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+            Variables
+          </div>
+          <div className="max-h-[280px] overflow-y-auto">
+            {filteredVariables.map((variable) => (
+              <button
+                key={variable.id}
+                type="button"
+                className="relative flex w-full min-h-7 cursor-default items-center gap-2 rounded-md p-2 text-xs outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+                onMouseDown={(event) => {
+                  event.preventDefault()
+                  handleSelectVariable(variable.key)
+                }}
+              >
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-md border">
+                  <Braces className="size-3.5 shrink-0" />
+                </span>
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block truncate font-bold">
                     {variable.key}
-                  </button>
-                ))}
-              </div>
-            )}
+                  </span>
+                  <span className="block truncate">
+                    {variable.name} <span className="text-xs text-muted-foreground">
+                    {variable.description}
+                  </span>
+                  </span>
+                 
+                </span>
+              </button>
+            ))}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

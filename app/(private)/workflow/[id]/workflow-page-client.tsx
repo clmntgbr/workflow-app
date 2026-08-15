@@ -37,6 +37,8 @@ import {
   Workflow,
   WorkflowConnection,
 } from "@/lib/workflow/types"
+import { listWorkflowVariables } from "@/lib/workflow/variable/api"
+import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { ArrowLeftIcon, SettingsIcon } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -153,6 +155,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [isEndpointDrawerOpen, setIsEndpointDrawerOpen] = useState(false)
   const [steps, setSteps] = useState<CanvasStep[]>([])
   const [connections, setConnections] = useState<WorkflowConnection[]>([])
+  const [variables, setVariables] = useState<WorkflowVariable[]>([])
   const [activeTab, setActiveTab] = useState<WorkflowPageTab>("canvas")
 
   const endpointById = new Map(
@@ -260,6 +263,11 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     setConnections(nextConnections)
   }, [workflowId])
 
+  const loadVariables = useCallback(async () => {
+    const next = await listWorkflowVariables(workflowId)
+    setVariables(next)
+  }, [workflowId])
+
   useEffect(() => {
     if (!activeOrganization?.id) return
 
@@ -316,11 +324,12 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
     const load = async () => {
       try {
-        await Promise.all([loadSteps(), loadConnections()])
+        await Promise.all([loadSteps(), loadConnections(), loadVariables()])
       } catch {
         if (!cancelled) {
           setSteps([])
           setConnections([])
+          setVariables([])
         }
       }
     }
@@ -330,7 +339,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     return () => {
       cancelled = true
     }
-  }, [activeOrganization?.id, loadSteps, loadConnections])
+  }, [activeOrganization?.id, loadSteps, loadConnections, loadVariables])
 
   useEffect(() => {
     return subscribeWorkflowStepsRefetch(workflowId, () => {
@@ -809,6 +818,8 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       <StepDrawer
         workflowId={workflowId}
         step={selectedStep}
+        variables={variables}
+        onVariablesChange={setVariables}
         isOpen={isStepDrawerOpen}
         onOpenChange={(open) => {
           setIsStepDrawerOpen(open)

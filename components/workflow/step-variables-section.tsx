@@ -7,11 +7,9 @@ import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { Label } from "@/components/ui/label"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
   createWorkflowVariable,
   deleteWorkflowVariable,
-  listWorkflowVariables,
   updateWorkflowVariable,
 } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
@@ -29,6 +27,8 @@ interface StepVariablesSectionProps {
   workflowId: string
   stepId: string
   enabled: boolean
+  variables: WorkflowVariable[]
+  onVariablesChange: (variables: WorkflowVariable[]) => void
 }
 
 interface VariableFormState {
@@ -89,11 +89,13 @@ export function StepVariablesSection({
   workflowId,
   stepId,
   enabled,
+  variables,
+  onVariablesChange,
 }: StepVariablesSectionProps) {
-  const [variables, setVariables] = useState<WorkflowVariable[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const stepVariables = variables.filter(
+    (variable) => variable.stepId === stepId
+  )
   const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState<VariableFormState>(emptyForm)
   const [formError, setFormError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -104,42 +106,12 @@ export function StepVariablesSection({
 
   useEffect(() => {
     if (!enabled) {
-      setVariables([])
-      setError(null)
       setIsFormOpen(false)
       setEditingId(null)
       setForm(emptyForm)
-      return
+      setFormError(null)
     }
-
-    let cancelled = false
-
-    const load = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const all = await listWorkflowVariables(workflowId)
-        if (cancelled) return
-        setVariables(all.filter((variable) => variable.stepId === stepId))
-      } catch (loadError) {
-        if (cancelled) return
-        setVariables([])
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Failed to load variables"
-        )
-      } finally {
-        if (!cancelled) setIsLoading(false)
-      }
-    }
-
-    void load()
-
-    return () => {
-      cancelled = true
-    }
-  }, [enabled, workflowId, stepId])
+  }, [enabled, stepId])
 
   const openCreate = () => {
     setEditingId(null)
@@ -192,8 +164,8 @@ export function StepVariablesSection({
           isSecret: form.isSecret,
           defaultValue: parsedDefault.value,
         })
-        setVariables((current) =>
-          current.map((variable) =>
+        onVariablesChange(
+          variables.map((variable) =>
             variable.id === updated.id ? updated : variable
           )
         )
@@ -208,7 +180,7 @@ export function StepVariablesSection({
           isSecret: form.isSecret,
           defaultValue: parsedDefault.value,
         })
-        setVariables((current) => [...current, created])
+        onVariablesChange([...variables, created])
         toast.success("Variable created")
       }
       closeForm()
@@ -231,21 +203,14 @@ export function StepVariablesSection({
 
   return (
     <div className="space-y-4">
-      {isLoading ? (
-        <div className="space-y-2">
-          <Skeleton className="h-14 w-full" />
-          <Skeleton className="h-14 w-full" />
-        </div>
-      ) : error ? (
-        <p className="text-sm text-muted-foreground">{error}</p>
-      ) : variables.length === 0 && !isFormOpen ? (
+      {stepVariables.length === 0 && !isFormOpen ? (
         <p className="text-sm text-muted-foreground">
           No variables yet. Extract values from this step&apos;s response body
           with a JSONPath.
         </p>
       ) : (
         <ul className="space-y-2">
-          {variables.map((variable) => (
+          {stepVariables.map((variable) => (
             <li
               key={variable.id}
               className="flex items-start justify-between gap-3 rounded-md border px-3 py-2"
@@ -439,8 +404,8 @@ export function StepVariablesSection({
             await deleteWorkflowVariable(workflowId, deleteTarget.id)
           }}
           onDeleted={() => {
-            setVariables((current) =>
-              current.filter((variable) => variable.id !== deleteTarget.id)
+            onVariablesChange(
+              variables.filter((variable) => variable.id !== deleteTarget.id)
             )
             if (editingId === deleteTarget.id) closeForm()
             setDeleteTarget(null)
