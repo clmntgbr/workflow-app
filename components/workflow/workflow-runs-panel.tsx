@@ -2,12 +2,17 @@
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 import { listWorkflowRunsByWorkflow } from "@/lib/workflow-run/api"
 import { subscribeWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
 import { Insight, StepRun, WorkflowRun } from "@/lib/workflow-run/types"
-import { cn } from "@/lib/utils"
-import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  FolderArchiveIcon,
+} from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
+import { EmptyComponent } from "../empty"
 
 interface WorkflowRunsPanelProps {
   workflowId: string
@@ -35,14 +40,14 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span
       className={cn(
-        "shrink-0 rounded-md border px-2 py-0.5 text-[10px] capitalize text-muted-foreground",
+        "shrink-0 rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground capitalize",
         status === "succeeded" &&
           "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
-        status === "failed" &&
-          "border-destructive/40 text-destructive",
+        status === "failed" && "border-destructive/40 text-destructive",
         status === "running" &&
           "border-sky-500/40 text-sky-700 dark:text-sky-400",
-        status === "pending" && "border-amber-500/40 text-amber-700 dark:text-amber-400"
+        status === "pending" &&
+          "border-amber-500/40 text-amber-700 dark:text-amber-400"
       )}
     >
       {status}
@@ -79,7 +84,7 @@ function InsightMetrics({ insight }: { insight: Insight }) {
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-3 lg:grid-cols-5">
         {metrics.map((metric) => (
           <div key={metric.label} className="min-w-0">
-            <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <dt className="text-[10px] tracking-wide text-muted-foreground uppercase">
               {metric.label}
             </dt>
             <dd className="truncate text-xs font-medium">{metric.value}</dd>
@@ -105,12 +110,14 @@ function StepRunRow({ stepRun }: { stepRun: StepRun }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="truncate text-sm font-medium">{stepRun.name}</span>
-            <span className="rounded border px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
+            <span className="rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground uppercase">
               {stepRun.method}
             </span>
             <StatusBadge status={stepRun.status} />
           </div>
-          <p className="truncate text-xs text-muted-foreground">{stepRun.url}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {stepRun.url}
+          </p>
           {stepRun.error ? (
             <p className="mt-1 text-xs text-destructive">{stepRun.error}</p>
           ) : null}
@@ -128,7 +135,7 @@ function StepRunRow({ stepRun }: { stepRun: StepRun }) {
 
       {insights.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
             Insights ({insights.length})
           </p>
           {insights
@@ -166,7 +173,7 @@ function WorkflowRunCard({ run }: { run: WorkflowRun }) {
                 {run.id.slice(0, 8)}
               </span>
               <StatusBadge status={run.status} />
-              <span className="rounded-md border px-2 py-0.5 text-[10px] capitalize text-muted-foreground">
+              <span className="rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground capitalize">
                 {run.triggeredBy}
               </span>
             </div>
@@ -276,11 +283,11 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
 
   if (runs.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center p-6">
-        <p className="text-sm text-muted-foreground">
-          No runs yet for this workflow.
-        </p>
-      </div>
+      <EmptyComponent
+        title="No workflow runs yet"
+        description="No workflow runs yet. Get started by running your first workflow."
+        icon={<FolderArchiveIcon size={20} className="text-gray-600" />}
+      />
     )
   }
 

@@ -1,29 +1,26 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@/components/ui/sidebar"
-import { Switch } from "@/components/ui/switch"
 import { EndpointDrawer } from "@/components/endpoint/endpoint-drawer"
+import { Button } from "@/components/ui/button"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import { EndpointsSidebar } from "@/components/workflow/endpoints-sidebar"
 import { SidebarEdgeHandle } from "@/components/workflow/sidebar-edge-handle"
+import { StepDrawer } from "@/components/workflow/step-drawer"
+import { CanvasStep } from "@/components/workflow/step-node"
+import { SwitchOrganizationDialog } from "@/components/workflow/switch-organization-dialog"
 import {
   EndpointDragPayload,
   WorkflowCanvas,
 } from "@/components/workflow/workflow-canvas"
-import { CanvasStep } from "@/components/workflow/step-node"
-import { StepDrawer } from "@/components/workflow/step-drawer"
 import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
 import { WorkflowNotFoundView } from "@/components/workflow/workflow-not-found-view"
 import { WorkflowRunsPanel } from "@/components/workflow/workflow-runs-panel"
-import { SwitchOrganizationDialog } from "@/components/workflow/switch-organization-dialog"
-import { cn } from "@/lib/utils"
 import { useEndpoint } from "@/lib/endpoint/context"
 import { Endpoint } from "@/lib/endpoint/types"
 import { useOrganization } from "@/lib/organization/context"
+import { cn } from "@/lib/utils"
 import {
   activateWorkflow,
   createWorkflowConnection,
@@ -50,7 +47,12 @@ import { listWorkflowVariables } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { subscribeWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
 import { subscribeWorkflowDetailRefetch } from "@/lib/workflow/workflow-realtime"
-import { ArrowLeftIcon, History, HistoryIcon, Layers, LayersIcon, ScrollText, SettingsIcon } from "lucide-react"
+import {
+  ArrowLeftIcon,
+  HistoryIcon,
+  LayersIcon,
+  SettingsIcon,
+} from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState, type CSSProperties } from "react"
@@ -141,15 +143,13 @@ function parsePosition(position: unknown): Point | null {
 }
 
 export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
-
-
   const Tabs = [
-    { label: "Workflow", key: "workflow", Icon: LayersIcon },
+    { label: "Overview", key: "overview", Icon: LayersIcon },
     { label: "Analytics", key: "analytics", Icon: HistoryIcon },
-  ] as const;
+  ] as const
 
-  type Tab = (typeof Tabs)[number]["key"];
-  const [tab, setTab] = useState<Tab>("workflow");
+  type Tab = (typeof Tabs)[number]["key"]
+  const [tab, setTab] = useState<Tab>("overview")
 
   const router = useRouter()
   const { activeOrganization, activateOrganization, organizations } =
@@ -606,9 +606,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     } catch (moveError) {
       setSteps((current) =>
         current.map((step) =>
-          step.id === stepId
-            ? { ...step, x: previous.x, y: previous.y }
-            : step
+          step.id === stepId ? { ...step, x: previous.x, y: previous.y } : step
         )
       )
     }
@@ -701,7 +699,9 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           </Button>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-sm font-semibold">{workflow.name}</h1>
+              <h1 className="truncate text-sm font-semibold">
+                {workflow.name}
+              </h1>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={workflow.status === "active"}
@@ -719,32 +719,32 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
                 />
               </div>
 
-              <div className="flex items-center rounded-full border border-border/80 bg-elevated/60 p-[3px]">
-              {Tabs.map(({ label, Icon: IconComponent, key }) => {
-                const active = key === tab;
-                return (
-                  <div key={label} className="flex items-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setTab(key)}
-                      aria-current={active ? "page" : undefined}
-                      aria-label={label}
-                      title={label}
-                      className={
-                        "flex h-8 items-center gap-1.5 rounded-full transition-all duration-200 " +
-                        (active
-                          ? "border border-accent/35  px-3.5 font-medium shadow-crisp bg-gray-100"
-                          : "px-3 text-muted-foreground hover:text-foreground bg-white")
-                      }
-                    >
-                      <IconComponent className="size-[15px] shrink-0" />
-                      {active && <span className="text-[13px]">{label}</span>}
-                    </Button>
-                  </div>
-                );
-              })}
-                </div>
+              <div className="bg-elevated/60 flex items-center rounded-full border border-border/80 p-[3px]">
+                {Tabs.map(({ label, Icon: IconComponent, key }) => {
+                  const active = key === tab
+                  return (
+                    <div key={label} className="flex items-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setTab(key)}
+                        aria-current={active ? "page" : undefined}
+                        aria-label={label}
+                        title={label}
+                        className={
+                          "flex h-8 cursor-pointer items-center gap-1.5 rounded-full transition-all duration-200" +
+                          (active
+                            ? "shadow-crisp border border-accent/35 bg-gray-100 px-3.5 font-medium"
+                            : "bg-white px-3 text-muted-foreground hover:bg-white hover:text-foreground")
+                        }
+                      >
+                        <IconComponent className="size-[15px] shrink-0" />
+                        {active && <span className="text-[13px]">{label}</span>}
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -761,12 +761,12 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       <div
         className={cn(
           "relative min-h-0 flex-1 overflow-hidden",
-          tab !== "workflow" && "hidden"
+          tab !== "overview" && "hidden"
         )}
       >
         <SidebarProvider
           defaultOpen={false}
-          className="relative min-h-0 h-full flex-1"
+          className="relative h-full min-h-0 flex-1"
           style={{ "--sidebar-width": "18rem" } as CSSProperties}
         >
           <EndpointsSidebar

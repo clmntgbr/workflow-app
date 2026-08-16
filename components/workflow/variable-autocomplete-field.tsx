@@ -2,8 +2,8 @@
 
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { cn } from "@/lib/utils"
+import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { Braces } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
@@ -29,8 +29,7 @@ function highlightVariablesHtml(text: string): string {
   return escaped.replaceAll(
     /\{\{[a-zA-Z0-9_-]+\}\}/g,
     (match) =>
-      // Keep font-weight identical to the textarea so caret and glyphs stay aligned.
-      `<span class="text-green-500 dark:text-green-500">${match}</span>`
+      `<span class="text-green-600 dark:text-green-600 font-medium">${match}</span>`
   )
 }
 
@@ -145,7 +144,8 @@ export function VariableAutocompleteField({
     className
   )
 
-  const highlightedHtml = highlightVariablesHtml(value) + (isTextarea ? "\n" : "")
+  const highlightedHtml =
+    highlightVariablesHtml(value) + (isTextarea ? "\n" : "")
 
   return (
     <div ref={containerRef} className={cn("relative w-full", wrapperClassName)}>
@@ -162,8 +162,8 @@ export function VariableAutocompleteField({
           className={cn(
             "pointer-events-none absolute inset-0 z-0 overflow-hidden text-foreground",
             isTextarea
-              ? "whitespace-pre-wrap break-words px-2 py-2"
-              : "flex items-center overflow-hidden whitespace-pre px-2",
+              ? "px-2 py-2 break-words whitespace-pre-wrap"
+              : "flex items-center overflow-hidden px-2 whitespace-pre",
             textMetricsClassName
           )}
           dangerouslySetInnerHTML={{ __html: highlightedHtml || "&nbsp;" }}
@@ -213,7 +213,7 @@ export function VariableAutocompleteField({
               <button
                 key={variable.id}
                 type="button"
-                className="relative flex w-full min-h-7 cursor-default items-center gap-4 rounded-md p-2 text-xs outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+                className="relative flex min-h-7 w-full cursor-default items-center gap-4 rounded-md p-2 text-xs outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
                 onMouseDown={(event) => {
                   event.preventDefault()
                   handleSelectVariable(variable.key)
@@ -223,7 +223,9 @@ export function VariableAutocompleteField({
                   <Braces className="size-3.5 shrink-0" />
                 </span>
                 <span className="min-w-0 flex-1 text-left">
-                  <span className="block truncate font-bold">{variable.key}</span>
+                  <span className="block truncate font-bold">
+                    {variable.key}
+                  </span>
                   <span className="block truncate">
                     {variable.name}{" "}
                     <span className="text-xs text-muted-foreground">
