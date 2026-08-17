@@ -743,7 +743,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           <Button
             onClick={() => handleStatusToggle(workflow.status !== "active")}
             className={
-              "group flex items-center gap-2.5 rounded-lg border border-green-700 px-3.5 transition-all duration-300 ease-out hover:-translate-y-px active:translate-y-0 active:scale-[0.98] " +
+              "group flex cursor-pointer items-center gap-2.5 rounded-lg border border-green-700 px-3.5 transition-all duration-300 ease-out hover:-translate-y-px active:translate-y-0 active:scale-[0.98] " +
               (workflow.status === "active"
                 ? "border-green-700/25 bg-green-700/10 text-green-700 hover:border-green-700/45 hover:bg-green-700/20"
                 : "border-red-700/25 bg-red-700/10 text-red-700 hover:border-red-700/45 hover:bg-red-700/20")
