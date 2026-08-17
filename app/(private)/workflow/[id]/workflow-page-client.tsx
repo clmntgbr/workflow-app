@@ -689,7 +689,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center justify-between gap-4 border-b px-4 py-2">
+      <div className="relative flex shrink-0 items-center justify-between gap-4 border-b px-4 py-2">
         <div className="flex min-w-0 items-center gap-3">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/">
@@ -725,36 +725,37 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
                   }
                 />
               </div>
-
-              <div className="bg-elevated/60 flex items-center rounded-full border border-border/80 p-[3px]">
-                {Tabs.map(({ label, Icon: IconComponent, key }) => {
-                  const active = key === tab
-                  return (
-                    <div key={label} className="flex items-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setTab(key)}
-                        aria-current={active ? "page" : undefined}
-                        aria-label={label}
-                        title={label}
-                        className={
-                          "flex h-8 cursor-pointer items-center gap-1.5 rounded-full transition-all duration-200" +
-                          (active
-                            ? "shadow-crisp border border-accent/35 bg-gray-100 px-3.5 font-medium"
-                            : "bg-white px-3 text-muted-foreground hover:bg-white hover:text-foreground")
-                        }
-                      >
-                        <IconComponent className="size-[15px] shrink-0" />
-                        {active && <span className="text-[13px]">{label}</span>}
-                      </Button>
-                    </div>
-                  )
-                })}
-              </div>
             </div>
           </div>
         </div>
+
+        <div className="bg-elevated/60 absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center rounded-full border border-border/80 p-[3px]">
+          {Tabs.map(({ label, Icon: IconComponent, key }) => {
+            const active = key === tab
+            return (
+              <div key={label} className="flex items-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setTab(key)}
+                  aria-current={active ? "page" : undefined}
+                  aria-label={label}
+                  title={label}
+                  className={
+                    "flex h-8 cursor-pointer items-center gap-1.5 rounded-full transition-all duration-200" +
+                    (active
+                      ? "shadow-crisp border border-accent/35 bg-gray-100 px-3.5 font-medium"
+                      : "bg-white px-3 text-muted-foreground hover:bg-white hover:text-foreground")
+                  }
+                >
+                  <IconComponent className="size-[15px] shrink-0" />
+                  {active && <span className="text-[13px]">{label}</span>}
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+
         <Button
           variant="outline"
           size="icon"
