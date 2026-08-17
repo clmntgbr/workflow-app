@@ -4,7 +4,6 @@ import { EndpointDrawer } from "@/components/endpoint/endpoint-drawer"
 import { Button } from "@/components/ui/button"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Switch } from "@/components/ui/switch"
 import { EndpointsSidebar } from "@/components/workflow/endpoints-sidebar"
 import { SidebarEdgeHandle } from "@/components/workflow/sidebar-edge-handle"
 import { StepDrawer } from "@/components/workflow/step-drawer"
@@ -709,27 +708,11 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
                   {steps.length} steps
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={workflow.status === "active"}
-                  disabled={
-                    isTogglingStatus ||
-                    (workflow.status !== "active" &&
-                      workflow.status !== "inactive")
-                  }
-                  onCheckedChange={handleStatusToggle}
-                  aria-label={
-                    workflow.status === "active"
-                      ? "Deactivate workflow"
-                      : "Activate workflow"
-                  }
-                />
-              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-elevated/60 absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center rounded-full border border-border/80 p-[3px]">
+        <div className="bg-elevated/60 absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center rounded-full border border-border/80 p-0.75">
           {Tabs.map(({ label, Icon: IconComponent, key }) => {
             const active = key === tab
             return (
@@ -748,7 +731,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
                       : "bg-white px-3 text-muted-foreground hover:bg-white hover:text-foreground")
                   }
                 >
-                  <IconComponent className="size-[15px] shrink-0" />
+                  <IconComponent className="size-3.75 shrink-0" />
                   {active && <span className="text-[13px]">{label}</span>}
                 </Button>
               </div>
@@ -756,14 +739,40 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           })}
         </div>
 
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setIsDrawerOpen(true)}
-          aria-label="Edit workflow"
-        >
-          <SettingsIcon className="size-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => handleStatusToggle(workflow.status !== "active")}
+            className={
+              "group flex items-center gap-2.5 rounded-lg border border-green-700 px-3.5 transition-all duration-300 ease-out hover:-translate-y-px active:translate-y-0 active:scale-[0.98] " +
+              (workflow.status === "active"
+                ? "border-green-700/25 bg-green-700/10 text-green-700 hover:border-green-700/45 hover:bg-green-700/20"
+                : "border-red-700/25 bg-red-700/10 text-red-700 hover:border-red-700/45 hover:bg-red-700/20")
+            }
+          >
+            <span className="relative flex size-2">
+              {workflow.status === "active" && (
+                <span className="absolute inset-0 animate-ping rounded-full bg-green-500 opacity-60" />
+              )}
+              <span
+                className={
+                  "relative size-2 rounded-full transition-colors duration-300 " +
+                  (workflow.status === "active" ? "bg-green-500" : "bg-red-500")
+                }
+              />
+            </span>
+            <span className="text-xs font-medium">
+              {workflow.status === "active" ? "Active" : "Inactive"}
+            </span>
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsDrawerOpen(true)}
+            aria-label="Edit workflow"
+          >
+            <SettingsIcon className="size-4" />
+          </Button>
+        </div>
       </div>
 
       <div
