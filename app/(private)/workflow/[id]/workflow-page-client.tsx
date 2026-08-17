@@ -699,9 +699,16 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           </Button>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-sm font-semibold">
-                {workflow.name}
-              </h1>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="font-display truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+                    {workflow.name}
+                  </h1>
+                </div>
+                <p className="mt-0.75 truncate text-[11.5px] leading-none text-muted-foreground">
+                  {steps.length} steps
+                </p>
+              </div>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={workflow.status === "active"}
