@@ -30,6 +30,7 @@ import {
   deleteWorkflowStep,
   getWorkflow,
   getWorkflowConnections,
+  getWorkflowStep,
   getWorkflowSteps,
   updateStepPosition,
   updateWorkflowStep,
@@ -143,6 +144,92 @@ function parsePosition(position: unknown): Point | null {
   return { x, y }
 }
 
+function unwrapStepPayload(payload: unknown): unknown {
+  const record = asRecord(payload)
+  if (!record) return payload
+  const nested = asRecord(record.data)
+  if (nested && (nested.id || nested.stepId || nested.step_id)) {
+    return nested
+  }
+  return payload
+}
+
+function mapItemToCanvasStep(
+  item: unknown,
+  endpointById: Map<string, Endpoint>,
+  fallback?: Pick<CanvasStep, "x" | "y">
+): CanvasStep | null {
+  const record = asRecord(unwrapStepPayload(item))
+  if (!record) return null
+
+  const id = pickString(record, ["id", "stepId", "step_id"])
+  const endpointId = pickString(record, ["endpointId", "endpoint_id"])
+  const stepName = pickString(record, ["name", "stepName", "step_name"])
+  const url = pickString(record, ["url", "path"])
+  const method = pickString(record, ["method"])
+  const indexRaw =
+    typeof record.index === "string" || typeof record.index === "number"
+      ? String(record.index)
+      : undefined
+  const position = parsePosition(record.position) ??
+    (fallback ? { x: fallback.x, y: fallback.y } : null)
+
+  if (!id || !endpointId || !position) return null
+
+  const nestedEndpoint = asRecord(record.endpoint)
+  const endpoint =
+    (nestedEndpoint?.id && typeof nestedEndpoint.id === "string"
+      ? (nestedEndpoint as unknown as Endpoint)
+      : undefined) ?? endpointById.get(endpointId)
+
+  const descriptionValue = record.description
+  const description =
+    typeof descriptionValue === "string"
+      ? descriptionValue
+      : descriptionValue === null
+        ? null
+        : (endpoint?.description ?? null)
+
+  return {
+    id,
+    ...(indexRaw ? { index: indexRaw } : {}),
+    name: stepName ?? endpoint?.name ?? endpointId,
+    description,
+    endpointId,
+    method: method ?? endpoint?.method ?? "GET",
+    path: url ?? endpoint?.url ?? "/",
+    headers: parseStringRecord(record.headers),
+    query: parseStringRecord(record.query),
+    body: record.body ?? endpoint?.body ?? {},
+    timeout: pickNumber(
+      record,
+      ["timeout", "timeoutMs", "timeout_ms"],
+      endpoint?.timeout ?? 30000
+    ),
+    retryOnFailure: pickBoolean(
+      record,
+      ["retryOnFailure", "retry_on_failure"],
+      endpoint?.retryOnFailure ?? false
+    ),
+    retryCount: pickNumber(
+      record,
+      ["retryCount", "retry_count"],
+      endpoint?.retryCount ?? 0
+    ),
+    retryDelay: pickNumber(
+      record,
+      ["retryDelay", "retryDelayMs", "retry_delay_ms"],
+      endpoint?.retryDelay ?? 1000
+    ),
+    executionOrder: pickNumber(record, ["executionOrder", "execution_order"]),
+    treeIndex: pickNumber(record, ["treeIndex", "tree_index"]),
+    status: pickString(record, ["status"]) ?? undefined,
+    x: position.x,
+    y: position.y,
+    ...(endpoint ? { endpoint } : {}),
+  }
+}
+
 export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const Tabs = [
     { label: "Overview", key: "overview", Icon: LayersIcon },
@@ -188,73 +275,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const loadSteps = useCallback(async () => {
     const payload = await getWorkflowSteps(workflowId)
     const nextSteps = listFromPayload(payload)
-      .map((item) => {
-        const record = asRecord(item)
-        if (!record) return null
-
-        const id = pickString(record, ["id", "stepId", "step_id"])
-        const endpointId = pickString(record, ["endpointId", "endpoint_id"])
-        const stepName = pickString(record, ["name", "stepName", "step_name"])
-        const url = pickString(record, ["url", "path"])
-        const method = pickString(record, ["method"])
-        const indexRaw =
-          typeof record.index === "string" || typeof record.index === "number"
-            ? String(record.index)
-            : undefined
-        const position = parsePosition(record.position)
-
-        if (!id || !endpointId || !position) return null
-
-        const endpoint = endpointById.get(endpointId)
-        const descriptionValue = record.description
-        const description =
-          typeof descriptionValue === "string"
-            ? descriptionValue
-            : descriptionValue === null
-              ? null
-              : (endpoint?.description ?? null)
-
-        return {
-          id,
-          ...(indexRaw ? { index: indexRaw } : {}),
-          name: stepName ?? endpoint?.name ?? endpointId,
-          description,
-          endpointId,
-          method: method ?? endpoint?.method ?? "GET",
-          path: url ?? endpoint?.url ?? "/",
-          headers: parseStringRecord(record.headers),
-          query: parseStringRecord(record.query),
-          body: record.body ?? endpoint?.body ?? {},
-          timeout: pickNumber(
-            record,
-            ["timeout", "timeoutMs", "timeout_ms"],
-            endpoint?.timeout ?? 30000
-          ),
-          retryOnFailure: pickBoolean(
-            record,
-            ["retryOnFailure", "retry_on_failure"],
-            endpoint?.retryOnFailure ?? false
-          ),
-          retryCount: pickNumber(
-            record,
-            ["retryCount", "retry_count"],
-            endpoint?.retryCount ?? 0
-          ),
-          retryDelay: pickNumber(
-            record,
-            ["retryDelay", "retryDelayMs", "retry_delay_ms"],
-            endpoint?.retryDelay ?? 1000
-          ),
-          executionOrder: pickNumber(record, [
-            "executionOrder",
-            "execution_order",
-          ]),
-          treeIndex: pickNumber(record, ["treeIndex", "tree_index"]),
-          status: pickString(record, ["status"]) ?? undefined,
-          x: position.x,
-          y: position.y,
-        } as CanvasStep
-      })
+      .map((item) => mapItemToCanvasStep(item, endpointById))
       .filter((value): value is CanvasStep => value !== null)
 
     setSteps(nextSteps)
@@ -643,6 +664,15 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const handleEditStep = (step: CanvasStep) => {
     setSelectedStep(step)
     setIsStepDrawerOpen(true)
+
+    if (step.id.startsWith("temp-")) return
+
+    void getWorkflowStep(workflowId, step.id)
+      .then((payload) => {
+        const mapped = mapItemToCanvasStep(payload, endpointById, step)
+        if (mapped) setSelectedStep(mapped)
+      })
+      .catch(() => {})
   }
 
   const handleUpdateStep = async (input: UpdateWorkflowStepInput) => {

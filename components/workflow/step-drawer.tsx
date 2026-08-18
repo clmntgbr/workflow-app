@@ -286,6 +286,11 @@ export function StepDrawer({
                       Define the step name, URL, and HTTP method.
                     </p>
                   </div>
+
+                  {/* {step?. ? (
+                    <EndpointPreview endpoint={step?.endpoint} />
+                  ) : null} */}
+
                   <div className="flex flex-col gap-6 md:col-span-2">
                     <Field>
                       <Controller

@@ -262,6 +262,24 @@ export const getWorkflowSteps = async (workflowId: string): Promise<unknown> => 
   return response.json()
 }
 
+export const getWorkflowStep = async (
+  workflowId: string,
+  stepId: string
+): Promise<unknown> => {
+  const response = await fetch(
+    `/api/workflows/${workflowId}/steps/${stepId}`,
+    {
+      method: "GET",
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error("Failed to get workflow step")
+  }
+
+  return response.json()
+}
+
 export const createWorkflowConnection = async (
   workflowId: string,
   input: CreateWorkflowConnectionInput

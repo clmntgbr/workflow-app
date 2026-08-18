@@ -1,6 +1,7 @@
 "use client"
 
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { Endpoint } from "@/lib/endpoint/types"
 import { cn } from "@/lib/utils"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
 import { PencilIcon, Trash2Icon } from "lucide-react"
@@ -26,6 +27,7 @@ export type CanvasStep = {
   status?: string
   x: number
   y: number
+  endpoint?: Endpoint
 }
 
 export type StepNodeData = {
