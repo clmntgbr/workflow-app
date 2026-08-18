@@ -20,7 +20,7 @@ import { CanvasStep } from "@/components/workflow/step-node"
 import { StepVariablesSection } from "@/components/workflow/step-variables-section"
 import { VariableAutocompleteField } from "@/components/workflow/variable-autocomplete-field"
 import { useEndpoint } from "@/lib/endpoint/context"
-import { KeyValuePair, recordToKeyValuePairs } from "@/lib/endpoint/utils"
+import { KeyValuePair, millisecondsToSeconds, recordToKeyValuePairs } from "@/lib/endpoint/utils"
 import { cn } from "@/lib/utils"
 import {
   stepFormSchema,
@@ -35,6 +35,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Controller, useForm, useWatch } from "react-hook-form"
+import EndpointPreview from "./endpoint-preview"
 
 const HTTP_METHODS = [
   "GET",
@@ -55,10 +56,10 @@ const emptyFormValues: StepFormValues = {
   body: "{}",
   headers: [],
   query: [],
-  timeout: 30000,
+  timeout: 30,
   retryOnFailure: false,
   retryCount: 0,
-  retryDelay: 1000,
+  retryDelay: 10,
 }
 
 function getStepFormValues(step?: CanvasStep | null): StepFormValues {
@@ -79,10 +80,10 @@ function getStepFormValues(step?: CanvasStep | null): StepFormValues {
     body: JSON.stringify(step.body ?? {}, null, 2),
     headers: recordToKeyValuePairs(step.headers),
     query: recordToKeyValuePairs(step.query),
-    timeout: Math.max(1, step.timeout || 30000),
+    timeout: millisecondsToSeconds(step.timeout),
     retryOnFailure: step.retryOnFailure,
     retryCount: step.retryCount,
-    retryDelay: Math.max(1, step.retryDelay || 1000),
+    retryDelay: millisecondsToSeconds(step.retryDelay),
   }
 }
 
@@ -287,11 +288,10 @@ export function StepDrawer({
                     </p>
                   </div>
 
-                  {/* {step?. ? (
-                    <EndpointPreview endpoint={step?.endpoint} />
-                  ) : null} */}
-
                   <div className="flex flex-col gap-6 md:col-span-2">
+                    {step?.endpoint ? (
+                      <EndpointPreview endpoint={step.endpoint} />
+                    ) : null}
                     <Field>
                       <Controller
                         name="name"
@@ -463,7 +463,7 @@ export function StepDrawer({
                   <div className="space-y-1">
                     <h2 className="font-semibold">Execution</h2>
                     <p className="text-sm text-muted-foreground">
-                      Timeout and retry settings in milliseconds.
+                      Timeout and retry settings in seconds.
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:col-span-2">
@@ -475,10 +475,10 @@ export function StepDrawer({
                           <CustomInput
                             id="step-timeout"
                             isRequired
-                            label="Timeout (ms)"
+                            label="Timeout (s)"
                             hasError={!!errors.timeout}
                             errorMessage={errors.timeout?.message}
-                            description="Request timeout"
+                            description="Minimum 30 seconds"
                             value={String(field.value ?? 0)}
                             onChange={(value) =>
                               field.onChange(Number.parseInt(value || "0", 10))
@@ -541,10 +541,10 @@ export function StepDrawer({
                           <CustomInput
                             id="step-retry-delay"
                             isRequired
-                            label="Retry delay (ms)"
+                            label="Retry delay (s)"
                             hasError={!!errors.retryDelay}
                             errorMessage={errors.retryDelay?.message}
-                            description="Delay between retries"
+                            description="Minimum 10 seconds"
                             value={String(field.value ?? 0)}
                             disabled={!retryOnFailure}
                             onChange={(value) =>

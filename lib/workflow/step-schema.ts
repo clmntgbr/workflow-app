@@ -1,4 +1,7 @@
-import { keyValuePairsToRecord } from "@/lib/endpoint/utils"
+import {
+  keyValuePairsToRecord,
+  secondsToMilliseconds,
+} from "@/lib/endpoint/utils"
 import { UpdateWorkflowStepInput } from "@/lib/workflow/types"
 import * as z from "zod"
 
@@ -42,15 +45,15 @@ export const stepFormSchema = z.object({
   timeout: z
     .number()
     .int()
-    .min(1, "Timeout must be at least 1 ms")
-    .max(300000, "Timeout must be at most 300000 ms"),
+    .min(30, "Timeout must be at least 30 seconds")
+    .max(300, "Timeout must be at most 300 seconds"),
   retryOnFailure: z.boolean(),
   retryCount: z.number().int().min(0).max(10),
   retryDelay: z
     .number()
     .int()
-    .min(1, "Retry delay must be at least 1 ms")
-    .max(60000, "Retry delay must be at most 60000 ms"),
+    .min(10, "Retry delay must be at least 10 seconds")
+    .max(60, "Retry delay must be at most 60 seconds"),
 })
 
 export type StepFormValues = z.infer<typeof stepFormSchema>
@@ -70,9 +73,9 @@ export function toUpdateWorkflowStepPayload(
     body,
     headers,
     query,
-    timeout: values.timeout,
+    timeout: secondsToMilliseconds(values.timeout),
     retryOnFailure: values.retryOnFailure,
     retryCount: values.retryCount,
-    retryDelay: values.retryDelay,
+    retryDelay: secondsToMilliseconds(values.retryDelay),
   }
 }

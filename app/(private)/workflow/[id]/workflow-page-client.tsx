@@ -219,7 +219,7 @@ function mapItemToCanvasStep(
     retryDelay: pickNumber(
       record,
       ["retryDelay", "retryDelayMs", "retry_delay_ms"],
-      endpoint?.retryDelay ?? 1000
+      endpoint?.retryDelay ?? 10000
     ),
     executionOrder: pickNumber(record, ["executionOrder", "execution_order"]),
     treeIndex: pickNumber(record, ["treeIndex", "tree_index"]),
@@ -528,7 +528,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       timeout: endpoint?.timeout ?? 30000,
       retryOnFailure: endpoint?.retryOnFailure ?? false,
       retryCount: endpoint?.retryCount ?? 0,
-      retryDelay: endpoint?.retryDelay ?? 1000,
+      retryDelay: endpoint?.retryDelay ?? 10000,
       x: input.position.x,
       y: input.position.y,
     }

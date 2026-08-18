@@ -20,3 +20,12 @@ export function keyValuePairsToRecord(
     return acc
   }, {})
 }
+
+export function millisecondsToSeconds(ms: number): number {
+  if (!Number.isFinite(ms)) return 0
+  return Math.round(ms / 1000)
+}
+
+export function secondsToMilliseconds(seconds: number): number {
+  return seconds * 1000
+}
