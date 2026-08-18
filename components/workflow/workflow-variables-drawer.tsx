@@ -1,0 +1,239 @@
+"use client"
+
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { EmptyComponent } from "@/components/empty"
+import { Button } from "@/components/ui/button"
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { CanvasStep } from "@/components/workflow/step-node"
+import { VariableDrawer } from "@/components/workflow/variable-drawer"
+import { deleteWorkflowVariable } from "@/lib/workflow/variable/api"
+import { WorkflowVariable } from "@/lib/workflow/variable/types"
+import { Braces, PlusIcon, Trash2Icon } from "lucide-react"
+import { useState } from "react"
+import { Badge } from "../ui/badge"
+
+interface WorkflowVariablesDrawerProps {
+  workflowId: string
+  variables: WorkflowVariable[]
+  steps: CanvasStep[]
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
+  onVariablesChange: (variables: WorkflowVariable[]) => void
+}
+
+export function WorkflowVariablesDrawer({
+  workflowId,
+  variables,
+  steps,
+  isOpen,
+  onOpenChange,
+  onVariablesChange,
+}: WorkflowVariablesDrawerProps) {
+  const [isVariableFormOpen, setIsVariableFormOpen] = useState(false)
+  const [editingVariable, setEditingVariable] =
+    useState<WorkflowVariable | null>(null)
+  const [createStepId, setCreateStepId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<WorkflowVariable | null>(
+    null
+  )
+
+  const formStepId =
+    editingVariable?.stepId ?? createStepId ?? steps[0]?.id ?? ""
+
+  const openCreate = (stepId: string) => {
+    setEditingVariable(null)
+    setCreateStepId(stepId)
+    setIsVariableFormOpen(true)
+  }
+
+  const openEdit = (variable: WorkflowVariable) => {
+    setCreateStepId(variable.stepId)
+    setEditingVariable(variable)
+    setIsVariableFormOpen(true)
+  }
+
+  const handleSaved = (saved: WorkflowVariable) => {
+    const exists = variables.some((variable) => variable.id === saved.id)
+    onVariablesChange(
+      exists
+        ? variables.map((variable) =>
+            variable.id === saved.id ? saved : variable
+          )
+        : [...variables, saved]
+    )
+  }
+
+  const handleDeleted = (variableId: string) => {
+    onVariablesChange(
+      variables.filter((variable) => variable.id !== variableId)
+    )
+    if (editingVariable?.id === variableId) {
+      setIsVariableFormOpen(false)
+      setEditingVariable(null)
+      setCreateStepId(null)
+    }
+  }
+
+  return (
+    <>
+      <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right">
+        <DrawerContent className="flex h-full w-[70vw]! max-w-[70vw]! flex-col">
+          <DrawerHeader className="sr-only">
+            <DrawerTitle>Workflow Variables</DrawerTitle>
+          </DrawerHeader>
+
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0 border-b px-6 py-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Braces className="size-4 text-muted-foreground" />
+                    <h2 className="text-base font-semibold">
+                      Workflow Variables
+                    </h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Manage workflow variables
+                  </p>
+                </div>
+
+                {steps.length <= 1 ? (
+                  <Button
+                    type="button"
+                    className="bg-emerald-600 text-white hover:bg-emerald-700"
+                    disabled={steps.length === 0}
+                    onClick={() => {
+                      if (steps[0]) openCreate(steps[0].id)
+                    }}
+                  >
+                    <PlusIcon className="size-4" />
+                    Add Variable
+                  </Button>
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        className="bg-emerald-600 text-white hover:bg-emerald-700"
+                      >
+                        <PlusIcon className="size-4" />
+                        Add Variable
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-56">
+                      {steps.map((step) => (
+                        <DropdownMenuItem
+                          key={step.id}
+                          onClick={() => openCreate(step.id)}
+                        >
+                          Extract from {step.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
+              {variables.length === 0 ? (
+                <EmptyComponent
+                  title="No variables yet"
+                  description="Extract a value from a step response to reuse it later with {{key}}."
+                  icon={<Braces className="size-5 text-muted-foreground" />}
+                />
+              ) : (
+                <ul className="space-y-2">
+                  {variables.map((variable) => (
+                    <li key={variable.id} className="flex items-stretch gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-auto min-w-0 flex-1 justify-start gap-4 px-2 py-2 text-left font-normal whitespace-normal"
+                        onClick={() => openEdit(variable)}
+                      >
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-md border">
+                          <Braces className="size-3.5 shrink-0" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-bold">
+                            {variable.key}
+                          </span>
+                          <span className="block truncate text-muted-foreground">
+                            {variable.name}
+                          </span>
+                        </span>
+                        <span className="shrink-0 px-1.5 py-0.5">
+                          <Badge variant="secondary">{variable.path}</Badge>
+                        </span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 self-center text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Delete ${variable.name}`}
+                        onClick={() => setDeleteTarget(variable)}
+                      >
+                        <Trash2Icon className="size-4" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </DrawerContent>
+
+        <VariableDrawer
+          workflowId={workflowId}
+          stepId={formStepId}
+          variable={editingVariable}
+          isOpen={isVariableFormOpen}
+          nested
+          onOpenChange={(open) => {
+            setIsVariableFormOpen(open)
+            if (!open) {
+              setEditingVariable(null)
+              setCreateStepId(null)
+            }
+          }}
+          onSaved={handleSaved}
+          onDeleted={handleDeleted}
+        />
+      </Drawer>
+
+      {deleteTarget ? (
+        <DeleteConfirmDialog
+          open={Boolean(deleteTarget)}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null)
+          }}
+          title="Delete variable"
+          description={`Delete "${deleteTarget.name}"? References to this variable in other steps will break.`}
+          onConfirm={async () => {
+            await deleteWorkflowVariable(workflowId, deleteTarget.id)
+          }}
+          onDeleted={() => {
+            handleDeleted(deleteTarget.id)
+            setDeleteTarget(null)
+          }}
+          errorMessage="Failed to delete variable. Please try again."
+          className="z-[80]"
+          overlayClassName="z-[75]"
+        />
+      ) : null}
+    </>
+  )
+}

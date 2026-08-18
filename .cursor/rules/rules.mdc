@@ -59,3 +59,12 @@ Variables: use `subscribeWorkflowVariablesRefetch` on the workflow page — scop
 - Refetch workflows/endpoints in providers when `activeOrganization` changes (duplicates Centrifugo).
 - Poll or `setInterval` for lists.
 - Invent event types not emitted by the backend.
+
+# UI — shadcn & Tailwind
+
+Prefer existing shadcn components in `components/ui/` and Tailwind utilities over custom HTML/CSS.
+
+- Use `Button`, `Input`, `DropdownMenu`, `Drawer`, `Tabs`, `Switch`, etc. instead of raw `<button>`, `<select>`, `<input>`.
+- Style with Tailwind classes (`cn()` to merge). Do not add new CSS files or inline `style` for layout/color unless there is no Tailwind equivalent.
+- If a primitive is missing, add it as a shadcn component under `components/ui/` and reuse it. Do not reinvent one-off markup.
+- Override appearance via `variant`, `size`, and `className` — keep the shadcn API.

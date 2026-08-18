@@ -8,6 +8,7 @@ import {
   Drawer,
   DrawerContent,
   DrawerHeader,
+  DrawerNestedRoot,
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { Field } from "@/components/ui/field"
@@ -29,6 +30,7 @@ interface VariableDrawerProps {
   onOpenChange: (open: boolean) => void
   onSaved: (variable: WorkflowVariable) => void
   onDeleted?: (variableId: string) => void
+  nested?: boolean
 }
 
 interface VariableFormState {
@@ -71,6 +73,7 @@ export function VariableDrawer({
   onOpenChange,
   onSaved,
   onDeleted,
+  nested = false,
 }: VariableDrawerProps) {
   const isEdit = Boolean(variable)
   const [form, setForm] = useState<VariableFormState>(emptyForm)
@@ -141,16 +144,16 @@ export function VariableDrawer({
     }
   }
 
+  const Root = nested ? DrawerNestedRoot : Drawer
+
   return (
-    <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right" modal>
+    <Root open={isOpen} onOpenChange={onOpenChange} direction="right" modal>
       <DrawerContent
-        className="z-[70] flex h-full w-[70vw]! max-w-[70vw]! flex-col"
+        className="z-70 flex h-full w-[70vw]! max-w-[70vw]! flex-col"
         overlayClassName="z-[65]"
       >
         <DrawerHeader className="sr-only">
-          <DrawerTitle>
-            {isEdit ? "Edit variable" : "New variable"}
-          </DrawerTitle>
+          <DrawerTitle>{isEdit ? "Edit variable" : "New variable"}</DrawerTitle>
         </DrawerHeader>
 
         <div className="flex min-h-0 flex-1 flex-col">
@@ -300,6 +303,6 @@ export function VariableDrawer({
           overlayClassName="z-[75]"
         />
       ) : null}
-    </Drawer>
+    </Root>
   )
 }

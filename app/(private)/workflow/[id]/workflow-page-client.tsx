@@ -16,6 +16,7 @@ import {
 import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
 import { WorkflowNotFoundView } from "@/components/workflow/workflow-not-found-view"
 import { WorkflowRunsPanel } from "@/components/workflow/workflow-runs-panel"
+import { WorkflowVariablesDrawer } from "@/components/workflow/workflow-variables-drawer"
 import { useEndpoint } from "@/lib/endpoint/context"
 import { Endpoint } from "@/lib/endpoint/types"
 import { useOrganization } from "@/lib/organization/context"
@@ -48,6 +49,7 @@ import { subscribeWorkflowVariablesRefetch } from "@/lib/workflow/variable/varia
 import { subscribeWorkflowDetailRefetch } from "@/lib/workflow/workflow-realtime"
 import {
   ArrowLeftIcon,
+  BracesIcon,
   HistoryIcon,
   LayersIcon,
   SettingsIcon,
@@ -166,6 +168,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [isSwitchOrganizationOpen, setIsSwitchOrganizationOpen] =
     useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isVariablesDrawerOpen, setIsVariablesDrawerOpen] = useState(false)
   const [selectedStep, setSelectedStep] = useState<CanvasStep | null>(null)
   const [isStepDrawerOpen, setIsStepDrawerOpen] = useState(false)
   const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(
@@ -743,7 +746,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           <Button
             onClick={() => handleStatusToggle(workflow.status !== "active")}
             className={
-              "group flex cursor-pointer items-center gap-2.5 rounded-lg border border-green-700 px-3.5 transition-all duration-300 ease-out hover:-translate-y-px active:translate-y-0 active:scale-[0.98] " +
+              "group flex cursor-pointer items-center gap-2.5 rounded-lg border border-green-700 px-3.5 transition-all duration-300 ease-out active:translate-y-0 active:scale-[0.98] " +
               (workflow.status === "active"
                 ? "border-green-700/25 bg-green-700/10 text-green-700 hover:border-green-700/45 hover:bg-green-700/20"
                 : "border-red-700/25 bg-red-700/10 text-red-700 hover:border-red-700/45 hover:bg-red-700/20")
@@ -763,6 +766,14 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
             <span className="text-xs font-medium">
               {workflow.status === "active" ? "Active" : "Inactive"}
             </span>
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsVariablesDrawerOpen(true)}
+            aria-label="Workflow variables"
+          >
+            <BracesIcon className="size-4" />
           </Button>
           <Button
             variant="outline"
@@ -852,6 +863,15 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         onOpenChange={setIsDrawerOpen}
         onSaved={setWorkflow}
         onDeleted={() => router.push("/")}
+      />
+
+      <WorkflowVariablesDrawer
+        workflowId={workflowId}
+        variables={variables}
+        steps={steps}
+        isOpen={isVariablesDrawerOpen}
+        onOpenChange={setIsVariablesDrawerOpen}
+        onVariablesChange={setVariables}
       />
     </div>
   )

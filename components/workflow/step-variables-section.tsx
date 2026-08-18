@@ -7,6 +7,7 @@ import { deleteWorkflowVariable } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { Braces, PlusIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
+import { Badge } from "../ui/badge"
 
 interface StepVariablesSectionProps {
   workflowId: string
@@ -82,7 +83,7 @@ export function StepVariablesSection({
             <li key={variable.id} className="flex items-stretch gap-2">
               <button
                 type="button"
-                className="flex min-w-0 flex-1 items-center gap-4 cursor-pointer rounded-md border p-2 text-left text-xs outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground"
+                className="flex min-w-0 flex-1 cursor-pointer items-center gap-4 rounded-md border p-2 text-left text-xs outline-hidden transition-colors hover:bg-accent hover:text-accent-foreground"
                 onClick={() => openEdit(variable)}
               >
                 <span className="flex size-6 shrink-0 items-center justify-center rounded-md border">
@@ -92,12 +93,10 @@ export function StepVariablesSection({
                   <span className="block truncate font-bold">
                     {variable.key}
                   </span>
-                  <span className="block truncate">
-                    {variable.name}{" "}
-                    <span className="text-xs text-muted-foreground">
-                      {variable.description}
-                    </span>
-                  </span>
+                  <span className="block truncate">{variable.name} </span>
+                </span>
+                <span className="shrink-0 px-1.5 py-0.5">
+                  <Badge variant="secondary">{variable.path}</Badge>
                 </span>
               </button>
               <div className="flex shrink-0 items-center rounded-md">
