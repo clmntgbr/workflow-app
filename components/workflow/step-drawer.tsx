@@ -4,6 +4,7 @@ import CustomInput from "@/components/custom-input"
 import CustomSwitch from "@/components/custom-switch"
 import CustomTextarea from "@/components/custom-textarea"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { RadioDropdown } from "@/components/radio-dropdown"
 import { Button } from "@/components/ui/button"
 import {
   Drawer,
@@ -327,62 +328,58 @@ export function StepDrawer({
                       />
                     </Field>
                     <Field>
-                      <Controller
-                        name="url"
-                        control={control}
-                        render={({ field }) => (
-                          <div className="space-y-2">
-                            <Label htmlFor="step-url">
-                              URL
-                              <span className="ml-1 text-destructive">*</span>
-                            </Label>
-                            <p className="text-xs text-muted-foreground">
-                              Full request URL. Use {"{{key}}"} to inject
-                              variables.
-                            </p>
-                            <VariableAutocompleteField
-                              value={field.value ?? ""}
-                              onChange={field.onChange}
-                              variables={availableVariables}
-                              placeholder="https://api.example.com/resource/{{id}}"
-                              className="h-9"
-                            />
-                            {errors.url ? (
-                              <p className="text-xs text-destructive">
-                                {errors.url.message}
-                              </p>
-                            ) : null}
-                          </div>
-                        )}
-                      />
-                    </Field>
-                    <Field>
-                      <Controller
-                        name="method"
-                        control={control}
-                        render={({ field }) => (
-                          <div className="space-y-2">
-                            <Label htmlFor="step-method">Method</Label>
-                            <select
-                              id="step-method"
-                              value={field.value}
-                              onChange={field.onChange}
-                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-                            >
-                              {HTTP_METHODS.map((method) => (
-                                <option key={method} value={method}>
-                                  {method}
-                                </option>
-                              ))}
-                            </select>
-                            {errors.method?.message ? (
-                              <p className="text-xs text-destructive">
-                                {errors.method.message}
-                              </p>
-                            ) : null}
-                          </div>
-                        )}
-                      />
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <Controller
+                            name="method"
+                            control={control}
+                            render={({ field }) => (
+                              <div className="w-[8.5rem] shrink-0 space-y-2">
+                                <Label htmlFor="step-method">Method</Label>
+                                <RadioDropdown
+                                  id="step-method"
+                                  value={field.value}
+                                  onValueChange={field.onChange}
+                                  options={[...HTTP_METHODS]}
+                                  groupLabel="HTTP method"
+                                  placeholder="Method"
+                                />
+                                {errors.method?.message ? (
+                                  <p className="text-xs text-destructive">
+                                    {errors.method.message}
+                                  </p>
+                                ) : null}
+                              </div>
+                            )}
+                          />
+                          <Controller
+                            name="url"
+                            control={control}
+                            render={({ field }) => (
+                              <div className="min-w-0 flex-1 space-y-2">
+                                <Label htmlFor="step-url">
+                                  URL
+                                  <span className="ml-1 text-destructive">
+                                    *
+                                  </span>
+                                </Label>
+                                <VariableAutocompleteField
+                                  value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                  variables={availableVariables}
+                                  placeholder="https://api.example.com/resource/{{id}}"
+                                  className="h-9"
+                                />
+                                {errors.url ? (
+                                  <p className="text-xs text-destructive">
+                                    {errors.url.message}
+                                  </p>
+                                ) : null}
+                              </div>
+                            )}
+                          />
+                        </div>
+                      </div>
                     </Field>
                   </div>
                 </div>
