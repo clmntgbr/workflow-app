@@ -1,6 +1,7 @@
 "use client"
 
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { StepPreview } from "@/components/workflow/step-preview"
 import { Endpoint } from "@/lib/endpoint/types"
 import { cn } from "@/lib/utils"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
@@ -36,22 +37,9 @@ export type StepNodeData = {
   onDelete: (stepId: string) => Promise<void>
 }
 
-const METHOD_STYLES: Record<string, string> = {
-  GET: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  POST: "bg-blue-50 text-blue-700 border-blue-200",
-  PUT: "bg-amber-50 text-amber-700 border-amber-200",
-  PATCH: "bg-orange-50 text-orange-700 border-orange-200",
-  DELETE: "bg-red-50 text-red-700 border-red-200",
-  HEAD: "bg-slate-50 text-slate-700 border-slate-200",
-  OPTIONS: "bg-violet-50 text-violet-700 border-violet-200",
-}
-
 export function StepNode({ data }: NodeProps) {
   const { step, onEdit, onDelete } = data as unknown as StepNodeData
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
-  const method = (step.method || "GET").toUpperCase()
-  const methodClass =
-    METHOD_STYLES[method] ?? "bg-muted text-muted-foreground border-border"
 
   return (
     <>
@@ -98,23 +86,12 @@ export function StepNode({ data }: NodeProps) {
           </button>
         </div>
 
-        <span
-          className={cn(
-            "shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-            methodClass
-          )}
-        >
-          {method}
-        </span>
-
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-foreground">
-            {step.name}
-          </p>
-          <p className="truncate text-[11px] text-muted-foreground">
-            {step.path}
-          </p>
-        </div>
+        <StepPreview
+          name={step.name}
+          method={step.method}
+          url={step.path}
+          className="min-w-0 flex-1"
+        />
       </div>
 
       <Handle

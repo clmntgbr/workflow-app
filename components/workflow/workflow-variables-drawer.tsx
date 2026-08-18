@@ -11,13 +11,17 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { CanvasStep } from "@/components/workflow/step-node"
+import { StepPreview } from "@/components/workflow/step-preview"
 import { VariableDrawer } from "@/components/workflow/variable-drawer"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
-import { Braces, PlusIcon, Trash2Icon } from "lucide-react"
+import { Braces, ChevronDownIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 import { Badge } from "../ui/badge"
 
@@ -103,7 +107,7 @@ export function WorkflowVariablesDrawer({
                 {steps.length <= 1 ? (
                   <Button
                     type="button"
-                    className="bg-emerald-600 text-white hover:bg-emerald-700"
+                    className="h-9 bg-emerald-600 px-3 text-white hover:bg-emerald-700"
                     disabled={steps.length === 0}
                     onClick={() => {
                       if (steps[0]) openCreate(steps[0].id)
@@ -117,19 +121,31 @@ export function WorkflowVariablesDrawer({
                     <DropdownMenuTrigger asChild>
                       <Button
                         type="button"
-                        className="bg-emerald-600 text-white hover:bg-emerald-700"
+                        className="h-9 justify-between gap-2 bg-emerald-600 px-3 text-white hover:bg-emerald-700"
                       >
-                        <PlusIcon className="size-4" />
-                        Add Variable
+                        <span className="flex min-w-0 items-center gap-2">
+                          <PlusIcon className="size-4" />
+                          Add Variable
+                        </span>
+                        <ChevronDownIcon className="size-4 shrink-0 opacity-80" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="min-w-56">
+                    <DropdownMenuContent align="end" className="min-w-64">
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel>Extract from step</DropdownMenuLabel>
+                      </DropdownMenuGroup>
+                      <DropdownMenuSeparator />
                       {steps.map((step) => (
                         <DropdownMenuItem
                           key={step.id}
+                          className="h-auto items-start py-2"
                           onClick={() => openCreate(step.id)}
                         >
-                          Extract from {step.name}
+                          <StepPreview
+                            name={step.name}
+                            method={step.method}
+                            url={step.path}
+                          />
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
