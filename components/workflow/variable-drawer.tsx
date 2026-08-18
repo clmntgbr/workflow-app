@@ -2,7 +2,6 @@
 
 import CustomInput from "@/components/custom-input"
 import CustomTextarea from "@/components/custom-textarea"
-import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Drawer,
@@ -15,7 +14,6 @@ import { Field } from "@/components/ui/field"
 import { VariablePathField } from "@/components/workflow/variable-path-field"
 import {
   createWorkflowVariable,
-  deleteWorkflowVariable,
   updateWorkflowVariable,
 } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
@@ -29,7 +27,7 @@ interface VariableDrawerProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   onSaved: (variable: WorkflowVariable) => void
-  onDeleted?: (variableId: string) => void
+  onRequestDelete?: (variable: WorkflowVariable) => void
   nested?: boolean
 }
 
@@ -72,20 +70,18 @@ export function VariableDrawer({
   isOpen,
   onOpenChange,
   onSaved,
-  onDeleted,
+  onRequestDelete,
   nested = false,
 }: VariableDrawerProps) {
   const isEdit = Boolean(variable)
   const [form, setForm] = useState<VariableFormState>(emptyForm)
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   useEffect(() => {
     if (!isOpen) return
     setForm(toFormState(variable))
     setFormError(null)
-    setIsDeleteOpen(false)
   }, [isOpen, variable])
 
   const handleClose = () => {
@@ -149,7 +145,7 @@ export function VariableDrawer({
   return (
     <Root open={isOpen} onOpenChange={onOpenChange} direction="right" modal>
       <DrawerContent
-        className="z-70 flex h-full w-[70vw]! max-w-[70vw]! flex-col"
+        className="z-70 flex h-full w-[90vw]! max-w-[90vw]! flex-col"
         overlayClassName="z-[65]"
       >
         <DrawerHeader className="sr-only">
@@ -249,7 +245,9 @@ export function VariableDrawer({
                   <Button
                     type="button"
                     variant="destructive"
-                    onClick={() => setIsDeleteOpen(true)}
+                    onClick={() => {
+                      if (variable) onRequestDelete?.(variable)
+                    }}
                     disabled={isSaving}
                   >
                     <Trash2Icon className="h-4 w-4" />
@@ -283,26 +281,6 @@ export function VariableDrawer({
           </div>
         </div>
       </DrawerContent>
-
-      {variable ? (
-        <DeleteConfirmDialog
-          open={isDeleteOpen}
-          onOpenChange={setIsDeleteOpen}
-          title="Delete variable"
-          description={`Delete "${variable.name}"? References to this variable in other steps will break.`}
-          onConfirm={async () => {
-            await deleteWorkflowVariable(workflowId, variable.id)
-          }}
-          onDeleted={() => {
-            onDeleted?.(variable.id)
-            setIsDeleteOpen(false)
-            handleClose()
-          }}
-          errorMessage="Failed to delete variable. Please try again."
-          className="z-[80]"
-          overlayClassName="z-[75]"
-        />
-      ) : null}
     </Root>
   )
 }

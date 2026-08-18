@@ -22,6 +22,7 @@ interface DeleteConfirmDialogProps {
   errorMessage?: string
   className?: string
   overlayClassName?: string
+  onBlocked?: (error: unknown) => boolean
 }
 
 export function DeleteConfirmDialog({
@@ -31,13 +32,22 @@ export function DeleteConfirmDialog({
   description,
   onConfirm,
   onDeleted,
+  errorMessage = "Something went wrong. Please try again.",
   className,
   overlayClassName,
+  onBlocked,
 }: DeleteConfirmDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setError(null)
+    onOpenChange(nextOpen)
+  }
 
   const handleDelete = async () => {
     setIsLoading(true)
+    setError(null)
 
     const [result] = await Promise.allSettled([
       onConfirm(),
@@ -48,21 +58,36 @@ export function DeleteConfirmDialog({
 
     if (result.status === "fulfilled") {
       onDeleted()
-      onOpenChange(false)
+      handleOpenChange(false)
+      return
     }
+
+    if (onBlocked?.(result.reason)) {
+      handleOpenChange(false)
+      return
+    }
+
+    setError(result.reason)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className={className} overlayClassName={overlayClassName}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {error ? (
+          <p className="text-sm text-destructive">
+            {error instanceof Error && error.message
+              ? error.message
+              : errorMessage}
+          </p>
+        ) : null}
         <DialogFooter>
           <Button
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={isLoading}
           >
             Cancel

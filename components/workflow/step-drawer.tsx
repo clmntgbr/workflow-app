@@ -174,6 +174,7 @@ interface StepDrawerProps {
   onSave: (input: UpdateWorkflowStepInput) => Promise<void>
   onDelete?: (stepId: string) => Promise<void>
   onDeleted?: () => void
+  onRequestDeleteVariable?: (variable: WorkflowVariable) => void
 }
 
 export function StepDrawer({
@@ -186,6 +187,7 @@ export function StepDrawer({
   onSave,
   onDelete,
   onDeleted,
+  onRequestDeleteVariable,
 }: StepDrawerProps) {
   const { endpoints } = useEndpoint()
   const [isSaving, setIsSaving] = useState(false)
@@ -269,7 +271,7 @@ export function StepDrawer({
   return (
     <>
       <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right">
-        <DrawerContent className="flex h-full w-[80vw]! max-w-[80vw]! flex-col">
+        <DrawerContent className="z-90 flex h-full w-[80vw]! max-w-[80vw]! flex-col" overlayClassName="z-85">
           <DrawerHeader className="sr-only">
             <DrawerTitle>Edit Step</DrawerTitle>
           </DrawerHeader>
@@ -579,6 +581,7 @@ export function StepDrawer({
                         enabled={!step.id.startsWith("temp-")}
                         variables={variables}
                         onVariablesChange={onVariablesChange}
+                        onRequestDelete={onRequestDeleteVariable}
                       />
                     ) : null}
                   </div>

@@ -25,3 +25,21 @@ export interface UpdateWorkflowVariableInput {
   description?: string
   path: string
 }
+
+export interface VariableUsageStep {
+  id: string
+  endpointId: string
+  name: string
+  url: string
+  method: string
+}
+
+export class VariableInUseError extends Error {
+  readonly steps: VariableUsageStep[]
+
+  constructor(message: string, steps: VariableUsageStep[]) {
+    super(message)
+    this.name = "VariableInUseError"
+    this.steps = steps
+  }
+}

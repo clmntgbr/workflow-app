@@ -1,5 +1,6 @@
 "use client"
 
+import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { EndpointDrawer } from "@/components/endpoint/endpoint-drawer"
 import { Button } from "@/components/ui/button"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
@@ -9,6 +10,7 @@ import { SidebarEdgeHandle } from "@/components/workflow/sidebar-edge-handle"
 import { StepDrawer } from "@/components/workflow/step-drawer"
 import { CanvasStep } from "@/components/workflow/step-node"
 import { SwitchOrganizationDialog } from "@/components/workflow/switch-organization-dialog"
+import { VariableUsageDrawer } from "@/components/workflow/variable-usage-drawer"
 import {
   EndpointDragPayload,
   WorkflowCanvas,
@@ -44,8 +46,12 @@ import {
   Workflow,
   WorkflowConnection,
 } from "@/lib/workflow/types"
-import { listWorkflowVariables } from "@/lib/workflow/variable/api"
-import { WorkflowVariable } from "@/lib/workflow/variable/types"
+import { deleteWorkflowVariable, listWorkflowVariables } from "@/lib/workflow/variable/api"
+import {
+  VariableInUseError,
+  VariableUsageStep,
+  WorkflowVariable,
+} from "@/lib/workflow/variable/types"
 import { subscribeWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
 import { subscribeWorkflowDetailRefetch } from "@/lib/workflow/workflow-realtime"
 import {
@@ -265,6 +271,11 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [steps, setSteps] = useState<CanvasStep[]>([])
   const [connections, setConnections] = useState<WorkflowConnection[]>([])
   const [variables, setVariables] = useState<WorkflowVariable[]>([])
+  const [variableToDelete, setVariableToDelete] =
+    useState<WorkflowVariable | null>(null)
+  const [isDeleteVariableOpen, setIsDeleteVariableOpen] = useState(false)
+  const [isUsageDrawerOpen, setIsUsageDrawerOpen] = useState(false)
+  const [usageSteps, setUsageSteps] = useState<VariableUsageStep[]>([])
   const [activeTab, setActiveTab] = useState<WorkflowPageTab>("canvas")
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
 
@@ -871,6 +882,10 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         }}
         onSave={handleUpdateStep}
         onDelete={handleDeleteStep}
+        onRequestDeleteVariable={(variable) => {
+          setVariableToDelete(variable)
+          setIsDeleteVariableOpen(true)
+        }}
       />
 
       <EndpointDrawer
@@ -902,6 +917,52 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         isOpen={isVariablesDrawerOpen}
         onOpenChange={setIsVariablesDrawerOpen}
         onVariablesChange={setVariables}
+        onRequestDelete={(variable) => {
+          setVariableToDelete(variable)
+          setIsDeleteVariableOpen(true)
+        }}
+      />
+
+      <DeleteConfirmDialog
+        open={isDeleteVariableOpen}
+        onOpenChange={setIsDeleteVariableOpen}
+        title="Delete variable"
+        description={`Delete "${variableToDelete?.name ?? "this variable"}"? References to this variable in other steps will break.`}
+        onConfirm={async () => {
+          if (!variableToDelete) return
+          await deleteWorkflowVariable(workflowId, variableToDelete.id)
+        }}
+        onDeleted={() => {
+          if (!variableToDelete) return
+          setVariables((current) =>
+            current.filter((variable) => variable.id !== variableToDelete.id)
+          )
+        }}
+        onBlocked={(error) => {
+          if (!(error instanceof VariableInUseError)) return false
+          setUsageSteps(error.steps)
+          setIsUsageDrawerOpen(true)
+          return true
+        }}
+        className="z-80"
+        overlayClassName="z-75"
+      />
+
+      <VariableUsageDrawer
+        workflowId={workflowId}
+        variable={variableToDelete}
+        steps={usageSteps}
+        isOpen={isUsageDrawerOpen}
+        onOpenChange={setIsUsageDrawerOpen}
+        onDeleted={(variableId) => {
+          setVariables((current) =>
+            current.filter((variable) => variable.id !== variableId)
+          )
+        }}
+        onOpenStep={(usageStep) => {
+          const canvasStep = steps.find((step) => step.id === usageStep.id)
+          if (canvasStep) handleEditStep(canvasStep)
+        }}
       />
     </div>
   )

@@ -1,12 +1,10 @@
 "use client"
 
-import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { VariableDrawer } from "@/components/workflow/variable-drawer"
-import { deleteWorkflowVariable } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { Braces, PlusIcon, Trash2Icon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Badge } from "../ui/badge"
 
 interface StepVariablesSectionProps {
@@ -15,6 +13,7 @@ interface StepVariablesSectionProps {
   enabled: boolean
   variables: WorkflowVariable[]
   onVariablesChange: (variables: WorkflowVariable[]) => void
+  onRequestDelete?: (variable: WorkflowVariable) => void
 }
 
 export function StepVariablesSection({
@@ -23,6 +22,7 @@ export function StepVariablesSection({
   enabled,
   variables,
   onVariablesChange,
+  onRequestDelete,
 }: StepVariablesSectionProps) {
   const stepVariables = variables.filter(
     (variable) => variable.stepId === stepId
@@ -30,16 +30,6 @@ export function StepVariablesSection({
   const [isVariableDrawerOpen, setIsVariableDrawerOpen] = useState(false)
   const [editingVariable, setEditingVariable] =
     useState<WorkflowVariable | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<WorkflowVariable | null>(
-    null
-  )
-
-  useEffect(() => {
-    if (!enabled) {
-      setIsVariableDrawerOpen(false)
-      setEditingVariable(null)
-    }
-  }, [enabled, stepId])
 
   const openCreate = () => {
     setEditingVariable(null)
@@ -69,6 +59,12 @@ export function StepVariablesSection({
       </p>
     )
   }
+
+  const activeEditing =
+    editingVariable &&
+    variables.some((variable) => variable.id === editingVariable.id)
+      ? editingVariable
+      : null
 
   return (
     <div className="space-y-4">
@@ -106,7 +102,7 @@ export function StepVariablesSection({
                   size="icon"
                   className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   aria-label={`Delete ${variable.name}`}
-                  onClick={() => setDeleteTarget(variable)}
+                  onClick={() => onRequestDelete?.(variable)}
                 >
                   <Trash2Icon className="size-4" />
                 </Button>
@@ -124,45 +120,18 @@ export function StepVariablesSection({
       <VariableDrawer
         workflowId={workflowId}
         stepId={stepId}
-        variable={editingVariable}
-        isOpen={isVariableDrawerOpen}
+        variable={activeEditing}
+        isOpen={
+          isVariableDrawerOpen &&
+          (editingVariable === null || Boolean(activeEditing))
+        }
         onOpenChange={(open) => {
           setIsVariableDrawerOpen(open)
           if (!open) setEditingVariable(null)
         }}
         onSaved={handleSaved}
-        onDeleted={(variableId) => {
-          onVariablesChange(
-            variables.filter((variable) => variable.id !== variableId)
-          )
-          setEditingVariable(null)
-        }}
+        onRequestDelete={onRequestDelete}
       />
-
-      {deleteTarget ? (
-        <DeleteConfirmDialog
-          open={Boolean(deleteTarget)}
-          onOpenChange={(open) => {
-            if (!open) setDeleteTarget(null)
-          }}
-          title="Delete variable"
-          description={`Delete "${deleteTarget.name}"? References to this variable in other steps will break.`}
-          onConfirm={async () => {
-            await deleteWorkflowVariable(workflowId, deleteTarget.id)
-          }}
-          onDeleted={() => {
-            onVariablesChange(
-              variables.filter((variable) => variable.id !== deleteTarget.id)
-            )
-            if (editingVariable?.id === deleteTarget.id) {
-              setIsVariableDrawerOpen(false)
-              setEditingVariable(null)
-            }
-            setDeleteTarget(null)
-          }}
-          errorMessage="Failed to delete variable. Please try again."
-        />
-      ) : null}
     </div>
   )
 }

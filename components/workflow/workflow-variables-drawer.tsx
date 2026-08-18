@@ -1,6 +1,5 @@
 "use client"
 
-import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { EmptyComponent } from "@/components/empty"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { CanvasStep } from "@/components/workflow/step-node"
 import { VariableDrawer } from "@/components/workflow/variable-drawer"
-import { deleteWorkflowVariable } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { Braces, PlusIcon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
@@ -30,6 +28,7 @@ interface WorkflowVariablesDrawerProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   onVariablesChange: (variables: WorkflowVariable[]) => void
+  onRequestDelete?: (variable: WorkflowVariable) => void
 }
 
 export function WorkflowVariablesDrawer({
@@ -39,14 +38,12 @@ export function WorkflowVariablesDrawer({
   isOpen,
   onOpenChange,
   onVariablesChange,
+  onRequestDelete,
 }: WorkflowVariablesDrawerProps) {
   const [isVariableFormOpen, setIsVariableFormOpen] = useState(false)
   const [editingVariable, setEditingVariable] =
     useState<WorkflowVariable | null>(null)
   const [createStepId, setCreateStepId] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<WorkflowVariable | null>(
-    null
-  )
 
   const formStepId =
     editingVariable?.stepId ?? createStepId ?? steps[0]?.id ?? ""
@@ -74,21 +71,16 @@ export function WorkflowVariablesDrawer({
     )
   }
 
-  const handleDeleted = (variableId: string) => {
-    onVariablesChange(
-      variables.filter((variable) => variable.id !== variableId)
-    )
-    if (editingVariable?.id === variableId) {
-      setIsVariableFormOpen(false)
-      setEditingVariable(null)
-      setCreateStepId(null)
-    }
-  }
+  const activeEditing =
+    editingVariable &&
+    variables.some((variable) => variable.id === editingVariable.id)
+      ? editingVariable
+      : null
 
   return (
     <>
       <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right">
-        <DrawerContent className="flex h-full w-[70vw]! max-w-[70vw]! flex-col">
+        <DrawerContent className="flex h-full w-[40vw]! max-w-[40vw]! flex-col">
           <DrawerHeader className="sr-only">
             <DrawerTitle>Workflow Variables</DrawerTitle>
           </DrawerHeader>
@@ -184,7 +176,7 @@ export function WorkflowVariablesDrawer({
                         size="icon"
                         className="shrink-0 self-center text-destructive hover:bg-destructive/10 hover:text-destructive"
                         aria-label={`Delete ${variable.name}`}
-                        onClick={() => setDeleteTarget(variable)}
+                        onClick={() => onRequestDelete?.(variable)}
                       >
                         <Trash2Icon className="size-4" />
                       </Button>
@@ -199,8 +191,11 @@ export function WorkflowVariablesDrawer({
         <VariableDrawer
           workflowId={workflowId}
           stepId={formStepId}
-          variable={editingVariable}
-          isOpen={isVariableFormOpen}
+          variable={activeEditing}
+          isOpen={
+            isVariableFormOpen &&
+            (editingVariable === null || Boolean(activeEditing))
+          }
           nested
           onOpenChange={(open) => {
             setIsVariableFormOpen(open)
@@ -210,30 +205,9 @@ export function WorkflowVariablesDrawer({
             }
           }}
           onSaved={handleSaved}
-          onDeleted={handleDeleted}
+          onRequestDelete={onRequestDelete}
         />
       </Drawer>
-
-      {deleteTarget ? (
-        <DeleteConfirmDialog
-          open={Boolean(deleteTarget)}
-          onOpenChange={(open) => {
-            if (!open) setDeleteTarget(null)
-          }}
-          title="Delete variable"
-          description={`Delete "${deleteTarget.name}"? References to this variable in other steps will break.`}
-          onConfirm={async () => {
-            await deleteWorkflowVariable(workflowId, deleteTarget.id)
-          }}
-          onDeleted={() => {
-            handleDeleted(deleteTarget.id)
-            setDeleteTarget(null)
-          }}
-          errorMessage="Failed to delete variable. Please try again."
-          className="z-[80]"
-          overlayClassName="z-[75]"
-        />
-      ) : null}
     </>
   )
 }
