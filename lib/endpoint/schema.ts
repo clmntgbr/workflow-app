@@ -1,4 +1,5 @@
 import * as z from "zod"
+import { OPENAPI_MAX_FILE_BYTES } from "./openapi"
 import { keyValuePairsToRecord, secondsToMilliseconds } from "./utils"
 
 const keyValuePairSchema = z.object({
@@ -22,15 +23,7 @@ const endpointBaseSchema = z.object({
     .max(255, "Name must be at most 255 characters"),
   description: z.string().max(2000).optional(),
   url: z.string().url("URL must be valid").max(2048),
-  method: z.enum([
-    "GET",
-    "POST",
-    "PUT",
-    "PATCH",
-    "DELETE",
-    "HEAD",
-    "OPTIONS",
-  ]),
+  method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]),
   body: z
     .string()
     .min(1, "Body is required")
@@ -61,9 +54,29 @@ export const endpointFormSchema = endpointBaseSchema.extend({
   status: z.enum(["active", "inactive"]).optional(),
 })
 
+export const importEndpointSchema = z.object({
+  file: z
+    .custom<File>((value) => value instanceof File, {
+      message: "A JSON file is required",
+    })
+    .refine((file) => file.size <= OPENAPI_MAX_FILE_BYTES, {
+      message: "File must be at most 8 MB",
+    }),
+  baseURL: z.string().url("URL must be valid").max(2048),
+  status: z.enum(["active", "inactive"]),
+  body: endpointBaseSchema.shape.body,
+  headers: endpointBaseSchema.shape.headers,
+  query: endpointBaseSchema.shape.query,
+  timeout: endpointBaseSchema.shape.timeout,
+  retryOnFailure: endpointBaseSchema.shape.retryOnFailure,
+  retryCount: endpointBaseSchema.shape.retryCount,
+  retryDelay: endpointBaseSchema.shape.retryDelay,
+})
+
 export type CreateEndpointFormValues = z.infer<typeof createEndpointSchema>
 export type UpdateEndpointFormValues = z.infer<typeof updateEndpointSchema>
 export type EndpointFormValues = z.infer<typeof endpointFormSchema>
+export type ImportEndpointFormValues = z.infer<typeof importEndpointSchema>
 
 export function toCreateEndpointPayload(values: CreateEndpointFormValues) {
   return {
@@ -85,5 +98,19 @@ export function toUpdateEndpointPayload(values: UpdateEndpointFormValues) {
   return {
     ...toCreateEndpointPayload(values),
     status: values.status,
+  }
+}
+
+export function toImportEndpointsPayload(values: ImportEndpointFormValues) {
+  return {
+    baseURL: values.baseURL,
+    status: values.status,
+    headers: keyValuePairsToRecord(values.headers),
+    query: keyValuePairsToRecord(values.query),
+    body: JSON.parse(values.body),
+    timeout: secondsToMilliseconds(values.timeout),
+    retryOnFailure: values.retryOnFailure,
+    retryCount: values.retryCount,
+    retryDelay: secondsToMilliseconds(values.retryDelay),
   }
 }

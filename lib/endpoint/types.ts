@@ -59,6 +59,18 @@ export interface UpdateEndpointInput {
   status: string
 }
 
+export interface ImportEndpointsInput {
+  baseURL: string
+  status: "active" | "inactive"
+  headers?: Record<string, string>
+  query?: Record<string, string>
+  body?: unknown
+  timeout?: number
+  retryOnFailure?: boolean
+  retryCount?: number
+  retryDelay?: number
+}
+
 export interface EndpointState {
   endpoints: Paginate<Endpoint>
   isLoading: boolean

@@ -2,6 +2,7 @@ import { Paginate, PaginateQuery } from "@/lib/paginate"
 import {
   CreateEndpointInput,
   Endpoint,
+  ImportEndpointsInput,
   UpdateEndpointInput,
 } from "./types"
 
@@ -99,4 +100,52 @@ export const deleteEndpoint = async (id: string): Promise<void> => {
   if (!response.ok) {
     throw new Error("Failed to delete endpoint")
   }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+function parseImportedEndpoints(data: unknown): Endpoint[] {
+  if (Array.isArray(data)) return data as Endpoint[]
+
+  const record = asRecord(data)
+  if (Array.isArray(record?.members)) return record.members as Endpoint[]
+  if (Array.isArray(record?.data)) return record.data as Endpoint[]
+
+  return []
+}
+
+async function readImportErrorMessage(response: Response): Promise<string> {
+  try {
+    const data: unknown = await response.json()
+    const record = asRecord(data)
+    const nested = asRecord(record?.data)
+    const message = nested?.message ?? record?.message
+    if (typeof message === "string" && message.trim()) return message
+  } catch {
+    // Ignore unreadable error bodies.
+  }
+  return "Failed to import endpoints"
+}
+
+export const importEndpoints = async (
+  file: File,
+  payload: ImportEndpointsInput
+): Promise<Endpoint[]> => {
+  const formData = new FormData()
+  formData.append("file", file)
+  formData.append("payload", JSON.stringify(payload))
+
+  const response = await fetch("/api/endpoints/import", {
+    method: "POST",
+    body: formData,
+  })
+
+  if (!response.ok) {
+    throw new Error(await readImportErrorMessage(response))
+  }
+
+  return parseImportedEndpoints(await response.json())
 }

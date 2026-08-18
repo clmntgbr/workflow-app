@@ -1,12 +1,13 @@
 "use client"
 
 import { EndpointDrawer } from "@/components/endpoint/endpoint-drawer"
+import { EndpointImportDrawer } from "@/components/endpoint/endpoint-import-drawer"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useOrganization } from "@/lib/organization/context"
 import { useEndpoint } from "@/lib/endpoint/context"
 import { Endpoint } from "@/lib/endpoint/types"
-import { PlusIcon, SettingsIcon } from "lucide-react"
+import { PlusIcon, SettingsIcon, UploadIcon } from "lucide-react"
 import { useState } from "react"
 
 export function EndpointList() {
@@ -16,13 +17,14 @@ export function EndpointList() {
     null
   )
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("edit")
 
   const selectedEndpoint =
     selectedEndpointId != null
-      ? endpoints.members.find(
+      ? (endpoints.members.find(
           (endpoint) => endpoint.id === selectedEndpointId
-        ) ?? null
+        ) ?? null)
       : null
 
   const openCreate = () => {
@@ -47,7 +49,7 @@ export function EndpointList() {
   }
 
   return (
-    <div className="space-y-6 border-t px-6 pb-6 pt-10">
+    <div className="space-y-6 border-t px-6 pt-10 pb-6">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold">Endpoints</h2>
@@ -55,10 +57,16 @@ export function EndpointList() {
             HTTP endpoints for {activeOrganization.name}
           </p>
         </div>
-        <Button onClick={openCreate}>
-          <PlusIcon className="size-4" />
-          New endpoint
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+            <UploadIcon className="size-4" />
+            Import
+          </Button>
+          <Button onClick={openCreate}>
+            <PlusIcon className="size-4" />
+            New endpoint
+          </Button>
+        </div>
       </div>
 
       {isLoading && endpoints.members.length === 0 ? (
@@ -77,7 +85,7 @@ export function EndpointList() {
               <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-4 py-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium uppercase text-muted-foreground">
+                    <span className="shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium text-muted-foreground uppercase">
                       {endpoint.method}
                     </span>
                     <p className="truncate font-medium">{endpoint.name}</p>
@@ -86,7 +94,7 @@ export function EndpointList() {
                     {endpoint.url}
                   </p>
                 </div>
-                <span className="shrink-0 rounded-md border px-2 py-0.5 text-xs capitalize text-muted-foreground">
+                <span className="shrink-0 rounded-md border px-2 py-0.5 text-xs text-muted-foreground capitalize">
                   {endpoint.status}
                 </span>
               </div>
@@ -117,6 +125,11 @@ export function EndpointList() {
           if (drawerMode === "edit") setSelectedEndpointId(endpoint.id)
         }}
         onDeleted={closeDrawer}
+      />
+
+      <EndpointImportDrawer
+        isOpen={isImportOpen}
+        onOpenChange={setIsImportOpen}
       />
     </div>
   )
