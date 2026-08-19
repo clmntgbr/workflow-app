@@ -13,6 +13,7 @@ export type RealtimeVerb =
   | "created"
   | "updated"
   | "deleted"
+  | "imported"
   | "active_organization_changed"
   | "member_added"
   | "member_removed"
@@ -53,6 +54,7 @@ const VERBS = new Set<string>([
   "created",
   "updated",
   "deleted",
+  "imported",
   "active_organization_changed",
   "member_added",
   "member_removed",
@@ -134,6 +136,7 @@ export function shouldRefetchAllEndpoints(event: UserStreamEvent): boolean {
   return (
     eventTypeEquals(event, "endpoint.created") ||
     eventTypeEquals(event, "endpoint.deleted") ||
+    eventTypeEquals(event, "endpoint.imported") ||
     eventTypeEquals(event, "user.active_organization_changed") ||
     eventTypeEquals(event, "organization.created")
   )
