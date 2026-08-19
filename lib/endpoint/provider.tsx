@@ -22,6 +22,7 @@ export function EndpointProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(endpointReducer, initialEndpointState)
   const { activeOrganization } = useOrganization()
   const bootstrappedOrgIdRef = useRef<string | null>(null)
+  const lastQueryRef = useRef<PaginateQuery | undefined>(undefined)
 
   const fetchEndpoints = useCallback(
     async (query?: PaginateQuery) => {
@@ -33,9 +34,15 @@ export function EndpointProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
+      if (query !== undefined) {
+        lastQueryRef.current = query
+      }
+
+      const effectiveQuery = query ?? lastQueryRef.current
+
       try {
         dispatch({ type: "GET_ENDPOINTS_LOADING", payload: true })
-        const endpoints = await listEndpoints(query)
+        const endpoints = await listEndpoints(effectiveQuery)
         dispatch({ type: "GET_ENDPOINTS", payload: endpoints })
       } catch {
         dispatch({
@@ -84,6 +91,7 @@ export function EndpointProvider({ children }: { children: React.ReactNode }) {
 
     if (!orgId) {
       bootstrappedOrgIdRef.current = null
+      lastQueryRef.current = undefined
       dispatch({ type: "GET_ENDPOINTS", payload: initPaginate() })
       return
     }
@@ -99,6 +107,7 @@ export function EndpointProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Org switched: clear stale list; Centrifugo will refill.
+    lastQueryRef.current = undefined
     dispatch({ type: "GET_ENDPOINTS", payload: initPaginate() })
   }, [activeOrganization?.id, fetchEndpoints])
 

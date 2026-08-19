@@ -14,6 +14,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { EndpointDragPayload } from "@/components/workflow/workflow-canvas"
 import { listEndpoints } from "@/lib/endpoint/api"
+import { subscribeEndpointsRefetch } from "@/lib/endpoint/endpoint-realtime"
 import { Endpoint, EndpointMethod } from "@/lib/endpoint/types"
 import { cn } from "@/lib/utils"
 import { SearchIcon, XIcon } from "lucide-react"
@@ -55,6 +56,13 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
   const [selectedMethods, setSelectedMethods] = useState<EndpointMethod[]>([])
   const [members, setMembers] = useState<Endpoint[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [refreshTick, setRefreshTick] = useState(0)
+
+  useEffect(() => {
+    return subscribeEndpointsRefetch(() => {
+      setRefreshTick((value) => value + 1)
+    })
+  }, [])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -96,7 +104,7 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
     return () => {
       cancelled = true
     }
-  }, [open, debouncedSearch, selectedMethods])
+  }, [open, debouncedSearch, selectedMethods, refreshTick])
 
   const toggleMethod = (method: EndpointMethod) => {
     setSelectedMethods((current) =>

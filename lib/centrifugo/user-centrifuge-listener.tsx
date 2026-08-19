@@ -1,6 +1,7 @@
 "use client"
 
 import { useEndpoint } from "@/lib/endpoint/context"
+import { notifyEndpointsRefetch } from "@/lib/endpoint/endpoint-realtime"
 import { useOrganization } from "@/lib/organization/context"
 import { useUser } from "@/lib/user/context"
 import { useWorkflow } from "@/lib/workflow/context"
@@ -259,6 +260,7 @@ export function UserCentrifugeListener() {
 
       if (shouldRefetchAllEndpoints(data)) {
         debouncedRefreshEndpoints()
+        notifyEndpointsRefetch()
       }
 
       if (shouldRefetchSingleEndpoint(data)) {
@@ -271,6 +273,7 @@ export function UserCentrifugeListener() {
         } else {
           debouncedRefreshEndpoints()
         }
+        notifyEndpointsRefetch()
       }
 
       if (shouldRefetchSteps(data)) {
