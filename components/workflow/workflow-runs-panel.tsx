@@ -292,15 +292,15 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-4">
+    <div className="flex flex-col">
+      <div className="space-y-3 py-4">
         {runs.map((run) => (
           <WorkflowRunCard key={run.id} run={run} />
         ))}
       </div>
 
       {totalPages > 1 ? (
-        <div className="flex shrink-0 items-center justify-between border-t px-4 py-2">
+        <div className="flex items-center justify-between border-t px-4 py-2">
           <p className="text-xs text-muted-foreground">
             Page {page} of {totalPages}
           </p>

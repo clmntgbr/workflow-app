@@ -3,8 +3,8 @@
 import { FieldDescription } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { listStepVariablePaths } from "@/lib/workflow/variable/api"
 import { cn } from "@/lib/utils"
+import { listStepVariablePaths } from "@/lib/workflow/variable/api"
 import { Code2, Loader2Icon } from "lucide-react"
 import { useEffect, useId, useRef, useState } from "react"
 
@@ -203,7 +203,7 @@ export function VariablePathField({
               if (event.key === "Escape") setOpen(false)
             }}
             className="h-9 border-0 bg-transparent pr-14 shadow-none focus-visible:border-transparent focus-visible:ring-0"
-            placeholder="$."
+            placeholder="$"
             autoComplete="off"
           />
         </div>
@@ -229,7 +229,7 @@ export function VariablePathField({
                     <button
                       key={path}
                       type="button"
-                      className="relative flex w-full min-h-7 cursor-default items-center gap-4 rounded-md p-2 text-xs outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+                      className="relative flex min-h-7 w-full cursor-default items-center gap-4 rounded-md p-2 text-xs outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
                       onMouseDown={(event) => {
                         event.preventDefault()
                         handleSelect(path)

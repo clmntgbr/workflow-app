@@ -12,12 +12,12 @@ import {
 } from "@/components/ui/drawer"
 import { Field } from "@/components/ui/field"
 import { VariablePathField } from "@/components/workflow/variable-path-field"
+import { cn } from "@/lib/utils"
 import {
   createWorkflowVariable,
   updateWorkflowVariable,
 } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
-import { cn } from "@/lib/utils"
 import { Loader2Icon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
 
@@ -43,7 +43,7 @@ const emptyForm: VariableFormState = {
   name: "",
   key: "",
   description: "",
-  path: "$.",
+  path: "$",
 }
 
 /** Slug-like keys: lowercase letters, digits, `_` and `-` only. */

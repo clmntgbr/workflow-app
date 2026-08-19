@@ -730,7 +730,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="relative flex shrink-0 items-center justify-between gap-4 border-b px-4 py-2">
+      <div className="relative flex shrink-0 items-center justify-between gap-4 border-b bg-background px-4 py-2">
         <div className="flex min-w-0 items-center gap-3">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/">
@@ -846,13 +846,13 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-hidden bg-[#f8f9fb]",
+          "min-h-0 flex-1 overflow-auto bg-[#f8f9fb]",
           tab !== "analytics" && "hidden"
         )}
       >
-        <div className="container mx-auto h-full">
-          <div className="mx-auto flex h-full min-h-0 flex-col">
-            <div className="shrink-0 space-y-4 py-10">
+        <div className="container mx-auto">
+          <div className="mx-auto flex flex-col gap-6 pt-10">
+            <div className="shrink-0 pb-4">
               <Title
                 icon={<HistoryIcon className="size-5" />}
                 title="Analytics"
@@ -860,9 +860,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
               />
             </div>
             <WorkflowAnalytics workflowId={workflowId} />
-            <div className="min-h-0 flex-1 overflow-hidden">
-              <WorkflowRunsPanel workflowId={workflowId} />
-            </div>
+            <WorkflowRunsPanel workflowId={workflowId} />
           </div>
         </div>
       </div>
