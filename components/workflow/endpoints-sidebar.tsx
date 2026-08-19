@@ -58,6 +58,14 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
   const [refreshTick, setRefreshTick] = useState(0)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
+  const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+
+  const handleSelectEndpoint = (endpoint: Endpoint) => {
+    onSelectEndpoint?.(endpoint)
+    setSelectedEndpoint(endpoint)
+    setIsEditOpen(true)
+  }
 
   useEffect(() => {
     return subscribeEndpointsRefetch(() => {
@@ -217,11 +225,11 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
                             "hover:shadow-sm active:cursor-grabbing"
                           )}
                           draggable
-                          onClick={() => onSelectEndpoint?.(endpoint)}
+                          onClick={() => handleSelectEndpoint(endpoint)}
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
                               event.preventDefault()
-                              onSelectEndpoint?.(endpoint)
+                              handleSelectEndpoint(endpoint)
                             }
                           }}
                           onDragStart={(event) =>
@@ -245,6 +253,14 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
       </SidebarContent>
 
       <EndpointDrawer isOpen={isCreateOpen} onOpenChange={setIsCreateOpen} />
+      <EndpointDrawer
+        endpoint={selectedEndpoint}
+        isOpen={isEditOpen}
+        onOpenChange={(open) => {
+          setIsEditOpen(open)
+          if (!open) setSelectedEndpoint(null)
+        }}
+      />
       <EndpointImportDrawer
         isOpen={isImportOpen}
         onOpenChange={setIsImportOpen}
