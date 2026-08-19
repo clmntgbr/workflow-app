@@ -2,8 +2,8 @@
 
 import CustomInput from "@/components/custom-input"
 import CustomSwitch from "@/components/custom-switch"
-import CustomTextarea from "@/components/custom-textarea"
 import { KeyValueEditor } from "@/components/endpoint/key-value-editor"
+import JsonInput from "@/components/json-input"
 import { Button } from "@/components/ui/button"
 import {
   Drawer,
@@ -320,19 +320,20 @@ export function EndpointImportDrawer({
                       name="body"
                       control={control}
                       render={({ field }) => (
-                        <CustomTextarea
-                          id="endpoint-import-body"
-                          isRequired
-                          label="Body (JSON)"
-                          hasError={!!errors.body}
-                          errorMessage={errors.body?.message}
-                          description="Raw JSON request body"
-                          value={field.value ?? "{}"}
-                          onChange={field.onChange}
-                          textareaClassName="min-h-40 text-xs"
+                        <JsonInput
+                          data={field.value ?? "{}"}
+                          title="Body"
+                          editable
+                          onTextChange={field.onChange}
+                          editorClassName="min-h-40"
                         />
                       )}
                     />
+                    {errors.body ? (
+                      <p className="text-xs text-destructive">
+                        {errors.body.message}
+                      </p>
+                    ) : null}
                   </Field>
                 </div>
               </div>

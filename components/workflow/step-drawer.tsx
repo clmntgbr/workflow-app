@@ -4,6 +4,7 @@ import CustomInput from "@/components/custom-input"
 import CustomSwitch from "@/components/custom-switch"
 import CustomTextarea from "@/components/custom-textarea"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import JsonInput from "@/components/json-input"
 import { RadioDropdown } from "@/components/radio-dropdown"
 import { Button } from "@/components/ui/button"
 import {
@@ -20,7 +21,11 @@ import { CanvasStep } from "@/components/workflow/step-node"
 import { StepVariablesSection } from "@/components/workflow/step-variables-section"
 import { VariableAutocompleteField } from "@/components/workflow/variable-autocomplete-field"
 import { useEndpoint } from "@/lib/endpoint/context"
-import { KeyValuePair, millisecondsToSeconds, recordToKeyValuePairs } from "@/lib/endpoint/utils"
+import {
+  KeyValuePair,
+  millisecondsToSeconds,
+  recordToKeyValuePairs,
+} from "@/lib/endpoint/utils"
 import { cn } from "@/lib/utils"
 import {
   stepFormSchema,
@@ -271,7 +276,10 @@ export function StepDrawer({
   return (
     <>
       <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right">
-        <DrawerContent className="z-90 flex h-full w-[80vw]! max-w-[80vw]! flex-col" overlayClassName="z-85">
+        <DrawerContent
+          className="z-90 flex h-full w-[80vw]! max-w-[80vw]! flex-col"
+          overlayClassName="z-85"
+        >
           <DrawerHeader className="sr-only">
             <DrawerTitle>Edit Step</DrawerTitle>
           </DrawerHeader>
@@ -436,8 +444,8 @@ export function StepDrawer({
                     <Field>
                       <div className="space-y-2">
                         <Label htmlFor="step-body">
-                          Body (JSON)
-                          <span className="ml-1 text-destructive">*</span>
+                          Body
+                          <span className="text-destructive">*</span>
                         </Label>
                         <p className="text-xs text-muted-foreground">
                           Raw JSON request body.
@@ -447,12 +455,18 @@ export function StepDrawer({
                         name="body"
                         control={control}
                         render={({ field }) => (
-                          <VariableAutocompleteField
-                            value={field.value ?? "{}"}
-                            onChange={field.onChange}
-                            variables={availableVariables}
-                            isTextarea
-                            className="min-h-40 text-xs"
+                          <JsonInput
+                            data={field.value ?? "{}"}
+                            title="Body"
+                            editable
+                            onTextChange={field.onChange}
+                            variables={availableVariables.map((variable) => ({
+                              id: variable.id,
+                              key: variable.key,
+                              name: variable.name,
+                              description: variable.description,
+                            }))}
+                            editorClassName="min-h-40"
                           />
                         )}
                       />

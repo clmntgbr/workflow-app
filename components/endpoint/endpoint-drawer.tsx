@@ -4,6 +4,7 @@ import CustomInput from "@/components/custom-input"
 import CustomSwitch from "@/components/custom-switch"
 import CustomTextarea from "@/components/custom-textarea"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import JsonInput from "@/components/json-input"
 import { RadioDropdown } from "@/components/radio-dropdown"
 import { Button } from "@/components/ui/button"
 import {
@@ -420,19 +421,20 @@ export function EndpointDrawer({
                         name="body"
                         control={control}
                         render={({ field }) => (
-                          <CustomTextarea
-                            id="endpoint-body"
-                            isRequired
-                            label="Body (JSON)"
-                            hasError={!!errors.body}
-                            errorMessage={errors.body?.message}
-                            description="Raw JSON request body"
-                            value={field.value ?? "{}"}
-                            onChange={field.onChange}
-                            textareaClassName="min-h-40 text-xs"
+                          <JsonInput
+                            data={field.value ?? "{}"}
+                            title="Body"
+                            editable
+                            onTextChange={field.onChange}
+                            editorClassName="min-h-40"
                           />
                         )}
                       />
+                      {errors.body ? (
+                        <p className="text-xs text-destructive">
+                          {errors.body.message}
+                        </p>
+                      ) : null}
                     </Field>
                   </div>
                 </div>
