@@ -17,6 +17,7 @@ import {
   updateWorkflowVariable,
 } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
+import { cn } from "@/lib/utils"
 import { Loader2Icon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
 
@@ -145,8 +146,11 @@ export function VariableDrawer({
   return (
     <Root open={isOpen} onOpenChange={onOpenChange} direction="right" modal>
       <DrawerContent
-        className="z-70 flex h-full w-[90vw]! max-w-[90vw]! flex-col"
-        overlayClassName="z-[65]"
+        className={cn(
+          "flex h-full w-[90vw]! max-w-[90vw]! flex-col",
+          nested ? "z-95" : "z-70"
+        )}
+        overlayClassName={nested ? "z-90" : "z-[65]"}
       >
         <DrawerHeader className="sr-only">
           <DrawerTitle>{isEdit ? "Edit variable" : "New variable"}</DrawerTitle>

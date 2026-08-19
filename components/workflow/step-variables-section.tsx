@@ -121,6 +121,7 @@ export function StepVariablesSection({
         workflowId={workflowId}
         stepId={stepId}
         variable={activeEditing}
+        nested
         isOpen={
           isVariableDrawerOpen &&
           (editingVariable === null || Boolean(activeEditing))
