@@ -265,7 +265,7 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
 
   if (isLoading && runs.length === 0) {
     return (
-      <div className="space-y-3 p-4">
+      <div className="space-y-3 py-4">
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
@@ -275,7 +275,7 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
 
   if (error) {
     return (
-      <div className="p-6">
+      <div className="space-y-3 py-6">
         <p className="text-sm text-muted-foreground">{error}</p>
       </div>
     )
@@ -293,7 +293,7 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-4">
         {runs.map((run) => (
           <WorkflowRunCard key={run.id} run={run} />
         ))}

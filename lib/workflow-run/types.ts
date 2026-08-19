@@ -105,6 +105,21 @@ export type WorkflowRunAction =
   | { type: "GET_WORKFLOW_RUNS_LOADING"; payload: boolean }
   | { type: "UPSERT_WORKFLOW_RUN"; payload: WorkflowRun }
 
+export interface WorkflowRunAnalytics {
+  totalRuns: number
+  successRate: number
+  successCount: number
+  failureRate: number
+  failureCount: number
+  cancelledCount: number
+  runningCount: number
+  pendingCount: number
+  averageDurationMs: number
+  minDurationMs: number
+  maxDurationMs: number
+  lastRunAt: string | null
+}
+
 export const initialWorkflowRunState: WorkflowRunState = {
   workflowRuns: initPaginate<WorkflowRun>(),
   isLoading: false,

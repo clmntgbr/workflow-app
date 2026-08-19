@@ -2,6 +2,7 @@
 
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { EndpointDrawer } from "@/components/endpoint/endpoint-drawer"
+import { Title } from "@/components/title"
 import { Button } from "@/components/ui/button"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -11,6 +12,7 @@ import { StepDrawer } from "@/components/workflow/step-drawer"
 import { CanvasStep } from "@/components/workflow/step-node"
 import { SwitchOrganizationDialog } from "@/components/workflow/switch-organization-dialog"
 import { VariableUsageDrawer } from "@/components/workflow/variable-usage-drawer"
+import { WorkflowAnalytics } from "@/components/workflow/workflow-analytics"
 import {
   EndpointDragPayload,
   WorkflowCanvas,
@@ -46,7 +48,10 @@ import {
   Workflow,
   WorkflowConnection,
 } from "@/lib/workflow/types"
-import { deleteWorkflowVariable, listWorkflowVariables } from "@/lib/workflow/variable/api"
+import {
+  deleteWorkflowVariable,
+  listWorkflowVariables,
+} from "@/lib/workflow/variable/api"
 import {
   VariableInUseError,
   VariableUsageStep,
@@ -177,7 +182,8 @@ function mapItemToCanvasStep(
     typeof record.index === "string" || typeof record.index === "number"
       ? String(record.index)
       : undefined
-  const position = parsePosition(record.position) ??
+  const position =
+    parsePosition(record.position) ??
     (fallback ? { x: fallback.x, y: fallback.y } : null)
 
   if (!id || !endpointId || !position) return null
@@ -861,13 +867,27 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         </SidebarProvider>
       </div>
 
-      <div
-        className={cn(
-          "min-h-0 flex-1 overflow-hidden",
-          tab !== "analytics" && "hidden"
-        )}
-      >
-        <WorkflowRunsPanel workflowId={workflowId} />
+      <div className="h-full bg-[#f8f9fb]">
+        <div
+          className={cn(
+            "container mx-auto min-h-0 flex-1 overflow-hidden",
+            tab !== "analytics" && "hidden"
+          )}
+        >
+          <div className="mx-auto flex h-full min-h-0 flex-col">
+            <div className="shrink-0 space-y-4 py-10">
+              <Title
+                icon={<HistoryIcon className="size-5" />}
+                title="Analytics"
+                description="Workflow run history and performance"
+              />
+            </div>
+            <WorkflowAnalytics workflowId={workflowId} />
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <WorkflowRunsPanel workflowId={workflowId} />
+            </div>
+          </div>
+        </div>
       </div>
 
       <StepDrawer

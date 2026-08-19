@@ -1,5 +1,5 @@
 import { Paginate, PaginateQuery } from "@/lib/paginate"
-import { WorkflowRun } from "./types"
+import { WorkflowRun, WorkflowRunAnalytics } from "./types"
 
 function buildQueryString(query?: PaginateQuery): string {
   if (!query) return ""
@@ -49,6 +49,19 @@ export const listWorkflowRunsByWorkflow = async (
 
   return response.json()
 }
+
+export const getWorkflowRunAnalytics =
+  async (): Promise<WorkflowRunAnalytics> => {
+    const response = await fetch("/api/workflow-runs/analytics", {
+      method: "GET",
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed to load analytics")
+    }
+
+    return response.json()
+  }
 
 export const getWorkflowRun = async (id: string): Promise<WorkflowRun> => {
   const response = await fetch(`/api/workflow-runs/${id}`, {
