@@ -29,7 +29,7 @@ export default function PrivateLayout({
                 defaultOpen={false}
                 className="h-svh overflow-hidden"
                 style={
-                  { "--sidebar-width": "22rem" } as React.CSSProperties
+                  { "--sidebar-width": "28rem" } as React.CSSProperties
                 }
               >
                 <EndpointsSidebar />

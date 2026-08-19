@@ -1,5 +1,8 @@
 "use client"
 
+import { EndpointDrawer } from "@/components/endpoint/endpoint-drawer"
+import { EndpointImportDrawer } from "@/components/endpoint/endpoint-import-drawer"
+import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
@@ -18,18 +21,9 @@ import { listEndpoints } from "@/lib/endpoint/api"
 import { subscribeEndpointsRefetch } from "@/lib/endpoint/endpoint-realtime"
 import { Endpoint, EndpointMethod } from "@/lib/endpoint/types"
 import { cn } from "@/lib/utils"
-import { SearchIcon } from "lucide-react"
+import { PlusIcon, SearchIcon, UploadIcon } from "lucide-react"
 import { useEffect, useRef, useState, type DragEvent } from "react"
-
-const METHOD_STYLES: Record<string, string> = {
-  GET: "bg-emerald-50 text-emerald-700",
-  POST: "bg-blue-50 text-blue-700",
-  PUT: "bg-amber-50 text-amber-700",
-  PATCH: "bg-orange-50 text-orange-700",
-  DELETE: "bg-red-50 text-red-700",
-  HEAD: "bg-slate-50 text-slate-700",
-  OPTIONS: "bg-violet-50 text-violet-700",
-}
+import MultipleSelector, { Option } from "../multi-select"
 
 const FILTER_METHODS: EndpointMethod[] = [
   "GET",
@@ -40,6 +34,10 @@ const FILTER_METHODS: EndpointMethod[] = [
   "HEAD",
   "OPTIONS",
 ]
+const METHOD_OPTIONS: Option[] = FILTER_METHODS.map((method) => ({
+  value: method,
+  label: method,
+}))
 
 const PAGE_LIMIT = 50
 const SEARCH_DEBOUNCE_MS = 300
@@ -57,6 +55,8 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
   const [members, setMembers] = useState<Endpoint[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [refreshTick, setRefreshTick] = useState(0)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   useEffect(() => {
     return subscribeEndpointsRefetch(() => {
@@ -103,14 +103,6 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
     }
   }, [debouncedSearch, selectedMethods, refreshTick])
 
-  const toggleMethod = (method: EndpointMethod) => {
-    setSelectedMethods((current) =>
-      current.includes(method)
-        ? current.filter((item) => item !== method)
-        : [...current, method]
-    )
-  }
-
   const handleDragStart = (event: DragEvent, endpoint: Endpoint) => {
     const payload: EndpointDragPayload = {
       id: endpoint.id,
@@ -129,11 +121,35 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarHeader className="gap-3 border-b px-4 py-3">
-        <div className="min-w-0 space-y-0.5">
-          <h2 className="text-sm font-semibold tracking-tight">Endpoints</h2>
-          <p className="text-xs text-muted-foreground">
-            Drag onto the canvas to add a step.
-          </p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 space-y-0.5">
+            <h2 className="text-sm font-semibold tracking-tight">Endpoints</h2>
+            <p className="text-xs text-muted-foreground">
+              Drag onto the canvas to add a step.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8"
+              onClick={() => setIsImportOpen(true)}
+            >
+              <UploadIcon className="size-3.5" />
+              Import
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              className="h-8"
+              onClick={() => setIsCreateOpen(true)}
+            >
+              <PlusIcon className="size-3.5" />
+              New
+            </Button>
+          </div>
         </div>
 
         <div className="relative">
@@ -144,6 +160,28 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
             placeholder="Search name or URL…"
             className="pl-8"
             aria-label="Search endpoints"
+          />
+        </div>
+
+        <div className="w-full space-y-2">
+          <MultipleSelector
+            commandProps={{ label: "Filter by method" }}
+            value={METHOD_OPTIONS.filter((option) =>
+              selectedMethods.includes(option.value as EndpointMethod)
+            )}
+            defaultOptions={METHOD_OPTIONS}
+            placeholder="Select methods"
+            hideClearAllButton
+            hidePlaceholderWhenSelected
+            emptyIndicator={
+              <p className="text-center text-sm">No results found</p>
+            }
+            className="w-full"
+            onChange={(options) =>
+              setSelectedMethods(
+                options.map((option) => option.value as EndpointMethod)
+              )
+            }
           />
         </div>
       </SidebarHeader>
@@ -204,6 +242,12 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <EndpointDrawer isOpen={isCreateOpen} onOpenChange={setIsCreateOpen} />
+      <EndpointImportDrawer
+        isOpen={isImportOpen}
+        onOpenChange={setIsImportOpen}
+      />
     </Sidebar>
   )
 }
