@@ -173,6 +173,10 @@ function isOptionsExist(groupOption: GroupOption, targetOption: Option[]) {
   return false
 }
 
+function toSentenceCase(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
+}
+
 const CommandEmpty = ({
   className,
   ...props
@@ -472,9 +476,9 @@ const MultipleSelector = ({
     >
       <div
         className={cn(
-          "relative min-h-9.5 rounded-md border border-input text-sm transition-[color,box-shadow] outline-none focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:has-aria-invalid:ring-destructive/40",
+          "relative h-9 rounded-md border border-input bg-muted/20 text-sm transition-colors outline-none focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30 has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-destructive/20 dark:bg-muted/30 dark:has-aria-invalid:ring-destructive/40",
           {
-            "p-1": selected.length !== 0,
+            "px-1 py-1": selected.length !== 0,
             "cursor-text": !disabled && selected.length !== 0,
           },
           !hideClearAllButton && "pr-9",
@@ -485,21 +489,21 @@ const MultipleSelector = ({
           inputRef?.current?.focus()
         }}
       >
-        <div className="flex flex-wrap gap-1">
+        <div className="flex h-full flex-wrap content-center items-center gap-1">
           {selected.map((option) => {
             return (
               <div
                 key={option.value}
                 className={cn(
-                  "animate-fadeIn relative inline-flex h-7 cursor-default items-center rounded-md border bg-background pr-7 pl-2 text-xs font-medium text-secondary-foreground transition-all hover:bg-background disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 data-fixed:pr-2",
+                  "animate-fadeIn relative inline-flex h-6 cursor-default items-center rounded-md border bg-background pr-6 pl-1.5 text-sm font-semibold text-foreground transition-all hover:bg-background disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 data-fixed:pr-1.5",
                   badgeClassName
                 )}
                 data-fixed={option.fixed}
                 data-disabled={disabled || undefined}
               >
-                {option.label}
+                {toSentenceCase(option.label)}
                 <button
-                  className="absolute -inset-y-px -right-px flex size-7 items-center justify-center rounded-r-md border border-transparent p-0 text-muted-foreground/80 outline-hidden transition-[color,box-shadow] outline-none hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="absolute -inset-y-px -right-px flex size-6 items-center justify-center rounded-r-md border border-transparent p-0 text-muted-foreground/80 outline-hidden transition-[color,box-shadow] outline-none hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       handleUnselect(option)
@@ -512,7 +516,7 @@ const MultipleSelector = ({
                   onClick={() => handleUnselect(option)}
                   aria-label="Remove"
                 >
-                  <XIcon size={14} aria-hidden="true" />
+                  <XIcon size={12} aria-hidden="true" />
                 </button>
               </div>
             )
@@ -549,11 +553,11 @@ const MultipleSelector = ({
                 : placeholder
             }
             className={cn(
-              "flex-1 bg-transparent outline-hidden placeholder:text-muted-foreground/70 disabled:cursor-not-allowed",
+              "flex-1 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed md:text-xs/relaxed",
               {
                 "w-full": hidePlaceholderWhenSelected,
-                "px-3 py-2": selected.length === 0,
-                "ml-1": selected.length !== 0,
+                "px-2 py-1": selected.length === 0,
+                "ml-1 h-6": selected.length !== 0,
               },
               inputProps?.className
             )}
@@ -645,7 +649,7 @@ const MultipleSelector = ({
                                   "pointer-events-none cursor-not-allowed opacity-50"
                               )}
                             >
-                              {option.label}
+                              {toSentenceCase(option.label)}
                             </CommandItem>
                           )
                         })}

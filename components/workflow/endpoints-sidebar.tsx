@@ -147,7 +147,7 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
               onClick={() => setIsCreateOpen(true)}
             >
               <PlusIcon className="size-3.5" />
-              New
+              New Endpoint
             </Button>
           </div>
         </div>
@@ -157,7 +157,7 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
           <SidebarInput
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search name or URL…"
+            placeholder="Search name or URL"
             className="pl-8"
             aria-label="Search endpoints"
           />
