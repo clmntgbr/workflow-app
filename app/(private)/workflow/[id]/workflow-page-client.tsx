@@ -66,12 +66,12 @@ import { subscribeWorkflowDetailRefetch } from "@/lib/workflow/workflow-realtime
 import {
   ArrowLeftIcon,
   BracesIcon,
+  CirclePlayIcon,
+  CircleStopIcon,
   HistoryIcon,
   LayersIcon,
   Loader2Icon,
-  PlayIcon,
   SettingsIcon,
-  SquareIcon,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -857,40 +857,46 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           {workflow.status === "active" ? (
             <Button
               type="button"
-              size="sm"
-              variant={activeRun ? "destructive" : "default"}
+              size="lg"
+              variant="outline"
               disabled={isRunActionLoading}
               onClick={activeRun ? handleStopRun : handleStartRun}
-              className="gap-1.5"
+              className={cn(
+                "cursor-pointer gap-2 px-4 font-semibold shadow-sm focus:ring-2 focus:ring-offset-1 focus:outline-none disabled:cursor-not-allowed disabled:opacity-70",
+                activeRun
+                  ? "bg-rose-600 text-white hover:bg-rose-700 hover:text-white focus:ring-rose-300"
+                  : "bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white focus:ring-emerald-300"
+              )}
             >
               {isRunActionLoading ? (
                 <Loader2Icon className="size-3.5 animate-spin" />
               ) : activeRun ? (
-                <SquareIcon className="size-3.5" />
+                <CircleStopIcon className="size-3.5" />
               ) : (
-                <PlayIcon className="size-3.5" />
+                <CirclePlayIcon className="size-3.5" />
               )}
               {activeRun ? "Stop" : "Start"}
             </Button>
           ) : null}
           <Button
+            size="lg"
             onClick={() => handleStatusToggle(workflow.status !== "active")}
-            className={
-              "group flex cursor-pointer items-center gap-2.5 rounded-lg border border-green-700 px-3.5 transition-all duration-300 ease-out active:translate-y-0 active:scale-[0.98] " +
-              (workflow.status === "active"
+            className={cn(
+              "group cursor-pointer gap-2.5 px-3.5 transition-all duration-300 ease-out active:translate-y-0 active:scale-[0.98]",
+              workflow.status === "active"
                 ? "border-green-700/25 bg-green-700/10 text-green-700 hover:border-green-700/45 hover:bg-green-700/20"
-                : "border-red-700/25 bg-red-700/10 text-red-700 hover:border-red-700/45 hover:bg-red-700/20")
-            }
+                : "border-red-700/25 bg-red-700/10 text-red-700 hover:border-red-700/45 hover:bg-red-700/20"
+            )}
           >
             <span className="relative flex size-2">
               {workflow.status === "active" && (
                 <span className="absolute inset-0 animate-ping rounded-full bg-green-500 opacity-60" />
               )}
               <span
-                className={
-                  "relative size-2 rounded-full transition-colors duration-300 " +
-                  (workflow.status === "active" ? "bg-green-500" : "bg-red-500")
-                }
+                className={cn(
+                  "relative size-2 rounded-full transition-colors duration-300",
+                  workflow.status === "active" ? "bg-green-500" : "bg-red-500"
+                )}
               />
             </span>
             <span className="text-xs font-medium">
@@ -899,7 +905,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-lg"
             onClick={() => setIsVariablesDrawerOpen(true)}
             aria-label="Workflow variables"
           >
@@ -907,7 +913,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-lg"
             onClick={() => setIsDrawerOpen(true)}
             aria-label="Edit workflow"
           >
