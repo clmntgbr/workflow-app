@@ -1,13 +1,9 @@
 "use client"
 
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
-import { EndpointDrawer } from "@/components/endpoint/endpoint-drawer"
 import { Title } from "@/components/title"
 import { Button } from "@/components/ui/button"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Skeleton } from "@/components/ui/skeleton"
-import { EndpointsSidebar } from "@/components/workflow/endpoints-sidebar"
-import { SidebarEdgeHandle } from "@/components/workflow/sidebar-edge-handle"
 import { StepDrawer } from "@/components/workflow/step-drawer"
 import { CanvasStep } from "@/components/workflow/step-node"
 import { SwitchOrganizationDialog } from "@/components/workflow/switch-organization-dialog"
@@ -68,7 +64,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useState, type CSSProperties } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 interface WorkflowPageClientProps {
   workflowId: string
@@ -270,10 +266,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [isVariablesDrawerOpen, setIsVariablesDrawerOpen] = useState(false)
   const [selectedStep, setSelectedStep] = useState<CanvasStep | null>(null)
   const [isStepDrawerOpen, setIsStepDrawerOpen] = useState(false)
-  const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(
-    null
-  )
-  const [isEndpointDrawerOpen, setIsEndpointDrawerOpen] = useState(false)
   const [steps, setSteps] = useState<CanvasStep[]>([])
   const [connections, setConnections] = useState<WorkflowConnection[]>([])
   const [variables, setVariables] = useState<WorkflowVariable[]>([])
@@ -839,41 +831,26 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           tab !== "overview" && "hidden"
         )}
       >
-        <SidebarProvider
-          defaultOpen={false}
-          className="relative h-full min-h-0 flex-1"
-          style={{ "--sidebar-width": "18rem" } as CSSProperties}
-        >
-          <EndpointsSidebar
-            onSelectEndpoint={(endpoint) => {
-              setSelectedEndpoint(endpoint)
-              setIsEndpointDrawerOpen(true)
-            }}
-          />
-          <SidebarEdgeHandle />
-          <SidebarInset className="min-h-0 min-w-0 overflow-hidden p-0">
-            <WorkflowCanvas
-              workflowId={workflowId}
-              steps={steps}
-              connections={connections}
-              onCreateStep={handleCreateStep}
-              onMoveStep={handleMoveStep}
-              onCreateConnection={handleCreateConnection}
-              onDeleteConnection={handleDeleteConnection}
-              onEditStep={handleEditStep}
-              onDeleteStep={handleDeleteStep}
-            />
-          </SidebarInset>
-        </SidebarProvider>
+        <WorkflowCanvas
+          workflowId={workflowId}
+          steps={steps}
+          connections={connections}
+          onCreateStep={handleCreateStep}
+          onMoveStep={handleMoveStep}
+          onCreateConnection={handleCreateConnection}
+          onDeleteConnection={handleDeleteConnection}
+          onEditStep={handleEditStep}
+          onDeleteStep={handleDeleteStep}
+        />
       </div>
 
-      <div className="h-full bg-[#f8f9fb]">
-        <div
-          className={cn(
-            "container mx-auto min-h-0 flex-1 overflow-hidden",
-            tab !== "analytics" && "hidden"
-          )}
-        >
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-hidden bg-[#f8f9fb]",
+          tab !== "analytics" && "hidden"
+        )}
+      >
+        <div className="container mx-auto h-full">
           <div className="mx-auto flex h-full min-h-0 flex-col">
             <div className="shrink-0 space-y-4 py-10">
               <Title
@@ -905,20 +882,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         onRequestDeleteVariable={(variable) => {
           setVariableToDelete(variable)
           setIsDeleteVariableOpen(true)
-        }}
-      />
-
-      <EndpointDrawer
-        endpoint={selectedEndpoint}
-        isOpen={isEndpointDrawerOpen}
-        onOpenChange={(open) => {
-          setIsEndpointDrawerOpen(open)
-          if (!open) setSelectedEndpoint(null)
-        }}
-        onSaved={(endpoint) => setSelectedEndpoint(endpoint)}
-        onDeleted={() => {
-          setIsEndpointDrawerOpen(false)
-          setSelectedEndpoint(null)
         }}
       />
 

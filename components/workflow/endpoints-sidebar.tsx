@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
@@ -9,7 +10,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EndpointDragPayload } from "@/components/workflow/workflow-canvas"
@@ -17,7 +17,7 @@ import { listEndpoints } from "@/lib/endpoint/api"
 import { subscribeEndpointsRefetch } from "@/lib/endpoint/endpoint-realtime"
 import { Endpoint, EndpointMethod } from "@/lib/endpoint/types"
 import { cn } from "@/lib/utils"
-import { SearchIcon, XIcon } from "lucide-react"
+import { SearchIcon } from "lucide-react"
 import { useEffect, useRef, useState, type DragEvent } from "react"
 
 const METHOD_STYLES: Record<string, string> = {
@@ -43,12 +43,11 @@ const FILTER_METHODS: EndpointMethod[] = [
 const PAGE_LIMIT = 50
 const SEARCH_DEBOUNCE_MS = 300
 
-type EndpointsSidebarProps = {
-  onSelectEndpoint: (endpoint: Endpoint) => void
+interface EndpointsSidebarProps {
+  onSelectEndpoint?: (endpoint: Endpoint) => void
 }
 
 export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
-  const { open, setOpen } = useSidebar()
   const requestIdRef = useRef(0)
 
   const [search, setSearch] = useState("")
@@ -72,8 +71,6 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
   }, [search])
 
   useEffect(() => {
-    if (!open) return
-
     let cancelled = false
     const requestId = ++requestIdRef.current
     setIsLoading(true)
@@ -84,8 +81,7 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
           page: 1,
           limit: PAGE_LIMIT,
           search: debouncedSearch || undefined,
-          method:
-            selectedMethods.length > 0 ? selectedMethods : undefined,
+          method: selectedMethods.length > 0 ? selectedMethods : undefined,
         })
         if (cancelled || requestId !== requestIdRef.current) return
         setMembers(result.members)
@@ -104,7 +100,7 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
     return () => {
       cancelled = true
     }
-  }, [open, debouncedSearch, selectedMethods, refreshTick])
+  }, [debouncedSearch, selectedMethods, refreshTick])
 
   const toggleMethod = (method: EndpointMethod) => {
     setSelectedMethods((current) =>
@@ -130,33 +126,13 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
   }
 
   return (
-    <aside
-      aria-hidden={!open}
-      className={cn(
-        "absolute inset-y-0 left-0 z-40 flex w-[25rem] flex-col",
-        "border-r bg-sidebar text-sidebar-foreground",
-        "shadow-[4px_0_24px_rgba(0,0,0,0.08)]",
-        "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
-        open ? "translate-x-0" : "pointer-events-none -translate-x-full"
-      )}
-    >
+    <Sidebar collapsible="offcanvas">
       <SidebarHeader className="gap-3 border-b px-4 py-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 space-y-0.5">
-            <h2 className="text-sm font-semibold tracking-tight">Endpoints</h2>
-            <p className="text-xs text-muted-foreground">
-              Drag onto the canvas to add a step.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Close sidebar"
-            tabIndex={open ? 0 : -1}
-            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <XIcon className="size-4" />
-          </button>
+        <div className="min-w-0 space-y-0.5">
+          <h2 className="text-sm font-semibold tracking-tight">Endpoints</h2>
+          <p className="text-xs text-muted-foreground">
+            Drag onto the canvas to add a step.
+          </p>
         </div>
 
         <div className="relative">
@@ -165,7 +141,6 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search name or URL…"
-            tabIndex={open ? 0 : -1}
             className="pl-8"
             aria-label="Search endpoints"
           />
@@ -178,7 +153,6 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
               <button
                 key={method}
                 type="button"
-                tabIndex={open ? 0 : -1}
                 aria-pressed={isSelected}
                 onClick={() => toggleMethod(method)}
                 className={cn(
@@ -220,14 +194,14 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
                       <SidebarMenuButton asChild>
                         <div
                           role="button"
-                          tabIndex={open ? 0 : -1}
+                          tabIndex={0}
                           className="flex cursor-grab items-center gap-3 active:cursor-grabbing"
-                          draggable={open}
-                          onClick={() => onSelectEndpoint(endpoint)}
+                          draggable
+                          onClick={() => onSelectEndpoint?.(endpoint)}
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
                               event.preventDefault()
-                              onSelectEndpoint(endpoint)
+                              onSelectEndpoint?.(endpoint)
                             }
                           }}
                           onDragStart={(event) =>
@@ -255,6 +229,6 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-    </aside>
+    </Sidebar>
   )
 }

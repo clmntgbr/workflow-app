@@ -1,11 +1,11 @@
 "use client"
 
 import { OrganizationSwitcher } from "@/components/organization/organization-switcher"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 import {
   SignedIn,
   SignedOut,
   SignInButton,
-  SignOutButton,
   SignUpButton,
   UserButton,
 } from "@clerk/nextjs"
@@ -15,6 +15,7 @@ export function AppHeader() {
     <header className="flex h-16 items-center justify-between gap-4 border-b border-gray-200 p-4 sticky top-0 z-10 bg-white">
       <div className="flex items-center gap-3">
         <SignedIn>
+          <SidebarTrigger />
           <OrganizationSwitcher />
         </SignedIn>
       </div>
