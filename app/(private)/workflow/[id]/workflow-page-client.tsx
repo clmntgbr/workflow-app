@@ -850,7 +850,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           tab !== "analytics" && "hidden"
         )}
       >
-        <div className="container mx-auto">
+        <div className="container mx-auto px-4">
           <div className="mx-auto flex flex-col gap-6 pt-10">
             <div className="shrink-0 pb-4">
               <Title

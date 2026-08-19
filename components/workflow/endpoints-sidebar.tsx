@@ -21,7 +21,7 @@ import { listEndpoints } from "@/lib/endpoint/api"
 import { subscribeEndpointsRefetch } from "@/lib/endpoint/endpoint-realtime"
 import { Endpoint, EndpointMethod } from "@/lib/endpoint/types"
 import { cn } from "@/lib/utils"
-import { PlusIcon, SearchIcon, UploadIcon } from "lucide-react"
+import { PlusIcon, Loader2Icon, SearchIcon, UploadIcon } from "lucide-react"
 import { useEffect, useRef, useState, type DragEvent } from "react"
 import { EmptyComponent } from "../empty"
 import MultipleSelector, { Option } from "../multi-select"
@@ -40,7 +40,7 @@ const METHOD_OPTIONS: Option[] = FILTER_METHODS.map((method) => ({
   label: method,
 }))
 
-const PAGE_LIMIT = 50
+const PAGE_LIMIT = 20
 const SEARCH_DEBOUNCE_MS = 300
 
 interface EndpointsSidebarProps {
@@ -49,12 +49,18 @@ interface EndpointsSidebarProps {
 
 export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
   const requestIdRef = useRef(0)
+  const loadingMoreRef = useRef(false)
+  const listRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedMethods, setSelectedMethods] = useState<EndpointMethod[]>([])
   const [members, setMembers] = useState<Endpoint[]>([])
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [refreshTick, setRefreshTick] = useState(0)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
@@ -83,10 +89,12 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
   useEffect(() => {
     let cancelled = false
     const requestId = ++requestIdRef.current
+    loadingMoreRef.current = false
 
     const load = async () => {
       if (!cancelled && requestId === requestIdRef.current) {
         setIsLoading(true)
+        setIsLoadingMore(false)
       }
 
       try {
@@ -98,9 +106,13 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
         })
         if (cancelled || requestId !== requestIdRef.current) return
         setMembers(result.members)
+        setPage(result.page)
+        setTotalPages(result.totalPages)
       } catch {
         if (cancelled || requestId !== requestIdRef.current) return
         setMembers([])
+        setPage(1)
+        setTotalPages(0)
       } finally {
         if (!cancelled && requestId === requestIdRef.current) {
           setIsLoading(false)
@@ -114,6 +126,60 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
       cancelled = true
     }
   }, [debouncedSearch, selectedMethods, refreshTick])
+
+  useEffect(() => {
+    if (page >= totalPages) return
+
+    const sentinel = sentinelRef.current
+    const root = listRef.current
+    if (!sentinel || !root) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (!entry?.isIntersecting) return
+        if (loadingMoreRef.current) return
+        if (page >= totalPages) return
+
+        const nextPage = page + 1
+        const requestId = ++requestIdRef.current
+        loadingMoreRef.current = true
+        setIsLoadingMore(true)
+
+        void listEndpoints({
+          page: nextPage,
+          limit: PAGE_LIMIT,
+          search: debouncedSearch || undefined,
+          method: selectedMethods.length > 0 ? selectedMethods : undefined,
+        })
+          .then((result) => {
+            if (requestId !== requestIdRef.current) return
+            setMembers((current) => {
+              const seen = new Set(current.map((endpoint) => endpoint.id))
+              const appended = result.members.filter(
+                (endpoint) => !seen.has(endpoint.id)
+              )
+              return [...current, ...appended]
+            })
+            setPage(result.page)
+            setTotalPages(result.totalPages)
+          })
+          .catch(() => {
+            // keep current list
+          })
+          .finally(() => {
+            if (requestId === requestIdRef.current) {
+              loadingMoreRef.current = false
+              setIsLoadingMore(false)
+            }
+          })
+      },
+      { root, rootMargin: "40px", threshold: 0 }
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [page, totalPages, debouncedSearch, selectedMethods])
 
   const handleDragStart = (event: DragEvent, endpoint: Endpoint) => {
     const payload: EndpointDragPayload = {
@@ -196,7 +262,7 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent ref={listRef}>
         <SidebarGroup>
           <SidebarGroupContent>
             {isLoading && members.length === 0 ? (
@@ -249,6 +315,13 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
                     </SidebarMenuItem>
                   )
                 })}
+                <div ref={sentinelRef} className="h-1 w-full" />
+                {isLoadingMore ? (
+                  <div className="flex items-center justify-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                    <Loader2Icon className="size-3.5 animate-spin" />
+                    Loading more…
+                  </div>
+                ) : null}
               </SidebarMenu>
             )}
           </SidebarGroupContent>
