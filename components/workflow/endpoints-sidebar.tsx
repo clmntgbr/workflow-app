@@ -162,7 +162,7 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
                 No endpoints found.
               </p>
             ) : (
-              <SidebarMenu className="space-y-2">
+              <SidebarMenu className="space-y-2 pt-2">
                 {members.map((endpoint) => {
                   return (
                     <SidebarMenuItem key={endpoint.id}>
