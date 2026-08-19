@@ -28,7 +28,7 @@ import {
 import { cn } from "@/lib/utils"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, UploadIcon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Controller, useForm, useWatch } from "react-hook-form"
 
 const emptyFormValues: ImportEndpointFormValues = {
@@ -57,6 +57,7 @@ export function EndpointImportDrawer({
   const [isFileValid, setIsFileValid] = useState<boolean | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [wasOpen, setWasOpen] = useState(false)
 
   const {
     handleSubmit,
@@ -74,15 +75,16 @@ export function EndpointImportDrawer({
     name: "retryOnFailure",
   })
 
-  useEffect(() => {
-    if (!isOpen) return
-
+  if (isOpen && !wasOpen) {
+    setWasOpen(true)
     reset(emptyFormValues)
     setIsFileValid(null)
     setFileInputKey((key) => key + 1)
     setSubmitError(null)
     setIsSaving(false)
-  }, [isOpen, reset])
+  } else if (!isOpen && wasOpen) {
+    setWasOpen(false)
+  }
 
   const onClose = () => {
     reset(emptyFormValues)

@@ -19,7 +19,7 @@ import {
 } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { Loader2Icon, Trash2Icon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 interface VariableDrawerProps {
   workflowId: string
@@ -78,12 +78,24 @@ export function VariableDrawer({
   const [form, setForm] = useState<VariableFormState>(emptyForm)
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [openSnapshot, setOpenSnapshot] = useState({
+    isOpen: false,
+    variableId: null as string | null,
+  })
 
-  useEffect(() => {
-    if (!isOpen) return
-    setForm(toFormState(variable))
-    setFormError(null)
-  }, [isOpen, variable])
+  if (isOpen) {
+    const variableId = variable?.id ?? null
+    if (
+      !openSnapshot.isOpen ||
+      openSnapshot.variableId !== variableId
+    ) {
+      setOpenSnapshot({ isOpen: true, variableId })
+      setForm(toFormState(variable))
+      setFormError(null)
+    }
+  } else if (openSnapshot.isOpen) {
+    setOpenSnapshot({ isOpen: false, variableId: null })
+  }
 
   const handleClose = () => {
     onOpenChange(false)

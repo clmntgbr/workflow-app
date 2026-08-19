@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { Braces } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 
 interface VariableAutocompleteFieldProps {
   value: string
@@ -42,12 +42,13 @@ export function VariableAutocompleteField({
   wrapperClassName,
   isTextarea = false,
 }: VariableAutocompleteFieldProps) {
-  const [open, setOpen] = useState(false)
+  const [forceClosed, setForceClosed] = useState(false)
   const [cursorPosition, setCursorPosition] = useState(0)
   const [popoverTop, setPopoverTop] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null)
   const backdropRef = useRef<HTMLDivElement>(null)
+  const prevPartialKeyRef = useRef<string | null>(null)
 
   const getTextBeforeCursor = () => value.substring(0, cursorPosition)
   const getTextAfterCursor = () => value.substring(cursorPosition)
@@ -69,14 +70,13 @@ export function VariableAutocompleteField({
         )
       : []
 
-  useEffect(() => {
-    if (partialKey !== null && filteredVariables.length > 0) {
-      setOpen(true)
-      updatePopoverPosition()
-    } else {
-      setOpen(false)
-    }
-  }, [partialKey, filteredVariables.length])
+  if (partialKey !== prevPartialKeyRef.current) {
+    prevPartialKeyRef.current = partialKey
+    if (forceClosed) setForceClosed(false)
+  }
+
+  const open =
+    partialKey !== null && filteredVariables.length > 0 && !forceClosed
 
   const updatePopoverPosition = () => {
     if (!inputRef.current || !containerRef.current) return
@@ -97,7 +97,7 @@ export function VariableAutocompleteField({
     const newCursorPos = withoutPartial.length + insertion.length
 
     onChange(newValue)
-    setOpen(false)
+    setForceClosed(true)
 
     setTimeout(() => {
       if (inputRef.current) {
@@ -112,7 +112,7 @@ export function VariableAutocompleteField({
     event: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>
   ) => {
     if (open && event.key === "Escape") {
-      setOpen(false)
+      setForceClosed(true)
       event.preventDefault()
     }
   }

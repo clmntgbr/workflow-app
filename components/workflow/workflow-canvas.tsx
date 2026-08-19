@@ -126,6 +126,9 @@ function CanvasInner({
     }
   })
 
+  const [nodes, setNodes] = useState<Node[]>([])
+  const [edges, setEdges] = useState<Edge[]>([])
+
   const handleEdgeDelete = useCallback(async (connectionId: string) => {
     setEdges((current) => current.filter((edge) => edge.id !== connectionId))
 
@@ -154,13 +157,6 @@ function CanvasInner({
       // Parent restores steps/connections; nodes/edges sync back via props.
     }
   }, [])
-
-  const [nodes, setNodes] = useState<Node[]>(() =>
-    makeNodes(steps, handleEditStep, handleDeleteStep)
-  )
-  const [edges, setEdges] = useState<Edge[]>(() =>
-    makeEdges(connections, handleEdgeDelete)
-  )
 
   useEffect(() => {
     setNodes((previous) => {

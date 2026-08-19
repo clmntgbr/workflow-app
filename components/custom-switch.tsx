@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { CheckIcon, XIcon } from "lucide-react"
-import { useEffect, useId, useRef, useState } from "react"
+import { useId } from "react"
 
 interface CustomSwitchProps {
   id?: string
@@ -35,18 +35,7 @@ export default function CustomSwitch({
   const showLabel = Boolean(label)
   const showDescription = Boolean(description)
 
-  const lastSyncedFromParent = useRef(value)
-  const [checked, setChecked] = useState(value)
-
-  useEffect(() => {
-    if (value !== lastSyncedFromParent.current) {
-      lastSyncedFromParent.current = value
-      setChecked(value)
-    }
-  }, [value])
-
   const handleCheckedChange = (next: boolean) => {
-    setChecked(next)
     onChange(next)
   }
 
@@ -55,7 +44,7 @@ export default function CustomSwitch({
       <div className="relative inline-grid h-7 grid-cols-[1fr_1fr] items-center text-sm font-medium">
         <Switch
           id={resolvedId}
-          checked={checked}
+          checked={value}
           disabled={isDisabled}
           onCheckedChange={handleCheckedChange}
           className="peer absolute inset-0 data-[size=default]:h-[inherit] data-[size=default]:w-14 data-[state=unchecked]:bg-input/50 [&_span]:z-10 [&_span]:transition-transform [&_span]:duration-300 [&_span]:ease-[cubic-bezier(0.16,1,0.3,1)] [&_span]:group-data-[size=default]/switch:size-6.5 [&_span]:data-[state=checked]:translate-x-7 [&_span]:data-[state=checked]:rtl:-translate-x-7"

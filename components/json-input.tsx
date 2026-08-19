@@ -2,8 +2,8 @@
 
 import { Button } from "@/components/ui/button"
 import { JsonValue } from "@/lib/param"
-import { MinimalVariable } from "@/lib/variable/types"
 import { cn } from "@/lib/utils"
+import { MinimalVariable } from "@/lib/variable/types"
 import {
   AlertTriangle,
   ChevronDown,
@@ -330,11 +330,12 @@ export default function JsonInput({
   const highlightedRef = useRef<HTMLPreElement | null>(null)
   const previousValidityRef = useRef<boolean | null>(null)
   const [editorText, setEditorText] = useState(() => toEditorText(data))
+  const [prevData, setPrevData] = useState(data)
 
-  useEffect(() => {
-    if (!editable) return
+  if (editable && data !== prevData) {
+    setPrevData(data)
     setEditorText(toEditorText(data))
-  }, [data, editable])
+  }
 
   const handleToggle = useCallback((path: string) => {
     setCollapsedPaths((prev) => {

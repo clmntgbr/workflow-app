@@ -83,9 +83,12 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
   useEffect(() => {
     let cancelled = false
     const requestId = ++requestIdRef.current
-    setIsLoading(true)
 
     const load = async () => {
+      if (!cancelled && requestId === requestIdRef.current) {
+        setIsLoading(true)
+      }
+
       try {
         const result = await listEndpoints({
           page: 1,
