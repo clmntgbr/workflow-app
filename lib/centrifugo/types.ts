@@ -163,6 +163,7 @@ export function shouldRefetchConnections(event: UserStreamEvent): boolean {
 
 export function shouldRefetchWorkflowRuns(event: UserStreamEvent): boolean {
   return (
+    eventTypeEquals(event, "workflowRun.created") ||
     eventTypeEquals(event, "workflowRun.started") ||
     eventTypeEquals(event, "workflowRun.succeeded") ||
     eventTypeEquals(event, "workflowRun.failed") ||

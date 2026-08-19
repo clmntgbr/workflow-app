@@ -15,6 +15,107 @@ function buildQueryString(query?: PaginateQuery): string {
   return serialized ? `?${serialized}` : ""
 }
 
+export class WorkflowRunConflictError extends Error {
+  code: string
+
+  constructor(code: string, message: string) {
+    super(message)
+    this.name = "WorkflowRunConflictError"
+    this.code = code
+  }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+async function readConflictFromResponse(
+  response: Response
+): Promise<WorkflowRunConflictError | null> {
+  if (response.status !== 409) return null
+
+  try {
+    const body = (await response.json()) as unknown
+    const envelope = asRecord(body)
+    const payload = asRecord(envelope?.data) ?? envelope
+
+    const code =
+      typeof payload?.code === "string"
+        ? payload.code
+        : typeof payload?.error === "string"
+          ? payload.error
+          : undefined
+    const message =
+      typeof payload?.message === "string"
+        ? payload.message
+        : "Workflow run conflict"
+
+    if (code) {
+      return new WorkflowRunConflictError(code, message)
+    }
+  } catch {
+    // fall through
+  }
+
+  return new WorkflowRunConflictError("CONFLICT", "Workflow run conflict")
+}
+
+export function isWorkflowRunInProgress(status: string): boolean {
+  return status === "pending" || status === "running"
+}
+
+export const startWorkflowRun = async (
+  workflowId: string,
+  context?: Record<string, unknown>
+): Promise<WorkflowRun> => {
+  const response = await fetch(`/api/workflows/${workflowId}/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(context ? { context } : {}),
+  })
+
+  const conflict = await readConflictFromResponse(response)
+  if (conflict) throw conflict
+
+  if (!response.ok) {
+    throw new Error("Failed to start workflow run")
+  }
+
+  return response.json()
+}
+
+export const stopWorkflowRun = async (
+  workflowId: string
+): Promise<WorkflowRun> => {
+  const response = await fetch(`/api/workflows/${workflowId}/stop`, {
+    method: "POST",
+  })
+
+  const conflict = await readConflictFromResponse(response)
+  if (conflict) throw conflict
+
+  if (!response.ok) {
+    throw new Error("Failed to stop workflow run")
+  }
+
+  return response.json()
+}
+
+export const getActiveWorkflowRun = async (
+  workflowId: string
+): Promise<WorkflowRun | null> => {
+  const list = await listWorkflowRunsByWorkflow(workflowId, {
+    page: 1,
+    limit: 1,
+    orderBy: "desc",
+  })
+
+  const latest = list.members[0]
+  if (!latest || !isWorkflowRunInProgress(latest.status)) return null
+  return latest
+}
+
 export const listWorkflowRuns = async (
   query?: PaginateQuery
 ): Promise<Paginate<WorkflowRun>> => {

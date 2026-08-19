@@ -22,6 +22,14 @@ import { Endpoint } from "@/lib/endpoint/types"
 import { useOrganization } from "@/lib/organization/context"
 import { cn } from "@/lib/utils"
 import {
+  getActiveWorkflowRun,
+  startWorkflowRun,
+  stopWorkflowRun,
+  WorkflowRunConflictError,
+} from "@/lib/workflow-run/api"
+import { subscribeWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
+import { WorkflowRun } from "@/lib/workflow-run/types"
+import {
   activateWorkflow,
   createWorkflowConnection,
   createWorkflowStep,
@@ -60,7 +68,10 @@ import {
   BracesIcon,
   HistoryIcon,
   LayersIcon,
+  Loader2Icon,
+  PlayIcon,
   SettingsIcon,
+  SquareIcon,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -276,6 +287,8 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [usageSteps, setUsageSteps] = useState<VariableUsageStep[]>([])
   const [activeTab, setActiveTab] = useState<WorkflowPageTab>("canvas")
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
+  const [activeRun, setActiveRun] = useState<WorkflowRun | null>(null)
+  const [isRunActionLoading, setIsRunActionLoading] = useState(false)
 
   const endpointById = new Map(
     endpoints.members.map((endpoint) => [endpoint.id, endpoint])
@@ -419,6 +432,65 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         .catch(() => {})
     })
   }, [workflowId])
+
+  const refreshActiveRun = useCallback(async () => {
+    try {
+      const run = await getActiveWorkflowRun(workflowId)
+      setActiveRun(run)
+    } catch {
+      // keep current run state
+    }
+  }, [workflowId])
+
+  useEffect(() => {
+    void refreshActiveRun()
+  }, [refreshActiveRun])
+
+  useEffect(() => {
+    return subscribeWorkflowRunsRefetch(workflowId, () => {
+      void refreshActiveRun()
+    })
+  }, [workflowId, refreshActiveRun])
+
+  const handleStartRun = async () => {
+    if (isRunActionLoading || activeRun) return
+
+    setIsRunActionLoading(true)
+    try {
+      const run = await startWorkflowRun(workflowId)
+      setActiveRun(run)
+    } catch (error) {
+      if (
+        error instanceof WorkflowRunConflictError &&
+        error.code === "RUN_IN_PROGRESS"
+      ) {
+        await refreshActiveRun()
+        return
+      }
+    } finally {
+      setIsRunActionLoading(false)
+    }
+  }
+
+  const handleStopRun = async () => {
+    if (isRunActionLoading || !activeRun) return
+
+    setIsRunActionLoading(true)
+    try {
+      await stopWorkflowRun(workflowId)
+      setActiveRun(null)
+    } catch (error) {
+      if (
+        error instanceof WorkflowRunConflictError &&
+        error.code === "NO_RUN_IN_PROGRESS"
+      ) {
+        setActiveRun(null)
+        return
+      }
+    } finally {
+      setIsRunActionLoading(false)
+    }
+  }
 
   const handleStatusToggle = async (nextActive: boolean) => {
     if (!workflow || isTogglingStatus) return
@@ -782,6 +854,25 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          {workflow.status === "active" ? (
+            <Button
+              type="button"
+              size="sm"
+              variant={activeRun ? "destructive" : "default"}
+              disabled={isRunActionLoading}
+              onClick={activeRun ? handleStopRun : handleStartRun}
+              className="gap-1.5"
+            >
+              {isRunActionLoading ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : activeRun ? (
+                <SquareIcon className="size-3.5" />
+              ) : (
+                <PlayIcon className="size-3.5" />
+              )}
+              {activeRun ? "Stop" : "Start"}
+            </Button>
+          ) : null}
           <Button
             onClick={() => handleStatusToggle(workflow.status !== "active")}
             className={
