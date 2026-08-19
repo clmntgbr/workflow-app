@@ -67,9 +67,12 @@ export function VariablePathField({
     let cancelled = false
     const requestId = ++requestIdRef.current
     loadingMoreRef.current = false
-    setIsLoadingMore(false)
 
     const load = async () => {
+      if (!cancelled && requestId === requestIdRef.current) {
+        setIsLoadingMore(false)
+      }
+
       try {
         const result = await listStepVariablePaths(workflowId, stepId, {
           page: 1,
