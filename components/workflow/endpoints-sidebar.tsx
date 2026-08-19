@@ -23,6 +23,7 @@ import { Endpoint, EndpointMethod } from "@/lib/endpoint/types"
 import { cn } from "@/lib/utils"
 import { PlusIcon, SearchIcon, UploadIcon } from "lucide-react"
 import { useEffect, useRef, useState, type DragEvent } from "react"
+import { EmptyComponent } from "../empty"
 import MultipleSelector, { Option } from "../multi-select"
 
 const FILTER_METHODS: EndpointMethod[] = [
@@ -157,7 +158,6 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
           <SidebarInput
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search name or URL"
             className="pl-8"
             aria-label="Search endpoints"
           />
@@ -170,7 +170,6 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
               selectedMethods.includes(option.value as EndpointMethod)
             )}
             defaultOptions={METHOD_OPTIONS}
-            placeholder="Select methods"
             hideClearAllButton
             hidePlaceholderWhenSelected
             emptyIndicator={
@@ -196,9 +195,11 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
                 <Skeleton className="h-10 w-full" />
               </div>
             ) : members.length === 0 ? (
-              <p className="px-2 text-sm text-muted-foreground">
-                No endpoints found.
-              </p>
+              <EmptyComponent
+                title="No endpoints found"
+                description="Try adjusting your search or filter to find what you're looking for."
+                icon={<SearchIcon className="size-4 text-muted-foreground" />}
+              />
             ) : (
               <SidebarMenu className="space-y-2 pt-2">
                 {members.map((endpoint) => {

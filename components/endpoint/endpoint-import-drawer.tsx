@@ -21,8 +21,8 @@ import {
   parseOpenApiFile,
 } from "@/lib/endpoint/openapi"
 import {
-  importEndpointSchema,
   ImportEndpointFormValues,
+  importEndpointSchema,
   toImportEndpointsPayload,
 } from "@/lib/endpoint/schema"
 import { cn } from "@/lib/utils"
@@ -278,27 +278,6 @@ export function EndpointImportDrawer({
                       )}
                     />
                   </Field>
-                  <div className="flex flex-row items-center justify-between gap-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900">
-                    <div className="min-w-0 flex-1 space-y-0.5">
-                      <Label htmlFor="endpoint-import-status">Active</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Imported endpoints will be usable immediately
-                      </p>
-                    </div>
-                    <Controller
-                      name="status"
-                      control={control}
-                      render={({ field }) => (
-                        <CustomSwitch
-                          id="endpoint-import-status"
-                          value={field.value === "active"}
-                          onChange={(checked) =>
-                            field.onChange(checked ? "active" : "inactive")
-                          }
-                        />
-                      )}
-                    />
-                  </div>
                 </div>
               </div>
 
