@@ -131,7 +131,6 @@ export function WorkflowAnalytics({ workflowId }: WorkflowAnalyticsProps) {
         icon={<PlayCircleIcon className="size-5 text-sky-600" />}
         label="Running"
         value={String(analytics.runningCount)}
-        detail={`${analytics.pendingCount} pending`}
       />
       <StatCard
         icon={<PauseCircleIcon className="size-5 text-zinc-500" />}
