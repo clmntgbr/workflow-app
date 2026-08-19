@@ -24,7 +24,7 @@ export function VariableUsageStepList({
               <Button
                 type="button"
                 variant="outline"
-                className="h-auto w-full justify-start gap-3 px-2 py-2 text-left font-normal whitespace-normal"
+                className="h-auto w-full justify-start gap-3 px-4 py-2 text-left font-normal whitespace-normal"
                 onClick={() => onStepClick(step)}
               >
                 {preview}
