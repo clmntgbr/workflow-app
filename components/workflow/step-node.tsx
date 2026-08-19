@@ -51,7 +51,7 @@ export function StepNode({ data }: NodeProps) {
 
       <div
         className={cn(
-          "group relative flex w-64 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card py-2 pr-12 pl-2 transition-all duration-200",
+          "group relative flex w-64 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4 py-2 transition-all duration-200",
           "hover:shadow-sm"
         )}
         onClick={() => onEdit(step)}
