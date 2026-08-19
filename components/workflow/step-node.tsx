@@ -46,7 +46,7 @@ export function StepNode({ data }: NodeProps) {
       <Handle
         type="target"
         position={Position.Top}
-        className="!z-50 !size-2.5 !border-gray-300 !bg-foreground"
+        className="z-50! size-2.5! border-gray-300! bg-foreground!"
       />
 
       <div

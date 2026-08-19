@@ -35,7 +35,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Controller, useForm, useWatch } from "react-hook-form"
-import EndpointPreview from "./endpoint-preview"
+import { StepPreview } from "./step-preview"
 
 const HTTP_METHODS = [
   "GET",
@@ -292,7 +292,13 @@ export function StepDrawer({
 
                   <div className="flex flex-col gap-6 md:col-span-2">
                     {step?.endpoint ? (
-                      <EndpointPreview endpoint={step.endpoint} />
+                      <StepPreview
+                        name={step.endpoint.name}
+                        method={step.endpoint.method}
+                        url={step.endpoint.url}
+                        description={step.endpoint.description}
+                        className="mb-6"
+                      />
                     ) : null}
                     <Field>
                       <Controller

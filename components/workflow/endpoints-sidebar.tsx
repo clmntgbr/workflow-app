@@ -12,6 +12,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { Skeleton } from "@/components/ui/skeleton"
+import EndpointPreview from "@/components/workflow/endpoint-preview"
 import { EndpointDragPayload } from "@/components/workflow/workflow-canvas"
 import { listEndpoints } from "@/lib/endpoint/api"
 import { subscribeEndpointsRefetch } from "@/lib/endpoint/endpoint-realtime"
@@ -145,28 +146,6 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
             aria-label="Search endpoints"
           />
         </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {FILTER_METHODS.map((method) => {
-            const isSelected = selectedMethods.includes(method)
-            return (
-              <button
-                key={method}
-                type="button"
-                aria-pressed={isSelected}
-                onClick={() => toggleMethod(method)}
-                className={cn(
-                  "rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
-                  isSelected
-                    ? METHOD_STYLES[method]
-                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                {method}
-              </button>
-            )
-          })}
-        </div>
       </SidebarHeader>
 
       <SidebarContent>
@@ -183,19 +162,21 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
                 No endpoints found.
               </p>
             ) : (
-              <SidebarMenu>
+              <SidebarMenu className="space-y-2">
                 {members.map((endpoint) => {
-                  const method = (endpoint.method || "GET").toUpperCase()
-                  const methodClass =
-                    METHOD_STYLES[method] ?? "bg-muted text-muted-foreground"
-
                   return (
                     <SidebarMenuItem key={endpoint.id}>
-                      <SidebarMenuButton asChild>
+                      <SidebarMenuButton
+                        asChild
+                        className="h-auto p-0 hover:bg-transparent active:bg-transparent data-[active=true]:bg-transparent"
+                      >
                         <div
                           role="button"
                           tabIndex={0}
-                          className="flex cursor-grab items-center gap-3 active:cursor-grabbing"
+                          className={cn(
+                            "group relative flex w-full cursor-grab items-center gap-3 rounded-lg border border-border bg-card px-4 py-2 transition-all duration-200",
+                            "hover:shadow-sm active:cursor-grabbing"
+                          )}
                           draggable
                           onClick={() => onSelectEndpoint?.(endpoint)}
                           onKeyDown={(event) => {
@@ -208,17 +189,11 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
                             handleDragStart(event, endpoint)
                           }
                         >
-                          <span
-                            className={cn(
-                              "rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                              methodClass
-                            )}
-                          >
-                            {method}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate text-sm">
-                            {endpoint.name}
-                          </span>
+                          <EndpointPreview
+                            endpoint={endpoint}
+                            showDescription={false}
+                            className="min-w-0 flex-1"
+                          />
                         </div>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

@@ -14,6 +14,7 @@ interface StepPreviewProps {
   name: string
   method: string
   url: string
+  description?: string | null
   className?: string
 }
 
@@ -21,6 +22,7 @@ export function StepPreview({
   name,
   method,
   url,
+  description,
   className,
 }: StepPreviewProps) {
   const normalizedMethod = (method || "GET").toUpperCase()
@@ -43,6 +45,9 @@ export function StepPreview({
           {name}
         </p>
         <p className="truncate text-[11px] text-muted-foreground">{url}</p>
+        {description ? (
+          <p className="truncate text-[11px] text-muted-foreground">{description}</p>
+        ) : null}
       </div>
     </div>
   )
