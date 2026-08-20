@@ -29,6 +29,7 @@ import {
   KeyValuePair,
   millisecondsToSeconds,
   recordToKeyValuePairs,
+  splitUrlAndQuery,
 } from "@/lib/endpoint/utils"
 import { cn } from "@/lib/utils"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -188,6 +189,7 @@ export function EndpointDrawer({
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors },
   } = useForm<EndpointFormValues>({
     resolver: zodResolver(endpointFormSchema),
@@ -364,7 +366,21 @@ export function EndpointDrawer({
                                 <Input
                                   id="endpoint-url"
                                   value={field.value ?? ""}
-                                  onChange={field.onChange}
+                                  onChange={(event) => {
+                                    const nextUrl = event.target.value
+                                    const parsed = splitUrlAndQuery(nextUrl)
+
+                                    if (!parsed) {
+                                      field.onChange(nextUrl)
+                                      return
+                                    }
+
+                                    field.onChange(parsed.url)
+                                    setValue("query", parsed.query, {
+                                      shouldDirty: true,
+                                      shouldValidate: true,
+                                    })
+                                  }}
                                   placeholder="https://api.example.com/resource"
                                   className="h-9"
                                 />

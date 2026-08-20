@@ -75,7 +75,7 @@ export interface UpdateWorkflowStepInput {
   url: string
   method: string
   headers?: Record<string, string>
-  query?: Record<string, string>
+  query?: Record<string, string | string[]>
   body?: Record<string, unknown>
   timeout: number
   retryOnFailure: boolean

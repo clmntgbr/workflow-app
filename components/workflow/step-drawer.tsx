@@ -25,6 +25,7 @@ import {
   KeyValuePair,
   millisecondsToSeconds,
   recordToKeyValuePairs,
+  splitUrlAndQuery,
 } from "@/lib/endpoint/utils"
 import { cn } from "@/lib/utils"
 import {
@@ -386,7 +387,20 @@ export function StepDrawer({
                                 </Label>
                                 <VariableAutocompleteField
                                   value={field.value ?? ""}
-                                  onChange={field.onChange}
+                                  onChange={(nextUrl) => {
+                                    const parsed = splitUrlAndQuery(nextUrl)
+
+                                    if (!parsed) {
+                                      field.onChange(nextUrl)
+                                      return
+                                    }
+
+                                    field.onChange(parsed.url)
+                                    setValue("query", parsed.query, {
+                                      shouldDirty: true,
+                                      shouldValidate: true,
+                                    })
+                                  }}
                                   variables={availableVariables}
                                   placeholder="https://api.example.com/resource/{{id}}"
                                   className="h-9"

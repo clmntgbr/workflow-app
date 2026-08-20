@@ -19,6 +19,7 @@ import { WorkflowRunsPanel } from "@/components/workflow/workflow-runs-panel"
 import { WorkflowVariablesDrawer } from "@/components/workflow/workflow-variables-drawer"
 import { useEndpoint } from "@/lib/endpoint/context"
 import { Endpoint } from "@/lib/endpoint/types"
+import { parseQueryRecord } from "@/lib/endpoint/utils"
 import { useOrganization } from "@/lib/organization/context"
 import { cn } from "@/lib/utils"
 import {
@@ -218,7 +219,7 @@ function mapItemToCanvasStep(
     method: method ?? endpoint?.method ?? "GET",
     path: url ?? endpoint?.url ?? "/",
     headers: parseStringRecord(record.headers),
-    query: parseStringRecord(record.query),
+    query: parseQueryRecord(record.query),
     body: record.body ?? endpoint?.body ?? {},
     timeout: pickNumber(
       record,
@@ -652,7 +653,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
                   headers: record
                     ? parseStringRecord(record.headers)
                     : step.headers,
-                  query: record ? parseStringRecord(record.query) : step.query,
+                  query: record ? parseQueryRecord(record.query) : step.query,
                   body: record?.body ?? step.body,
                   timeout: record
                     ? pickNumber(

@@ -1,4 +1,5 @@
 import {
+  keyValuePairsToQueryRecord,
   keyValuePairsToRecord,
   secondsToMilliseconds,
 } from "@/lib/endpoint/utils"
@@ -63,7 +64,7 @@ export function toUpdateWorkflowStepPayload(
 ): UpdateWorkflowStepInput {
   const body = JSON.parse(values.body) as Record<string, unknown>
   const headers = keyValuePairsToRecord(values.headers)
-  const query = keyValuePairsToRecord(values.query)
+  const query = keyValuePairsToQueryRecord(values.query)
 
   return {
     name: values.name,

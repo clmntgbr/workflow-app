@@ -19,7 +19,7 @@ export interface Endpoint {
   method: EndpointMethod | string
   body: unknown
   headers: Record<string, string>
-  query: Record<string, string>
+  query: Record<string, string | string[]>
   timeout: number
   retryOnFailure: boolean
   retryCount: number
@@ -37,7 +37,7 @@ export interface CreateEndpointInput {
   method: string
   body?: unknown
   headers?: Record<string, string>
-  query?: Record<string, string>
+  query?: Record<string, string | string[]>
   timeout?: number
   retryOnFailure?: boolean
   retryCount?: number
@@ -51,7 +51,7 @@ export interface UpdateEndpointInput {
   method: string
   body?: unknown
   headers?: Record<string, string>
-  query?: Record<string, string>
+  query?: Record<string, string | string[]>
   timeout: number
   retryOnFailure: boolean
   retryCount: number
@@ -63,7 +63,7 @@ export interface ImportEndpointsInput {
   baseURL: string
   status: "active" | "inactive"
   headers?: Record<string, string>
-  query?: Record<string, string>
+  query?: Record<string, string | string[]>
   body?: unknown
   timeout?: number
   retryOnFailure?: boolean

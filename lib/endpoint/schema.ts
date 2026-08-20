@@ -1,6 +1,10 @@
 import * as z from "zod"
 import { OPENAPI_MAX_FILE_BYTES } from "./openapi"
-import { keyValuePairsToRecord, secondsToMilliseconds } from "./utils"
+import {
+  keyValuePairsToQueryRecord,
+  keyValuePairsToRecord,
+  secondsToMilliseconds,
+} from "./utils"
 
 const keyValuePairSchema = z.object({
   key: z.string(),
@@ -86,7 +90,7 @@ export function toCreateEndpointPayload(values: CreateEndpointFormValues) {
     method: values.method,
     body: JSON.parse(values.body),
     headers: keyValuePairsToRecord(values.headers),
-    query: keyValuePairsToRecord(values.query),
+    query: keyValuePairsToQueryRecord(values.query),
     timeout: secondsToMilliseconds(values.timeout),
     retryOnFailure: values.retryOnFailure,
     retryCount: values.retryCount,
@@ -106,7 +110,7 @@ export function toImportEndpointsPayload(values: ImportEndpointFormValues) {
     baseURL: values.baseURL,
     status: values.status,
     headers: keyValuePairsToRecord(values.headers),
-    query: keyValuePairsToRecord(values.query),
+    query: keyValuePairsToQueryRecord(values.query),
     body: JSON.parse(values.body),
     timeout: secondsToMilliseconds(values.timeout),
     retryOnFailure: values.retryOnFailure,
