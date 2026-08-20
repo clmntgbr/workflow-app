@@ -15,6 +15,7 @@ import { FolderArchiveIcon } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { EmptyComponent } from "../empty"
 import { StatusBadge } from "../status-badge"
+import { WorkflowRunDrawer } from "./workflow-run-drawer"
 
 interface WorkflowRunsPanelProps {
   workflowId: string
@@ -82,6 +83,8 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
+  const [selectedRun, setSelectedRun] = useState<WorkflowRun | null>(null)
+  const [isRunDrawerOpen, setIsRunDrawerOpen] = useState(false)
 
   const loadRuns = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -153,7 +156,7 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
   }
 
   return (
-    <div className="flex flex-col pb-4">
+    <div className="flex flex-col pb-7">
       <div className="space-y-3 py-4">
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-none">
           <ul className="divide-y divide-slate-100">
@@ -166,9 +169,16 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
               return (
                 <div
                   key={run.id}
-                  className="overflow-hidden bg-white shadow-sm transition-all hover:shadow-md"
+                  className="cursor-pointer overflow-hidden bg-white shadow-sm transition-all select-none hover:shadow-md"
                 >
-                  <button className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50">
+                  <button
+                    type="button"
+                    className="flex w-full cursor-pointer items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50"
+                    onClick={() => {
+                      setSelectedRun(run)
+                      setIsRunDrawerOpen(true)
+                    }}
+                  >
                     <div className="flex w-24 shrink-0 items-center justify-center">
                       <StatusBadge status={run.status} />
                     </div>
@@ -225,6 +235,15 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
           onPageChange={setPage}
         />
       ) : null}
+
+      <WorkflowRunDrawer
+        run={selectedRun}
+        isOpen={isRunDrawerOpen}
+        onOpenChange={(open) => {
+          setIsRunDrawerOpen(open)
+          if (!open) setSelectedRun(null)
+        }}
+      />
     </div>
   )
 }

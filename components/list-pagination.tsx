@@ -81,13 +81,14 @@ export function ListPagination({
       <PaginationContent>
         <PaginationItem
           className={cn(
-            (page <= 1 || isLoading) && "pointer-events-none opacity-50"
+            (page <= 1 || isLoading) &&
+              "pointer-events-none bg-white opacity-50"
           )}
         >
           <PaginationLink
             aria-label="Go to first page"
             size="default"
-            className="ps-2!"
+            className="bg-white ps-2!"
             {...paginationLinkProps(isLoading, page <= 1, () =>
               onPageChange(1)
             )}
@@ -99,10 +100,13 @@ export function ListPagination({
 
         <PaginationItem
           className={cn(
-            (page <= 1 || isLoading) && "pointer-events-none opacity-50"
+            (page <= 1 || isLoading) &&
+              "pointer-events-none bg-white opacity-50"
           )}
         >
           <PaginationPrevious
+            className="bg-white"
+            size="default"
             {...paginationLinkProps(isLoading, page <= 1, () =>
               onPageChange(page - 1)
             )}
@@ -117,6 +121,8 @@ export function ListPagination({
           ) : (
             <PaginationItem key={item}>
               <PaginationLink
+                className="bg-white"
+                size="default"
                 isActive={item === page}
                 {...paginationLinkProps(isLoading, item === page, () =>
                   onPageChange(item)
@@ -131,10 +137,12 @@ export function ListPagination({
         <PaginationItem
           className={cn(
             (page >= totalPages || isLoading) &&
-              "pointer-events-none opacity-50"
+              "pointer-events-none bg-white opacity-50"
           )}
         >
           <PaginationNext
+            className="bg-white"
+            size="default"
             {...paginationLinkProps(isLoading, page >= totalPages, () =>
               onPageChange(page + 1)
             )}
@@ -144,7 +152,7 @@ export function ListPagination({
         <PaginationItem
           className={cn(
             (page >= totalPages || isLoading) &&
-              "pointer-events-none opacity-50"
+              "pointer-events-none bg-white opacity-50"
           )}
         >
           <PaginationLink
