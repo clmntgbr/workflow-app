@@ -3,7 +3,7 @@
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { StepPreview } from "@/components/workflow/step-preview"
 import { Endpoint } from "@/lib/endpoint/types"
-import { getStatusStyle } from "@/lib/misc"
+import { GetStatusStyle } from "@/lib/misc"
 import { cn } from "@/lib/utils"
 import { RunStatus } from "@/lib/workflow-run/types"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
@@ -40,8 +40,8 @@ export type StepNodeData = {
   onDelete: (stepId: string) => Promise<void>
 }
 
-function LastRunStatusPill({ status }: { status: string }) {
-  const style = getStatusStyle(status)
+function LastRunStatusPill({ status }: { status: RunStatus }) {
+  const style = GetStatusStyle(status)
   const isLive = status === "running" || status === "pending"
 
   return (
