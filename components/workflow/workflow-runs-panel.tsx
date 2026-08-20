@@ -2,14 +2,17 @@
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { StepCounts } from "@/lib/misc"
 import { cn } from "@/lib/utils"
 import { listWorkflowRunsByWorkflow } from "@/lib/workflow-run/api"
 import { subscribeWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
-import { Insight, StepRun, WorkflowRun } from "@/lib/workflow-run/types"
+import { StepRun, WorkflowRun } from "@/lib/workflow-run/types"
 import {
-  ChevronDownIcon,
-  ChevronRightIcon,
+  ArrowRightIcon,
+  ClockIcon,
   FolderArchiveIcon,
+  LayersIcon,
+  TerminalIcon,
 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { EmptyComponent } from "../empty"
@@ -29,11 +32,60 @@ function formatMs(value: number | null | undefined): string {
   return `${(value / 1000).toFixed(2)} s`
 }
 
-function formatBytes(value: number | null | undefined): string {
-  if (value == null) return "—"
-  if (value < 1024) return `${value} B`
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
-  return `${(value / (1024 * 1024)).toFixed(2)} MB`
+function StepProgressBar({
+  steps,
+  totalSteps,
+}: {
+  steps: StepRun[]
+  totalSteps: number
+}) {
+  const { success, failed, running, pending, skipped, cancelled } =
+    StepCounts(steps)
+
+  const pct = (count: number) => (count / totalSteps) * 100
+
+  return (
+    <div className="hidden items-center gap-2 sm:flex">
+      <div className="flex h-1.5 w-40 overflow-hidden rounded-full bg-muted">
+        {success > 0 && (
+          <div
+            className="h-full bg-emerald-500 transition-all"
+            style={{ width: `${pct(success)}%` }}
+          />
+        )}
+        {failed > 0 && (
+          <div
+            className="h-full bg-red-500 transition-all"
+            style={{ width: `${pct(failed)}%` }}
+          />
+        )}
+        {running > 0 && (
+          <div
+            className="h-full animate-pulse bg-blue-500 transition-all"
+            style={{ width: `${pct(running)}%` }}
+          />
+        )}
+        {pending > 0 && (
+          <div
+            className="h-full bg-amber-500 transition-all"
+            style={{ width: `${pct(pending)}%` }}
+          />
+        )}
+        {skipped > 0 && (
+          <div
+            className="h-full bg-muted-foreground/25 transition-all"
+            style={{ width: `${pct(skipped)}%` }}
+          />
+        )}
+        {cancelled > 0 && (
+          <div
+            className="h-full bg-gray-400 transition-all"
+            style={{ width: `${pct(cancelled)}%` }}
+          />
+        )}
+      </div>
+    </div>
+  )
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -41,177 +93,21 @@ function StatusBadge({ status }: { status: string }) {
     <span
       className={cn(
         "shrink-0 rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground capitalize",
-        status === "succeeded" &&
+        status === "success" &&
           "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
         status === "failed" && "border-destructive/40 text-destructive",
         status === "running" &&
           "border-sky-500/40 text-sky-700 dark:text-sky-400",
         status === "pending" &&
-          "border-amber-500/40 text-amber-700 dark:text-amber-400"
+          "border-amber-500/40 text-amber-700 dark:text-amber-400",
+        status === "skipped" &&
+          "border-slate-400/40 text-slate-600 dark:text-slate-400",
+        status === "cancelled" &&
+          "border-gray-400/40 text-gray-700 dark:text-gray-400"
       )}
     >
       {status}
     </span>
-  )
-}
-
-function InsightMetrics({ insight }: { insight: Insight }) {
-  const metrics: { label: string; value: string }[] = [
-    { label: "Duration", value: formatMs(insight.duration) },
-    { label: "Queue", value: formatMs(insight.queueTime) },
-    { label: "DNS", value: formatMs(insight.dnsLookupDuration) },
-    { label: "TCP", value: formatMs(insight.tcpConnectionTime) },
-    { label: "TLS", value: formatMs(insight.tlsHandshakeTime) },
-    { label: "TTFB", value: formatMs(insight.ttfb) },
-    {
-      label: "Status",
-      value: insight.statusCode != null ? String(insight.statusCode) : "—",
-    },
-    { label: "Request", value: formatBytes(insight.requestSize) },
-    { label: "Response", value: formatBytes(insight.responseSize) },
-  ]
-
-  return (
-    <div className="space-y-2 rounded-md border bg-background/80 px-3 py-2">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <span>
-          Attempt {insight.attemptNumber}/{insight.totalAttempts}
-        </span>
-        <span>
-          {formatDate(insight.startTime)} → {formatDate(insight.endTime)}
-        </span>
-      </div>
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-3 lg:grid-cols-5">
-        {metrics.map((metric) => (
-          <div key={metric.label} className="min-w-0">
-            <dt className="text-[10px] tracking-wide text-muted-foreground uppercase">
-              {metric.label}
-            </dt>
-            <dd className="truncate text-xs font-medium">{metric.value}</dd>
-          </div>
-        ))}
-      </dl>
-      {insight.errorMessage ? (
-        <p className="text-xs text-destructive">
-          {insight.errorType ? `${insight.errorType}: ` : null}
-          {insight.errorMessage}
-        </p>
-      ) : null}
-    </div>
-  )
-}
-
-function StepRunRow({ stepRun }: { stepRun: StepRun }) {
-  const insights = stepRun.insights ?? []
-
-  return (
-    <li className="space-y-2 border-t px-4 py-2.5 first:border-t-0">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate text-sm font-medium">{stepRun.name}</span>
-            <span className="rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground uppercase">
-              {stepRun.method}
-            </span>
-            <StatusBadge status={stepRun.status} />
-          </div>
-          <p className="truncate text-xs text-muted-foreground">
-            {stepRun.url}
-          </p>
-          {stepRun.error ? (
-            <p className="mt-1 text-xs text-destructive">{stepRun.error}</p>
-          ) : null}
-        </div>
-        <div className="shrink-0 text-xs text-muted-foreground sm:text-right">
-          <p>Attempt {stepRun.attempt}</p>
-          <p>
-            {formatDate(stepRun.startedAt)} → {formatDate(stepRun.finishedAt)}
-          </p>
-          {stepRun.responseSnapshot ? (
-            <p>HTTP {stepRun.responseSnapshot.status}</p>
-          ) : null}
-        </div>
-      </div>
-
-      {insights.length > 0 ? (
-        <div className="space-y-2">
-          <p className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
-            Insights ({insights.length})
-          </p>
-          {insights
-            .slice()
-            .sort((a, b) => a.attemptNumber - b.attemptNumber)
-            .map((insight) => (
-              <InsightMetrics key={insight.id} insight={insight} />
-            ))}
-        </div>
-      ) : null}
-    </li>
-  )
-}
-
-function WorkflowRunCard({ run }: { run: WorkflowRun }) {
-  const [open, setOpen] = useState(true)
-  const stepRuns = run.stepRuns ?? []
-
-  return (
-    <article className="overflow-hidden rounded-lg border">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40"
-      >
-        <div className="flex min-w-0 items-start gap-2">
-          {open ? (
-            <ChevronDownIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRightIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          )}
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                {run.id.slice(0, 8)}
-              </span>
-              <StatusBadge status={run.status} />
-              <span className="rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground capitalize">
-                {run.triggeredBy}
-              </span>
-            </div>
-            {run.error ? (
-              <p className="text-xs text-destructive">{run.error}</p>
-            ) : null}
-          </div>
-        </div>
-        <div className="shrink-0 text-right text-xs text-muted-foreground">
-          <p>Started {formatDate(run.startedAt ?? run.createdAt)}</p>
-          <p>Finished {formatDate(run.finishedAt)}</p>
-        </div>
-      </button>
-
-      {open ? (
-        <div className="border-t bg-muted/20">
-          <div className="flex items-center justify-between px-4 py-2">
-            <h3 className="text-xs font-medium text-muted-foreground">
-              Step runs ({stepRuns.length})
-            </h3>
-          </div>
-          {stepRuns.length === 0 ? (
-            <p className="px-4 pb-3 text-sm text-muted-foreground">
-              No step runs for this execution.
-            </p>
-          ) : (
-            <ul>
-              {stepRuns
-                .slice()
-                .sort((a, b) => a.executionOrder - b.executionOrder)
-                .map((stepRun) => (
-                  <StepRunRow key={stepRun.id} stepRun={stepRun} />
-                ))}
-            </ul>
-          )}
-        </div>
-      ) : null}
-    </article>
   )
 }
 
@@ -294,9 +190,76 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
   return (
     <div className="flex flex-col">
       <div className="space-y-3 py-4">
-        {runs.map((run) => (
-          <WorkflowRunCard key={run.id} run={run} />
-        ))}
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <ul className="divide-y divide-slate-100">
+            {runs.map((run) => (
+              <li key={run.id}>
+                <button
+                  className={`group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50`}
+                >
+                  <span
+                    className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg`}
+                  >
+                    <TerminalIcon className={`h-4 w-4`} />
+                  </span>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={run.status} />
+                      <span className="text-xs font-medium text-slate-400">
+                        #{run.id.slice(0, 8)}
+                      </span>
+                      <span className="ml-auto text-xs text-slate-400">
+                        {formatDate(run.createdAt)}
+                      </span>
+                    </div>
+
+                    <StepProgressBar
+                      steps={run.stepRuns ?? []}
+                      totalSteps={run.stepRuns?.length ?? 0}
+                    />
+
+                    <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-slate-500">
+                      <span className="inline-flex items-center gap-1.5">
+                        <LayersIcon className="h-3.5 w-3.5 text-slate-400" />
+                        {run.stepRuns?.length ?? 0} step
+                        {(run.stepRuns?.length ?? 0) > 1 ? "s" : ""}
+                        {(run.stepRuns?.filter(
+                          (stepRun) => stepRun.status === "failed"
+                        ).length ?? 0) > 0 && (
+                          <span className="font-medium text-rose-600">
+                            (
+                            {
+                              run.stepRuns?.filter(
+                                (stepRun) => stepRun.status === "failed"
+                              ).length
+                            }{" "}
+                            failed)
+                          </span>
+                        )}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <ClockIcon className="h-3.5 w-3.5 text-slate-400" />
+                        {formatMs(
+                          run.finishedAt
+                            ? new Date(run.finishedAt).getTime() -
+                                new Date(run.createdAt).getTime()
+                            : 0
+                        )}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                        {run.triggeredBy}
+                      </span>
+                    </div>
+                  </div>
+
+                  <ArrowRightIcon className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       {totalPages > 1 ? (

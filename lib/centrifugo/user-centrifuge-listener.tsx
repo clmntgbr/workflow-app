@@ -19,6 +19,7 @@ import {
   shouldRefetchOrganizations,
   shouldRefetchSingleEndpoint,
   shouldRefetchSteps,
+  shouldRefetchStepsFromRunEvents,
   shouldRefetchVariables,
   shouldRefetchWorkflowDetail,
   shouldRefetchWorkflowRuns,
@@ -276,7 +277,7 @@ export function UserCentrifugeListener() {
         notifyEndpointsRefetch()
       }
 
-      if (shouldRefetchSteps(data)) {
+      if (shouldRefetchSteps(data) || shouldRefetchStepsFromRunEvents(data)) {
         debouncedRefreshSteps(data.workflowId)
       }
 

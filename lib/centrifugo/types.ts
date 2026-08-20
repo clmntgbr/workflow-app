@@ -154,6 +154,19 @@ export function shouldRefetchSteps(event: UserStreamEvent): boolean {
   )
 }
 
+/** Refresh canvas steps so `lastRunStatus` stays in sync after run completion. */
+export function shouldRefetchStepsFromRunEvents(
+  event: UserStreamEvent
+): boolean {
+  return (
+    eventTypeEquals(event, "stepRun.succeeded") ||
+    eventTypeEquals(event, "stepRun.failed") ||
+    eventTypeEquals(event, "workflowRun.succeeded") ||
+    eventTypeEquals(event, "workflowRun.failed") ||
+    eventTypeEquals(event, "workflowRun.cancelled")
+  )
+}
+
 export function shouldRefetchConnections(event: UserStreamEvent): boolean {
   return (
     eventTypeEquals(event, "connection.created") ||

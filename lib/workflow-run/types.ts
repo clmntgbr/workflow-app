@@ -1,12 +1,37 @@
 import { initPaginate, Paginate } from "@/lib/paginate"
 
-export type WorkflowRunStatus =
-  | "pending"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "canceled"
-  | string
+/** Shared status for workflow runs and step runs. */
+export const RUN_STATUSES = [
+  "pending",
+  "running",
+  "success",
+  "failed",
+  "cancelled",
+  "skipped",
+] as const
+
+export type RunStatus = (typeof RUN_STATUSES)[number]
+
+export type WorkflowRunStatus = RunStatus
+
+export type StepRunStatus = RunStatus
+
+export function isRunStatus(value: unknown): value is RunStatus {
+  return (
+    typeof value === "string" &&
+    (RUN_STATUSES as readonly string[]).includes(value)
+  )
+}
+
+export function parseRunStatus(value: unknown): RunStatus | null | undefined {
+  if (value === null) return null
+  if (typeof value !== "string") return undefined
+  if (isRunStatus(value)) return value
+  // Backward-compatible aliases if older payloads appear.
+  if (value === "succeeded") return "success"
+  if (value === "canceled") return "cancelled"
+  return undefined
+}
 
 export type WorkflowRunTriggeredBy = "user" | "schedule" | "api" | string
 
@@ -66,7 +91,7 @@ export interface StepRun {
   executionOrder: number
   treeIndex: number
   position: StepRunPosition
-  status: string
+  status: StepRunStatus
   attempt: number
   responseSnapshot: StepRunResponseSnapshot | null
   insights?: Insight[]

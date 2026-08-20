@@ -3,7 +3,9 @@
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { StepPreview } from "@/components/workflow/step-preview"
 import { Endpoint } from "@/lib/endpoint/types"
+import { getStatusStyle } from "@/lib/misc"
 import { cn } from "@/lib/utils"
+import { RunStatus } from "@/lib/workflow-run/types"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
 import { PencilIcon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
@@ -26,6 +28,7 @@ export type CanvasStep = {
   executionOrder?: number
   treeIndex?: number
   status?: string
+  lastRunStatus?: RunStatus | null
   x: number
   y: number
   endpoint?: Endpoint
@@ -35,6 +38,29 @@ export type StepNodeData = {
   step: CanvasStep
   onEdit: (step: CanvasStep) => void
   onDelete: (stepId: string) => Promise<void>
+}
+
+function LastRunStatusPill({ status }: { status: string }) {
+  const style = getStatusStyle(status)
+  const isLive = status === "running" || status === "pending"
+
+  return (
+    <span
+      title={`Last run: ${style.label}`}
+      aria-label={`Last run status: ${style.label}`}
+      className="relative flex size-2 shrink-0"
+    >
+      {isLive ? (
+        <span
+          className={cn(
+            "absolute inset-0 animate-ping rounded-full opacity-60",
+            style.dot
+          )}
+        />
+      ) : null}
+      <span className={cn("relative size-2 rounded-full", style.dot)} />
+    </span>
+  )
 }
 
 export function StepNode({ data }: NodeProps) {
@@ -51,7 +77,7 @@ export function StepNode({ data }: NodeProps) {
 
       <div
         className={cn(
-          "group relative flex w-64 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4 py-2 transition-all duration-200",
+          "group relative flex w-80 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4 py-2 transition-all duration-200",
           "hover:shadow-sm"
         )}
         onClick={() => onEdit(step)}
@@ -92,6 +118,9 @@ export function StepNode({ data }: NodeProps) {
           url={step.path}
           className="min-w-0 flex-1"
         />
+        {step.lastRunStatus ? (
+          <LastRunStatusPill status={step.lastRunStatus} />
+        ) : null}
       </div>
 
       <Handle

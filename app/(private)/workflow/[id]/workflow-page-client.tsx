@@ -22,6 +22,7 @@ import { Endpoint } from "@/lib/endpoint/types"
 import { parseQueryRecord } from "@/lib/endpoint/utils"
 import { useOrganization } from "@/lib/organization/context"
 import { cn } from "@/lib/utils"
+import { parseRunStatus } from "@/lib/workflow-run/types"
 import {
   getActiveWorkflowRun,
   startWorkflowRun,
@@ -244,6 +245,9 @@ function mapItemToCanvasStep(
     executionOrder: pickNumber(record, ["executionOrder", "execution_order"]),
     treeIndex: pickNumber(record, ["treeIndex", "tree_index"]),
     status: pickString(record, ["status"]) ?? undefined,
+    lastRunStatus: parseRunStatus(
+      record.lastRunStatus ?? record.last_run_status
+    ),
     x: position.x,
     y: position.y,
     ...(endpoint ? { endpoint } : {}),
