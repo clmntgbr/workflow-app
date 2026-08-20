@@ -433,6 +433,15 @@ export function EndpointDrawer({
                       )}
                     />
                     <Field>
+                      <div className="space-y-2">
+                        <Label htmlFor="endpoint-body">
+                          Body
+                          <span className="text-destructive">*</span>
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Raw JSON request body.
+                        </p>
+                      </div>
                       <Controller
                         name="body"
                         control={control}
