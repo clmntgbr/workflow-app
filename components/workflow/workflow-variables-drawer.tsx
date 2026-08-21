@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 import { CanvasStep } from "@/components/workflow/step-node"
 import { StepPreview } from "@/components/workflow/step-preview"
 import { VariableDrawer } from "@/components/workflow/variable-drawer"
@@ -48,9 +49,19 @@ export function WorkflowVariablesDrawer({
   const [editingVariable, setEditingVariable] =
     useState<WorkflowVariable | null>(null)
   const [createStepId, setCreateStepId] = useState<string | null>(null)
+  const [stepSearch, setStepSearch] = useState("")
 
   const formStepId =
     editingVariable?.stepId ?? createStepId ?? steps[0]?.id ?? ""
+
+  const filteredSteps = (() => {
+    const query = stepSearch.trim().toLowerCase()
+    if (!query) return steps
+    return steps.filter((step) => {
+      const haystack = `${step.name} ${step.method} ${step.path}`.toLowerCase()
+      return haystack.includes(query)
+    })
+  })()
 
   const openCreate = (stepId: string) => {
     setEditingVariable(null)
@@ -117,7 +128,11 @@ export function WorkflowVariablesDrawer({
                     Add Variable
                   </Button>
                 ) : (
-                  <DropdownMenu>
+                  <DropdownMenu
+                    onOpenChange={(open) => {
+                      if (!open) setStepSearch("")
+                    }}
+                  >
                     <DropdownMenuTrigger asChild>
                       <Button
                         type="button"
@@ -130,24 +145,47 @@ export function WorkflowVariablesDrawer({
                         <ChevronDownIcon className="size-4 shrink-0 opacity-80" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="min-w-64">
+                    <DropdownMenuContent align="end" className="min-w-80 p-0">
                       <DropdownMenuGroup>
-                        <DropdownMenuLabel>Extract from step</DropdownMenuLabel>
+                        <DropdownMenuLabel className="hidden">
+                          Extract from step
+                        </DropdownMenuLabel>
                       </DropdownMenuGroup>
-                      <DropdownMenuSeparator />
-                      {steps.map((step) => (
-                        <DropdownMenuItem
-                          key={step.id}
-                          className="h-auto items-start rounded-none border-b border-slate-200 last:border-b-0"
-                          onClick={() => openCreate(step.id)}
-                        >
-                          <StepPreview
-                            name={step.name}
-                            method={step.method}
-                            url={step.path}
-                          />
-                        </DropdownMenuItem>
-                      ))}
+                      <div className="p-2">
+                        <Input
+                          value={stepSearch}
+                          placeholder="Search steps…"
+                          autoFocus
+                          className="h-8"
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                          onChange={(event) =>
+                            setStepSearch(event.target.value)
+                          }
+                        />
+                      </div>
+                      <DropdownMenuSeparator className="my-0" />
+                      <div className="max-h-62 overflow-y-auto">
+                        {filteredSteps.length === 0 ? (
+                          <p className="px-3 py-2 text-sm text-muted-foreground">
+                            No steps found
+                          </p>
+                        ) : (
+                          filteredSteps.map((step) => (
+                            <DropdownMenuItem
+                              key={step.id}
+                              className="h-14 items-center rounded-none border-b border-slate-200 last:border-b-0"
+                              onClick={() => openCreate(step.id)}
+                            >
+                              <StepPreview
+                                name={step.name}
+                                method={step.method}
+                                url={step.path}
+                              />
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                      </div>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
