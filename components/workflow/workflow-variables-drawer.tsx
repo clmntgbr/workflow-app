@@ -72,10 +72,11 @@ export function WorkflowVariablesDrawer({
   const filteredSteps = (() => {
     const query = stepSearch.trim().toLowerCase()
     if (!query) return steps
-    return steps.filter((step) => {
-      const haystack = `${step.name} ${step.method} ${step.path}`.toLowerCase()
-      return haystack.includes(query)
-    })
+    return steps.filter(
+      (step) =>
+        step.name.toLowerCase().includes(query) ||
+        step.path.toLowerCase().includes(query)
+    )
   })()
 
   const openCreateStatic = () => {
@@ -163,25 +164,17 @@ export function WorkflowVariablesDrawer({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-80 p-0">
-                    <DropdownMenuItem
-                      className="rounded-none"
-                      onClick={openCreateStatic}
-                    >
-                      <Braces className="size-4" />
-                      Static variable
-                    </DropdownMenuItem>
                     {steps.length > 0 ? (
                       <>
-                        <DropdownMenuSeparator className="my-0" />
                         <DropdownMenuGroup>
                           <DropdownMenuLabel className="hidden">
                             Extract from step
                           </DropdownMenuLabel>
                         </DropdownMenuGroup>
-                        <div className="px-2 pb-2">
+                        <div className="p-2">
                           <Input
                             value={stepSearch}
-                            placeholder="Search steps…"
+                            placeholder="Search by name or URL…"
                             className="h-8"
                             onClick={(event) => event.stopPropagation()}
                             onKeyDown={(event) => event.stopPropagation()}
@@ -191,29 +184,46 @@ export function WorkflowVariablesDrawer({
                           />
                         </div>
                         <DropdownMenuSeparator className="my-0" />
-                        <div className="max-h-56 overflow-y-auto">
-                          {filteredSteps.length === 0 ? (
-                            <p className="px-3 py-2 text-sm text-muted-foreground">
-                              No steps found
-                            </p>
-                          ) : (
-                            filteredSteps.map((step) => (
-                              <DropdownMenuItem
-                                key={step.id}
-                                className="h-14 items-center rounded-none border-b border-slate-200 last:border-b-0"
-                                onClick={() => openCreateExtracted(step.id)}
-                              >
-                                <StepPreview
-                                  name={step.name}
-                                  method={step.method}
-                                  url={step.path}
-                                />
-                              </DropdownMenuItem>
-                            ))
-                          )}
-                        </div>
                       </>
                     ) : null}
+                    <div className="max-h-56 overflow-y-auto">
+                      <DropdownMenuItem
+                        className="h-14 items-center rounded-none border-b border-slate-200 last:border-b-0"
+                        onClick={openCreateStatic}
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="shrink-0 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-slate-700 uppercase">
+                            Static
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[13px] font-semibold text-foreground">
+                              Static variable
+                            </p>
+                            <p className="truncate text-[11px] text-muted-foreground">
+                              Constant available from workflow start
+                            </p>
+                          </div>
+                        </div>
+                      </DropdownMenuItem>
+                      {filteredSteps.map((step) => (
+                        <DropdownMenuItem
+                          key={step.id}
+                          className="h-14 items-center rounded-none border-b border-slate-200 last:border-b-0"
+                          onClick={() => openCreateExtracted(step.id)}
+                        >
+                          <StepPreview
+                            name={step.name}
+                            method={step.method}
+                            url={step.path}
+                          />
+                        </DropdownMenuItem>
+                      ))}
+                      {steps.length > 0 && filteredSteps.length === 0 ? (
+                        <p className="px-3 py-2 text-sm text-muted-foreground">
+                          No steps found
+                        </p>
+                      ) : null}
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
