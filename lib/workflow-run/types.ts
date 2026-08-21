@@ -102,6 +102,62 @@ export interface StepRun {
   updatedAt: string
 }
 
+/** Nested workflow snapshot returned by GET /api/workflow-runs/:id */
+export interface WorkflowRunWorkflow {
+  id: string
+  name: string
+  description: string | null
+  status: string
+  scheduleType: string
+  scheduleIntervalValue: number
+  scheduleIntervalUnit: string | null
+  scheduleAt: string | null
+  scheduleTimezone: string
+  notificationsEnabled: boolean
+  notifyOnSuccess: boolean
+  notifyOnFailure: boolean
+  notifyOnCancel: boolean
+}
+
+/** Nested step definition returned on stepRuns by GET /api/workflow-runs/:id */
+export interface WorkflowRunStep {
+  id: string
+  endpointId: string
+  name: string
+  url: string
+  method: string
+  position: StepRunPosition
+  lastRunStatus: RunStatus | null
+  description: string | null
+  headers: Record<string, string>
+  query: Record<string, string | string[]>
+  body: Record<string, unknown>
+  timeout: number
+  retryOnFailure: boolean
+  retryCount: number
+  retryDelay: number
+  index: string
+  executionOrder: number
+  treeIndex: number
+  status: string
+}
+
+export interface WorkflowRunStepRunDetail {
+  id: string
+  name: string
+  url: string
+  method: string
+  executionOrder: number
+  status: StepRunStatus
+  attempt: number
+  responseSnapshot: StepRunResponseSnapshot | null
+  insights?: Insight[]
+  step: WorkflowRunStep
+  startedAt: string | null
+  finishedAt: string | null
+  error: string | null
+}
+
 export interface WorkflowRun {
   id: string
   workflowId: string
@@ -116,6 +172,19 @@ export interface WorkflowRun {
   createdAt: string
   updatedAt: string
   stepRuns?: StepRun[]
+}
+
+/** Detail payload from GET /api/workflow-runs/:id */
+export interface WorkflowRunDetail {
+  id: string
+  status: WorkflowRunStatus
+  triggeredBy: WorkflowRunTriggeredBy
+  startedAt: string | null
+  finishedAt: string | null
+  error: string | null
+  createdAt: string
+  workflow: WorkflowRunWorkflow
+  stepRuns: WorkflowRunStepRunDetail[]
 }
 
 export interface WorkflowRunState {

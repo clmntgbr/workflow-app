@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/drawer"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getWorkflowRun } from "@/lib/workflow-run/api"
-import { WorkflowRun } from "@/lib/workflow-run/types"
+import { WorkflowRun, WorkflowRunDetail } from "@/lib/workflow-run/types"
 import { useEffect, useState } from "react"
 
 interface WorkflowRunDrawerProps {
@@ -22,40 +22,50 @@ export function WorkflowRunDrawer({
   isOpen,
   onOpenChange,
 }: WorkflowRunDrawerProps) {
-  const [detailedRun, setDetailedRun] = useState<WorkflowRun | null>(null)
+  const [detailedRun, setDetailedRun] = useState<WorkflowRunDetail | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadedRunId, setLoadedRunId] = useState<string | null>(null)
+
+  const activeRunId = isOpen && run ? run.id : null
+
+  if (!activeRunId && loadedRunId !== null) {
+    setLoadedRunId(null)
+    setDetailedRun(null)
+    setError(null)
+    setIsLoading(false)
+  }
 
   useEffect(() => {
-    if (!isOpen || !run) {
-      setDetailedRun(null)
-      setError(null)
-      setIsLoading(false)
-      return
-    }
+    if (!activeRunId) return
 
     let cancelled = false
-    setDetailedRun(run)
-    setIsLoading(true)
-    setError(null)
+    const requestId = activeRunId
 
-    void getWorkflowRun(run.id)
-      .then((full) => {
+    const load = async () => {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const full = await getWorkflowRun(requestId)
         if (cancelled) return
         setDetailedRun(full)
-      })
-      .catch(() => {
+        setLoadedRunId(requestId)
+      } catch {
         if (cancelled) return
         setError("Failed to load workflow run")
-      })
-      .finally(() => {
+        setDetailedRun(null)
+      } finally {
         if (!cancelled) setIsLoading(false)
-      })
+      }
+    }
+
+    void load()
 
     return () => {
       cancelled = true
     }
-  }, [isOpen, run])
+  }, [activeRunId])
 
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right">
