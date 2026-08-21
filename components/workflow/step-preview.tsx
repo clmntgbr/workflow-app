@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils"
+import { Fragment } from "react"
 
 const METHOD_STYLES: Record<string, string> = {
   GET: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -8,6 +9,29 @@ const METHOD_STYLES: Record<string, string> = {
   DELETE: "bg-red-50 text-red-700 border-red-200",
   HEAD: "bg-slate-50 text-slate-700 border-slate-200",
   OPTIONS: "bg-violet-50 text-violet-700 border-violet-200",
+}
+
+const VARIABLE_PATTERN = /(\{\{[a-zA-Z0-9_-]+\}\})/g
+
+function HighlightedUrl({ url }: { url: string }) {
+  const parts = url.split(VARIABLE_PATTERN)
+
+  return (
+    <>
+      {parts.map((part, index) =>
+        /^\{\{[a-zA-Z0-9_-]+\}\}$/.test(part) ? (
+          <span
+            key={`${part}-${index}`}
+            className="font-medium text-green-600 dark:text-green-600"
+          >
+            {part}
+          </span>
+        ) : (
+          <Fragment key={`${part}-${index}`}>{part}</Fragment>
+        )
+      )}
+    </>
+  )
 }
 
 interface StepPreviewProps {
@@ -44,9 +68,13 @@ export function StepPreview({
         <p className="truncate text-[13px] font-semibold text-foreground">
           {name}
         </p>
-        <p className="truncate text-[11px] text-muted-foreground">{url}</p>
+        <p className="truncate text-[11px] text-muted-foreground">
+          <HighlightedUrl url={url} />
+        </p>
         {description ? (
-          <p className="truncate text-[11px] text-muted-foreground">{description}</p>
+          <p className="truncate text-[11px] text-muted-foreground">
+            {description}
+          </p>
         ) : null}
       </div>
     </div>

@@ -138,7 +138,7 @@ export function WorkflowVariablesDrawer({
                       {steps.map((step) => (
                         <DropdownMenuItem
                           key={step.id}
-                          className="h-auto items-start py-2"
+                          className="h-auto items-start rounded-none border-b border-slate-200 last:border-b-0"
                           onClick={() => openCreate(step.id)}
                         >
                           <StepPreview
