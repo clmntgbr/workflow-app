@@ -1,30 +1,50 @@
+export type WorkflowVariableKind = "static" | "extracted"
+
 export interface WorkflowVariable {
   id: string
   name: string
   key: string
   description: string | null
-  path: string
-  stepId: string
+  kind: WorkflowVariableKind
+  path: string | null
+  value?: unknown
+  stepId: string | null
   workflowId: string
-  lastValue: unknown | null
+  lastValue?: unknown | null
   createdAt: string
   updatedAt: string
 }
 
-export interface CreateWorkflowVariableInput {
-  stepId: string
-  name: string
-  key: string
-  description?: string
-  path: string
-}
+export type CreateWorkflowVariableInput =
+  | {
+      kind: "static"
+      name: string
+      key: string
+      description?: string
+      value: unknown
+    }
+  | {
+      kind: "extracted"
+      stepId: string
+      name: string
+      key: string
+      description?: string
+      path: string
+    }
 
-export interface UpdateWorkflowVariableInput {
-  name: string
-  key: string
-  description?: string
-  path: string
-}
+export type UpdateWorkflowVariableInput =
+  | {
+      name: string
+      key: string
+      description?: string
+      path: string
+    }
+  | {
+      name: string
+      key: string
+      description?: string
+      value: unknown
+    }
 
 export interface VariableUsageStep {
   id: string

@@ -25,7 +25,9 @@ export function StepVariablesSection({
   onRequestDelete,
 }: StepVariablesSectionProps) {
   const stepVariables = variables.filter(
-    (variable) => variable.stepId === stepId
+    (variable) =>
+      variable.stepId === stepId &&
+      (variable.kind ?? "extracted") === "extracted"
   )
   const [isVariableDrawerOpen, setIsVariableDrawerOpen] = useState(false)
   const [editingVariable, setEditingVariable] =
@@ -92,7 +94,7 @@ export function StepVariablesSection({
                   <span className="block truncate">{variable.name} </span>
                 </span>
                 <span className="shrink-0 px-1.5 py-0.5">
-                  <Badge variant="secondary">{variable.path}</Badge>
+                  <Badge variant="secondary">{variable.path ?? "—"}</Badge>
                 </span>
               </button>
               <div className="flex shrink-0 items-center rounded-md">
@@ -120,6 +122,7 @@ export function StepVariablesSection({
       <VariableDrawer
         workflowId={workflowId}
         stepId={stepId}
+        kind="extracted"
         variable={activeEditing}
         nested
         isOpen={

@@ -17,13 +17,18 @@ import {
   createWorkflowVariable,
   updateWorkflowVariable,
 } from "@/lib/workflow/variable/api"
-import { WorkflowVariable } from "@/lib/workflow/variable/types"
+import {
+  WorkflowVariable,
+  WorkflowVariableKind,
+} from "@/lib/workflow/variable/types"
 import { Loader2Icon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 
 interface VariableDrawerProps {
   workflowId: string
-  stepId: string
+  /** Required when creating/editing an extracted variable. */
+  stepId?: string | null
+  kind?: WorkflowVariableKind
   variable: WorkflowVariable | null
   isOpen: boolean
   onOpenChange: (open: boolean) => void
@@ -37,6 +42,7 @@ interface VariableFormState {
   key: string
   description: string
   path: string
+  value: string
 }
 
 const emptyForm: VariableFormState = {
@@ -44,6 +50,7 @@ const emptyForm: VariableFormState = {
   key: "",
   description: "",
   path: "$",
+  value: "",
 }
 
 /** Slug-like keys: lowercase letters, digits, `_` and `-` only. */
@@ -54,19 +61,45 @@ function toVariableKeySlug(value: string): string {
     .replace(/[^a-z0-9_-]/g, "")
 }
 
+function formatStaticValue(value: unknown): string {
+  if (value === undefined || value === null) return ""
+  if (typeof value === "string") return value
+  return JSON.stringify(value, null, 2)
+}
+
+function parseStaticValue(raw: string): unknown {
+  const trimmed = raw.trim()
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    return raw
+  }
+}
+
 function toFormState(variable: WorkflowVariable | null): VariableFormState {
   if (!variable) return emptyForm
   return {
     name: variable.name,
     key: variable.key,
     description: variable.description ?? "",
-    path: variable.path,
+    path: variable.path ?? "$",
+    value: formatStaticValue(variable.value),
   }
+}
+
+function resolveKind(
+  variable: WorkflowVariable | null,
+  kind: WorkflowVariableKind | undefined
+): WorkflowVariableKind {
+  if (variable?.kind) return variable.kind
+  if (kind) return kind
+  return variable?.stepId ? "extracted" : "static"
 }
 
 export function VariableDrawer({
   workflowId,
-  stepId,
+  stepId = null,
+  kind: kindProp,
   variable,
   isOpen,
   onOpenChange,
@@ -75,26 +108,30 @@ export function VariableDrawer({
   nested = false,
 }: VariableDrawerProps) {
   const isEdit = Boolean(variable)
+  const kind = resolveKind(variable, kindProp)
+  const isStatic = kind === "static"
   const [form, setForm] = useState<VariableFormState>(emptyForm)
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [openSnapshot, setOpenSnapshot] = useState({
     isOpen: false,
     variableId: null as string | null,
+    kind: "extracted" as WorkflowVariableKind,
   })
 
   if (isOpen) {
     const variableId = variable?.id ?? null
     if (
       !openSnapshot.isOpen ||
-      openSnapshot.variableId !== variableId
+      openSnapshot.variableId !== variableId ||
+      openSnapshot.kind !== kind
     ) {
-      setOpenSnapshot({ isOpen: true, variableId })
+      setOpenSnapshot({ isOpen: true, variableId, kind })
       setForm(toFormState(variable))
       setFormError(null)
     }
   } else if (openSnapshot.isOpen) {
-    setOpenSnapshot({ isOpen: false, variableId: null })
+    setOpenSnapshot({ isOpen: false, variableId: null, kind: "extracted" })
   }
 
   const handleClose = () => {
@@ -107,8 +144,8 @@ export function VariableDrawer({
     const path = form.path.trim()
     const description = form.description.trim()
 
-    if (!name || !key || !path) {
-      setFormError("Name, key, and path are required")
+    if (!name || !key) {
+      setFormError("Name and key are required")
       return
     }
 
@@ -119,21 +156,58 @@ export function VariableDrawer({
       return
     }
 
+    if (isStatic) {
+      if (!form.value.trim()) {
+        setFormError("Value is required")
+        return
+      }
+    } else {
+      if (!path) {
+        setFormError("Path is required")
+        return
+      }
+      if (!variable && !stepId) {
+        setFormError("A step is required for extracted variables")
+        return
+      }
+    }
+
     setIsSaving(true)
     setFormError(null)
 
     try {
       if (variable) {
-        const updated = await updateWorkflowVariable(workflowId, variable.id, {
+        const updated = await updateWorkflowVariable(
+          workflowId,
+          variable.id,
+          isStatic
+            ? {
+                name,
+                key,
+                description,
+                value: parseStaticValue(form.value),
+              }
+            : {
+                name,
+                key,
+                description,
+                path,
+              }
+        )
+        onSaved(updated)
+      } else if (isStatic) {
+        const created = await createWorkflowVariable(workflowId, {
+          kind: "static",
           name,
           key,
           description,
-          path,
+          value: parseStaticValue(form.value),
         })
-        onSaved(updated)
+        onSaved(created)
       } else {
         const created = await createWorkflowVariable(workflowId, {
-          stepId,
+          kind: "extracted",
+          stepId: stepId as string,
           name,
           key,
           description,
@@ -165,7 +239,15 @@ export function VariableDrawer({
         overlayClassName={nested ? "z-90" : "z-[65]"}
       >
         <DrawerHeader className="sr-only">
-          <DrawerTitle>{isEdit ? "Edit variable" : "New variable"}</DrawerTitle>
+          <DrawerTitle>
+            {isEdit
+              ? isStatic
+                ? "Edit static variable"
+                : "Edit variable"
+              : isStatic
+                ? "New static variable"
+                : "New variable"}
+          </DrawerTitle>
         </DrawerHeader>
 
         <div className="flex min-h-0 flex-1 flex-col">
@@ -173,11 +255,27 @@ export function VariableDrawer({
             <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
               <div className="space-y-1">
                 <h2 className="font-semibold">
-                  {isEdit ? "Edit variable" : "New variable"}
+                  {isEdit
+                    ? isStatic
+                      ? "Edit static variable"
+                      : "Edit variable"
+                    : isStatic
+                      ? "New static variable"
+                      : "New variable"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Extract a value from this step&apos;s response body with a
-                  JSONPath (e.g. <span className="font-mono">$.token</span>).
+                  {isStatic ? (
+                    <>
+                      Constant available from workflow start. Value can be a
+                      string, number, boolean, object, or array (JSON).
+                    </>
+                  ) : (
+                    <>
+                      Extract a value from this step&apos;s response body with a
+                      JSONPath (e.g.{" "}
+                      <span className="font-mono">$.token</span>).
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -213,22 +311,38 @@ export function VariableDrawer({
                     }
                   />
                 </Field>
-                <Field>
-                  <VariablePathField
-                    id="variable-drawer-path"
-                    workflowId={workflowId}
-                    stepId={stepId}
-                    isRequired
-                    label="Path"
-                    description="JSONPath into the response body — pick from the last successful run or type manually"
-                    value={form.path}
-                    hasCharacterLimit
-                    maxLength={255}
-                    onChange={(value) =>
-                      setForm((current) => ({ ...current, path: value }))
-                    }
-                  />
-                </Field>
+                {isStatic ? (
+                  <Field>
+                    <CustomTextarea
+                      id="variable-drawer-value"
+                      isRequired
+                      label="Value"
+                      description='Plain string or JSON (e.g. "https://api.example.com", 42, true, {"a":1})'
+                      value={form.value}
+                      onChange={(value) =>
+                        setForm((current) => ({ ...current, value }))
+                      }
+                      textareaClassName="min-h-24 font-mono"
+                    />
+                  </Field>
+                ) : (
+                  <Field>
+                    <VariablePathField
+                      id="variable-drawer-path"
+                      workflowId={workflowId}
+                      stepId={stepId ?? variable?.stepId ?? ""}
+                      isRequired
+                      label="Path"
+                      description="JSONPath into the response body — pick from the last successful run or type manually"
+                      value={form.path}
+                      hasCharacterLimit
+                      maxLength={255}
+                      onChange={(value) =>
+                        setForm((current) => ({ ...current, path: value }))
+                      }
+                    />
+                  </Field>
+                )}
                 <Field>
                   <CustomTextarea
                     id="variable-drawer-description"

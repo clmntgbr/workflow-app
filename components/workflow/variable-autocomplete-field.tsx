@@ -229,7 +229,11 @@ export function VariableAutocompleteField({
                   <span className="block truncate">
                     {variable.name}{" "}
                     <span className="text-xs text-muted-foreground">
-                      {variable.description}
+                      {variable.kind === "static"
+                        ? "static"
+                        : variable.path
+                          ? variable.path
+                          : variable.description}
                     </span>
                   </span>
                 </span>

@@ -21,7 +21,10 @@ import { Input } from "@/components/ui/input"
 import { CanvasStep } from "@/components/workflow/step-node"
 import { StepPreview } from "@/components/workflow/step-preview"
 import { VariableDrawer } from "@/components/workflow/variable-drawer"
-import { WorkflowVariable } from "@/lib/workflow/variable/types"
+import {
+  WorkflowVariable,
+  WorkflowVariableKind,
+} from "@/lib/workflow/variable/types"
 import { Braces, ChevronDownIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 import { Badge } from "../ui/badge"
@@ -34,6 +37,19 @@ interface WorkflowVariablesDrawerProps {
   onOpenChange: (open: boolean) => void
   onVariablesChange: (variables: WorkflowVariable[]) => void
   onRequestDelete?: (variable: WorkflowVariable) => void
+}
+
+function formatVariableBadge(variable: WorkflowVariable): string {
+  if (variable.kind === "static") {
+    if (variable.value === undefined || variable.value === null) return "static"
+    if (typeof variable.value === "string") return variable.value
+    try {
+      return JSON.stringify(variable.value)
+    } catch {
+      return "static"
+    }
+  }
+  return variable.path ?? "extracted"
 }
 
 export function WorkflowVariablesDrawer({
@@ -49,10 +65,9 @@ export function WorkflowVariablesDrawer({
   const [editingVariable, setEditingVariable] =
     useState<WorkflowVariable | null>(null)
   const [createStepId, setCreateStepId] = useState<string | null>(null)
+  const [createKind, setCreateKind] =
+    useState<WorkflowVariableKind>("extracted")
   const [stepSearch, setStepSearch] = useState("")
-
-  const formStepId =
-    editingVariable?.stepId ?? createStepId ?? steps[0]?.id ?? ""
 
   const filteredSteps = (() => {
     const query = stepSearch.trim().toLowerCase()
@@ -63,14 +78,23 @@ export function WorkflowVariablesDrawer({
     })
   })()
 
-  const openCreate = (stepId: string) => {
+  const openCreateStatic = () => {
+    setEditingVariable(null)
+    setCreateStepId(null)
+    setCreateKind("static")
+    setIsVariableFormOpen(true)
+  }
+
+  const openCreateExtracted = (stepId: string) => {
     setEditingVariable(null)
     setCreateStepId(stepId)
+    setCreateKind("extracted")
     setIsVariableFormOpen(true)
   }
 
   const openEdit = (variable: WorkflowVariable) => {
     setCreateStepId(variable.stepId)
+    setCreateKind(variable.kind ?? (variable.stepId ? "extracted" : "static"))
     setEditingVariable(variable)
     setIsVariableFormOpen(true)
   }
@@ -91,6 +115,12 @@ export function WorkflowVariablesDrawer({
     variables.some((variable) => variable.id === editingVariable.id)
       ? editingVariable
       : null
+
+  const formKind = activeEditing
+    ? (activeEditing.kind ?? (activeEditing.stepId ? "extracted" : "static"))
+    : createKind
+
+  const formStepId = activeEditing?.stepId ?? createStepId
 
   return (
     <>
@@ -115,80 +145,77 @@ export function WorkflowVariablesDrawer({
                   </p>
                 </div>
 
-                {steps.length <= 1 ? (
-                  <Button
-                    type="button"
-                    className="h-9 bg-emerald-600 px-3 text-white hover:bg-emerald-700"
-                    disabled={steps.length === 0}
-                    onClick={() => {
-                      if (steps[0]) openCreate(steps[0].id)
-                    }}
-                  >
-                    <PlusIcon className="size-4" />
-                    Add Variable
-                  </Button>
-                ) : (
-                  <DropdownMenu
-                    onOpenChange={(open) => {
-                      if (!open) setStepSearch("")
-                    }}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        className="h-9 justify-between gap-2 bg-emerald-600 px-3 text-white hover:bg-emerald-700"
-                      >
-                        <span className="flex min-w-0 items-center gap-2">
-                          <PlusIcon className="size-4" />
-                          Add Variable
-                        </span>
-                        <ChevronDownIcon className="size-4 shrink-0 opacity-80" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="min-w-80 p-0">
-                      <DropdownMenuGroup>
-                        <DropdownMenuLabel className="hidden">
-                          Extract from step
-                        </DropdownMenuLabel>
-                      </DropdownMenuGroup>
-                      <div className="p-2">
-                        <Input
-                          value={stepSearch}
-                          placeholder="Search steps…"
-                          autoFocus
-                          className="h-8"
-                          onClick={(event) => event.stopPropagation()}
-                          onKeyDown={(event) => event.stopPropagation()}
-                          onChange={(event) =>
-                            setStepSearch(event.target.value)
-                          }
-                        />
-                      </div>
-                      <DropdownMenuSeparator className="my-0" />
-                      <div className="max-h-62 overflow-y-auto">
-                        {filteredSteps.length === 0 ? (
-                          <p className="px-3 py-2 text-sm text-muted-foreground">
-                            No steps found
-                          </p>
-                        ) : (
-                          filteredSteps.map((step) => (
-                            <DropdownMenuItem
-                              key={step.id}
-                              className="h-14 items-center rounded-none border-b border-slate-200 last:border-b-0"
-                              onClick={() => openCreate(step.id)}
-                            >
-                              <StepPreview
-                                name={step.name}
-                                method={step.method}
-                                url={step.path}
-                              />
-                            </DropdownMenuItem>
-                          ))
-                        )}
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                <DropdownMenu
+                  onOpenChange={(open) => {
+                    if (!open) setStepSearch("")
+                  }}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      className="h-9 justify-between gap-2 bg-emerald-600 px-3 text-white hover:bg-emerald-700"
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <PlusIcon className="size-4" />
+                        Add Variable
+                      </span>
+                      <ChevronDownIcon className="size-4 shrink-0 opacity-80" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-80 p-0">
+                    <DropdownMenuItem
+                      className="rounded-none"
+                      onClick={openCreateStatic}
+                    >
+                      <Braces className="size-4" />
+                      Static variable
+                    </DropdownMenuItem>
+                    {steps.length > 0 ? (
+                      <>
+                        <DropdownMenuSeparator className="my-0" />
+                        <DropdownMenuGroup>
+                          <DropdownMenuLabel className="hidden">
+                            Extract from step
+                          </DropdownMenuLabel>
+                        </DropdownMenuGroup>
+                        <div className="px-2 pb-2">
+                          <Input
+                            value={stepSearch}
+                            placeholder="Search steps…"
+                            className="h-8"
+                            onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => event.stopPropagation()}
+                            onChange={(event) =>
+                              setStepSearch(event.target.value)
+                            }
+                          />
+                        </div>
+                        <DropdownMenuSeparator className="my-0" />
+                        <div className="max-h-56 overflow-y-auto">
+                          {filteredSteps.length === 0 ? (
+                            <p className="px-3 py-2 text-sm text-muted-foreground">
+                              No steps found
+                            </p>
+                          ) : (
+                            filteredSteps.map((step) => (
+                              <DropdownMenuItem
+                                key={step.id}
+                                className="h-14 items-center rounded-none border-b border-slate-200 last:border-b-0"
+                                onClick={() => openCreateExtracted(step.id)}
+                              >
+                                <StepPreview
+                                  name={step.name}
+                                  method={step.method}
+                                  url={step.path}
+                                />
+                              </DropdownMenuItem>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    ) : null}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
@@ -196,7 +223,7 @@ export function WorkflowVariablesDrawer({
               {variables.length === 0 ? (
                 <EmptyComponent
                   title="No variables yet"
-                  description="Extract a value from a step response to reuse it later with {{key}}."
+                  description="Add a static constant or extract a value from a step response to reuse later with {{key}}."
                   icon={<Braces className="size-5 text-muted-foreground" />}
                 />
               ) : (
@@ -220,8 +247,13 @@ export function WorkflowVariablesDrawer({
                             {variable.name}
                           </span>
                         </span>
-                        <span className="shrink-0 px-1.5 py-0.5">
-                          <Badge variant="secondary">{variable.path}</Badge>
+                        <span className="flex max-w-[40%] shrink-0 flex-col items-end gap-1 px-1.5 py-0.5">
+                          <Badge
+                            variant="secondary"
+                            className="max-w-full truncate"
+                          >
+                            {formatVariableBadge(variable)}
+                          </Badge>
                         </span>
                       </Button>
                       <Button
@@ -245,6 +277,7 @@ export function WorkflowVariablesDrawer({
         <VariableDrawer
           workflowId={workflowId}
           stepId={formStepId}
+          kind={formKind}
           variable={activeEditing}
           isOpen={
             isVariableFormOpen &&
@@ -256,6 +289,7 @@ export function WorkflowVariablesDrawer({
             if (!open) {
               setEditingVariable(null)
               setCreateStepId(null)
+              setCreateKind("extracted")
             }
           }}
           onSaved={handleSaved}
