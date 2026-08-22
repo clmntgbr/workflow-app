@@ -78,6 +78,7 @@ import {
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+import { toast } from "sonner"
 
 interface WorkflowPageClientProps {
   workflowId: string
@@ -470,6 +471,9 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         await refreshActiveRun()
         return
       }
+      toast.error(
+        error instanceof Error ? error.message : "Failed to start workflow run"
+      )
     } finally {
       setIsRunActionLoading(false)
     }
@@ -490,6 +494,9 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         setActiveRun(null)
         return
       }
+      toast.error(
+        error instanceof Error ? error.message : "Failed to stop workflow run"
+      )
     } finally {
       setIsRunActionLoading(false)
     }

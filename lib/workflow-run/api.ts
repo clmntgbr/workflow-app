@@ -30,6 +30,22 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>
 }
 
+async function readWorkflowRunErrorMessage(
+  response: Response,
+  fallback: string
+): Promise<string> {
+  try {
+    const data: unknown = await response.json()
+    const record = asRecord(data)
+    const nested = asRecord(record?.data)
+    const message = nested?.message ?? record?.message
+    if (typeof message === "string" && message.trim()) return message
+  } catch {
+    // Ignore unreadable error bodies.
+  }
+  return fallback
+}
+
 async function readConflictFromResponse(
   response: Response
 ): Promise<WorkflowRunConflictError | null> {
@@ -79,7 +95,9 @@ export const startWorkflowRun = async (
   if (conflict) throw conflict
 
   if (!response.ok) {
-    throw new Error("Failed to start workflow run")
+    throw new Error(
+      await readWorkflowRunErrorMessage(response, "Failed to start workflow run")
+    )
   }
 
   return response.json()
@@ -96,7 +114,9 @@ export const stopWorkflowRun = async (
   if (conflict) throw conflict
 
   if (!response.ok) {
-    throw new Error("Failed to stop workflow run")
+    throw new Error(
+      await readWorkflowRunErrorMessage(response, "Failed to stop workflow run")
+    )
   }
 
   return response.json()

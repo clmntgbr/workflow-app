@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { getWorkflow } from "@/lib/workflow/api"
 import { useWorkflow } from "@/lib/workflow/context"
 import {
   toCreateWorkflowPayload,
@@ -122,6 +123,9 @@ export function WorkflowDrawer({
 
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [detailedWorkflow, setDetailedWorkflow] = useState<Workflow | null>(
+    null
+  )
 
   const {
     handleSubmit,
@@ -131,7 +135,7 @@ export function WorkflowDrawer({
     formState: { errors },
   } = useForm<WorkflowFormValues>({
     resolver: zodResolver(workflowSchema),
-    defaultValues: getWorkflowFormValues(workflow),
+    defaultValues: emptyFormValues,
   })
 
   const scheduleType = useWatch({
@@ -145,6 +149,8 @@ export function WorkflowDrawer({
   const notifyOnSuccess = useWatch({ control, name: "notifyOnSuccess" })
   const notifyOnFailure = useWatch({ control, name: "notifyOnFailure" })
   const notifyOnCancel = useWatch({ control, name: "notifyOnCancel" })
+
+  const activeWorkflow = detailedWorkflow ?? workflow
 
   const handleNotifyTargetChange = (
     fieldName: "notifyOnSuccess" | "notifyOnFailure" | "notifyOnCancel",
@@ -164,8 +170,40 @@ export function WorkflowDrawer({
     }
   }
 
-  const onClose = () => {
+  useEffect(() => {
+    if (!isOpen) {
+      setDetailedWorkflow(null)
+      return
+    }
+
+    if (!workflow) {
+      setDetailedWorkflow(null)
+      reset(emptyFormValues)
+      return
+    }
+
+    setDetailedWorkflow(workflow)
     reset(getWorkflowFormValues(workflow))
+
+    let cancelled = false
+
+    void getWorkflow(workflow.id)
+      .then((full) => {
+        if (cancelled) return
+        setDetailedWorkflow(full)
+        reset(getWorkflowFormValues(full))
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+    // Intentionally keyed on workflow.id so a list refetch does not reset the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, workflow?.id, reset])
+
+  const onClose = () => {
+    reset(getWorkflowFormValues(activeWorkflow))
     onOpenChange(false)
   }
 
@@ -175,12 +213,12 @@ export function WorkflowDrawer({
       if (isCreate) {
         const created = await createWorkflow(toCreateWorkflowPayload(data))
         onSaved?.(created)
-      } else {
+      } else if (activeWorkflow) {
         const updated = await updateWorkflow(
-          workflow.id,
+          activeWorkflow.id,
           toUpdateWorkflowPayload(data, {
-            status: workflow.status,
-            concurrency: workflow.concurrency,
+            status: activeWorkflow.status,
+            concurrency: activeWorkflow.concurrency,
           })
         )
         onSaved?.(updated)
@@ -201,12 +239,6 @@ export function WorkflowDrawer({
       ?.querySelector("[aria-invalid='true']")
       ?.scrollIntoView({ behavior: "smooth", block: "center" })
   }
-
-  useEffect(() => {
-    if (isOpen) {
-      reset(getWorkflowFormValues(workflow))
-    }
-  }, [isOpen, workflow, reset])
 
   return (
     <>
@@ -447,13 +479,13 @@ export function WorkflowDrawer({
                     </Field>
                   ) : null}
 
-                  {!isCreate && workflow?.nextRunAt ? (
+                  {!isCreate && activeWorkflow?.nextRunAt ? (
                     <div className="space-y-1 rounded-lg border px-3 py-2">
                       <p className="text-xs text-muted-foreground">
                         Next run
                       </p>
                       <p className="text-sm">
-                        {new Date(workflow.nextRunAt).toLocaleString()}
+                        {new Date(activeWorkflow.nextRunAt).toLocaleString()}
                       </p>
                     </div>
                   ) : null}
@@ -661,13 +693,13 @@ export function WorkflowDrawer({
           </div>
         </DrawerContent>
       </Drawer>
-      {!isCreate && workflow && (
+      {!isCreate && activeWorkflow && (
         <DeleteConfirmDialog
           open={isDeleteOpen}
           onOpenChange={setIsDeleteOpen}
           title="Delete workflow"
           description="This action cannot be undone. The workflow will be permanently removed."
-          onConfirm={() => removeWorkflow(workflow.id)}
+          onConfirm={() => removeWorkflow(activeWorkflow.id)}
           onDeleted={() => {
             onClose()
             onDeleted?.()
