@@ -7,7 +7,13 @@ import { GetStatusStyle } from "@/lib/misc"
 import { cn } from "@/lib/utils"
 import { RunStatus } from "@/lib/workflow-run/types"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
-import { PencilIcon, Trash2Icon } from "lucide-react"
+import {
+  CheckIcon,
+  LoaderCircleIcon,
+  MinusIcon,
+  PencilIcon,
+  Trash2Icon,
+} from "lucide-react"
 import { useState } from "react"
 
 export type CanvasStep = {
@@ -40,25 +46,33 @@ export type StepNodeData = {
   onDelete: (stepId: string) => Promise<void>
 }
 
-function LastRunStatusPill({ status }: { status: RunStatus }) {
+function LastRunStatusIcon({ status }: { status: RunStatus }) {
   const style = GetStatusStyle(status)
-  const isLive = status === "running" || status === "pending"
 
   return (
     <span
       title={`Last run: ${style.label}`}
       aria-label={`Last run status: ${style.label}`}
-      className="relative flex size-2 shrink-0"
+      className="shrink-0"
     >
-      {isLive ? (
-        <span
-          className={cn(
-            "absolute inset-0 animate-ping rounded-full opacity-60",
-            style.dot
-          )}
-        />
+      {status === "success" ? (
+        <span className="flex size-3 items-center justify-center rounded-full bg-emerald-500 text-white">
+          <CheckIcon className="size-2 stroke-[3]" />
+        </span>
       ) : null}
-      <span className={cn("relative size-2 rounded-full", style.dot)} />
+      {status === "failed" ? (
+        <span className="flex size-3 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold leading-none text-white">
+          !
+        </span>
+      ) : null}
+      {status === "running" || status === "pending" ? (
+        <LoaderCircleIcon className="size-3 animate-spin text-amber-600" />
+      ) : null}
+      {status === "cancelled" || status === "skipped" ? (
+        <span className="flex size-3 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <MinusIcon className="size-2 stroke-[3]" />
+        </span>
+      ) : null}
     </span>
   )
 }
@@ -119,7 +133,7 @@ export function StepNode({ data }: NodeProps) {
           className="min-w-0 flex-1"
         />
         {step.lastRunStatus ? (
-          <LastRunStatusPill status={step.lastRunStatus} />
+          <LastRunStatusIcon status={step.lastRunStatus} />
         ) : null}
       </div>
 
