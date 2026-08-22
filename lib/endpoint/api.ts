@@ -47,6 +47,27 @@ export const listEndpoints = async (
   return response.json()
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+async function readEndpointErrorMessage(
+  response: Response,
+  fallback: string
+): Promise<string> {
+  try {
+    const data: unknown = await response.json()
+    const record = asRecord(data)
+    const nested = asRecord(record?.data)
+    const message = nested?.message ?? record?.message
+    if (typeof message === "string" && message.trim()) return message
+  } catch {
+    // Ignore unreadable error bodies.
+  }
+  return fallback
+}
+
 export const createEndpoint = async (
   input: CreateEndpointInput
 ): Promise<Endpoint> => {
@@ -57,7 +78,9 @@ export const createEndpoint = async (
   })
 
   if (!response.ok) {
-    throw new Error("Failed to create endpoint")
+    throw new Error(
+      await readEndpointErrorMessage(response, "Failed to create endpoint")
+    )
   }
 
   return response.json()
@@ -86,7 +109,9 @@ export const updateEndpoint = async (
   })
 
   if (!response.ok) {
-    throw new Error("Failed to update endpoint")
+    throw new Error(
+      await readEndpointErrorMessage(response, "Failed to update endpoint")
+    )
   }
 
   return response.json()
@@ -102,11 +127,6 @@ export const deleteEndpoint = async (id: string): Promise<void> => {
   }
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null
-  return value as Record<string, unknown>
-}
-
 function parseImportedEndpoints(data: unknown): Endpoint[] {
   if (Array.isArray(data)) return data as Endpoint[]
 
@@ -115,19 +135,6 @@ function parseImportedEndpoints(data: unknown): Endpoint[] {
   if (Array.isArray(record?.data)) return record.data as Endpoint[]
 
   return []
-}
-
-async function readImportErrorMessage(response: Response): Promise<string> {
-  try {
-    const data: unknown = await response.json()
-    const record = asRecord(data)
-    const nested = asRecord(record?.data)
-    const message = nested?.message ?? record?.message
-    if (typeof message === "string" && message.trim()) return message
-  } catch {
-    // Ignore unreadable error bodies.
-  }
-  return "Failed to import endpoints"
 }
 
 export const importEndpoints = async (
@@ -144,7 +151,9 @@ export const importEndpoints = async (
   })
 
   if (!response.ok) {
-    throw new Error(await readImportErrorMessage(response))
+    throw new Error(
+      await readEndpointErrorMessage(response, "Failed to import endpoints")
+    )
   }
 
   return parseImportedEndpoints(await response.json())

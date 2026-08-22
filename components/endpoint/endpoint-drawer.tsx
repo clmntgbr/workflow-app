@@ -36,6 +36,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Controller, useForm, useWatch } from "react-hook-form"
+import { toast } from "sonner"
 import z from "zod"
 
 type EndpointFormValues = z.infer<typeof endpointFormSchema>
@@ -258,6 +259,10 @@ export function EndpointDrawer({
         onSaved?.(updated)
       }
       onClose()
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save endpoint"
+      )
     } finally {
       setIsSaving(false)
     }
