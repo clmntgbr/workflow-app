@@ -16,7 +16,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
     const { id } = await context.params
     const response = await fetch(
-      `${BACKEND_API_URL}/api/organizations/${id}`,
+      `${BACKEND_API_URL}/api/projects/${id}`,
       {
         method: "GET",
         headers: createAuthHeaders(auth.token),
@@ -42,7 +42,7 @@ export async function PUT(request: Request, context: RouteContext) {
     const { id } = await context.params
     const body = await request.text()
     const response = await fetch(
-      `${BACKEND_API_URL}/api/organizations/${id}`,
+      `${BACKEND_API_URL}/api/projects/${id}`,
       {
         method: "PUT",
         headers: createAuthHeaders(auth.token),
@@ -68,7 +68,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
     const { id } = await context.params
     const response = await fetch(
-      `${BACKEND_API_URL}/api/organizations/${id}`,
+      `${BACKEND_API_URL}/api/projects/${id}`,
       {
         method: "DELETE",
         headers: createAuthHeaders(auth.token),

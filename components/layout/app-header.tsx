@@ -1,6 +1,6 @@
 "use client"
 
-import { OrganizationSwitcher } from "@/components/organization/organization-switcher"
+import { ProjectSwitcher } from "@/components/project/project-switcher"
 import { openSubscriptionDrawer } from "@/components/subscription-drawer-host"
 import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -20,7 +20,7 @@ export function AppHeader() {
       <div className="flex items-center gap-3">
         <SignedIn>
           <SidebarTrigger />
-          <OrganizationSwitcher />
+          <ProjectSwitcher />
         </SignedIn>
       </div>
       <div className="flex items-center gap-2">

@@ -16,7 +16,7 @@ export async function POST(_request: Request, context: RouteContext) {
 
     const { id } = await context.params
     const response = await fetch(
-      `${BACKEND_API_URL}/api/organizations/${id}/activate`,
+      `${BACKEND_API_URL}/api/projects/${id}/activate`,
       {
         method: "POST",
         headers: createAuthHeaders(auth.token),

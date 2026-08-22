@@ -1,7 +1,8 @@
 export interface Quota {
   id: string
   name: string
-  maxOrganizationMembers: number
+  maxProjectMembers: number
+  maxProjects: number
   maxWorkflows: number
   maxStepsPerWorkflow: number
   maxEndpoints: number

@@ -112,6 +112,7 @@ export function formatKb(kb: number): string {
 export function getQuotaFeatures(quota: Quota): string[] {
   return [
     `${formatCount(quota.maxWorkflowRunsPerMonth)} runs / month`,
+    `${formatCount(quota.maxProjects)} projects`,
     `${formatCount(quota.maxWorkflows)} workflows`,
     `${formatCount(quota.maxEndpoints)} endpoints`,
     `${formatCount(quota.maxStepsPerWorkflow)} steps by workflows`,

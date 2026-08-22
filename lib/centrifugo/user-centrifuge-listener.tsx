@@ -2,7 +2,7 @@
 
 import { useEndpoint } from "@/lib/endpoint/context"
 import { notifyEndpointsRefetch } from "@/lib/endpoint/endpoint-realtime"
-import { useOrganization } from "@/lib/organization/context"
+import { useProject } from "@/lib/project/context"
 import { useQuota } from "@/lib/quota/context"
 import { useSubscription } from "@/lib/subscription/context"
 import { useUser } from "@/lib/user/context"
@@ -20,7 +20,7 @@ import {
   isUserStreamEvent,
   shouldRefetchAllEndpoints,
   shouldRefetchConnections,
-  shouldRefetchOrganizations,
+  shouldRefetchProjects,
   shouldRefetchSingleEndpoint,
   shouldRefetchSteps,
   shouldRefetchStepsFromRunEvents,
@@ -35,7 +35,7 @@ const REFRESH_DEBOUNCE_MS = 500
 
 export function UserCentrifugeListener() {
   const { user, fetchUser } = useUser()
-  const { fetchOrganizations } = useOrganization()
+  const { fetchProjects } = useProject()
   const { fetchWorkflows } = useWorkflow()
   const {
     fetchEndpoints,
@@ -46,7 +46,7 @@ export function UserCentrifugeListener() {
   const { fetchQuota } = useQuota()
 
   const fetchUserRef = useRef(fetchUser)
-  const fetchOrganizationsRef = useRef(fetchOrganizations)
+  const fetchProjectsRef = useRef(fetchProjects)
   const fetchWorkflowsRef = useRef(fetchWorkflows)
   const fetchEndpointsRef = useRef(fetchEndpoints)
   const fetchEndpointRef = useRef(fetchEndpoint)
@@ -82,7 +82,7 @@ export function UserCentrifugeListener() {
 
   useEffect(() => {
     fetchUserRef.current = fetchUser
-    fetchOrganizationsRef.current = fetchOrganizations
+    fetchProjectsRef.current = fetchProjects
     fetchWorkflowsRef.current = fetchWorkflows
     fetchEndpointsRef.current = fetchEndpoints
     fetchEndpointRef.current = fetchEndpoint
@@ -92,7 +92,7 @@ export function UserCentrifugeListener() {
     editingEndpointIdRef.current = editingEndpointId
   }, [
     fetchUser,
-    fetchOrganizations,
+    fetchProjects,
     fetchWorkflows,
     fetchEndpoints,
     fetchEndpoint,
@@ -102,10 +102,10 @@ export function UserCentrifugeListener() {
     editingEndpointId,
   ])
 
-  const debouncedRefreshOrganizations = useCallback(() => {
+  const debouncedRefreshProjects = useCallback(() => {
     if (orgDebounceRef.current) clearTimeout(orgDebounceRef.current)
     orgDebounceRef.current = setTimeout(() => {
-      void fetchOrganizationsRef.current()
+      void fetchProjectsRef.current()
     }, REFRESH_DEBOUNCE_MS)
   }, [])
 
@@ -257,13 +257,13 @@ export function UserCentrifugeListener() {
         stepId: data.stepId,
         stepRunId: data.stepRunId,
         endpointId: data.endpointId,
-        organizationId: data.organizationId,
+        projectId: data.projectId,
         userId: data.userId,
         payload: data,
       })
 
-      if (shouldRefetchOrganizations(data)) {
-        debouncedRefreshOrganizations()
+      if (shouldRefetchProjects(data)) {
+        debouncedRefreshProjects()
       }
 
       if (shouldRefetchWorkflows(data)) {
@@ -345,7 +345,7 @@ export function UserCentrifugeListener() {
       }
     },
     [
-      debouncedRefreshOrganizations,
+      debouncedRefreshProjects,
       debouncedRefreshWorkflows,
       debouncedRefreshEndpoints,
       debouncedRefreshSteps,

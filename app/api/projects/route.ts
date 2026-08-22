@@ -10,7 +10,7 @@ export async function GET() {
     const auth = await requireAuth()
     if ("error" in auth) return auth.error
 
-    const response = await fetch(`${BACKEND_API_URL}/api/organizations`, {
+    const response = await fetch(`${BACKEND_API_URL}/api/projects`, {
       method: "GET",
       headers: createAuthHeaders(auth.token),
     })
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     if ("error" in auth) return auth.error
 
     const body = await request.text()
-    const response = await fetch(`${BACKEND_API_URL}/api/organizations`, {
+    const response = await fetch(`${BACKEND_API_URL}/api/projects`, {
       method: "POST",
       headers: createAuthHeaders(auth.token),
       body,

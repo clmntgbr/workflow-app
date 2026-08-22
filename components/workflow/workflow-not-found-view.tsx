@@ -10,7 +10,7 @@ export function WorkflowNotFoundView() {
         <h1 className="text-2xl font-semibold">Workflow not found</h1>
         <p className="max-w-md text-sm text-muted-foreground">
           This workflow does not exist or is not available in your active
-          organization.
+          project.
         </p>
       </div>
       <Button variant="outline" asChild>

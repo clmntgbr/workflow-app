@@ -4,7 +4,7 @@ import { SubscriptionDrawerHost } from "@/components/subscription-drawer-host"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { UserCentrifugeListener } from "@/lib/centrifugo/user-centrifuge-listener"
 import { EndpointProvider } from "@/lib/endpoint/provider"
-import { OrganizationProvider } from "@/lib/organization/provider"
+import { ProjectProvider } from "@/lib/project/provider"
 import { QuotaProvider } from "@/lib/quota/provider"
 import { SubscriptionProvider } from "@/lib/subscription/provider"
 import { ThemeProvider } from "@/lib/theme/theme-provider"
@@ -27,7 +27,7 @@ export default function PrivateLayout({
       <UserProvider>
         <SubscriptionProvider>
           <QuotaProvider>
-            <OrganizationProvider>
+            <ProjectProvider>
               <WorkflowProvider>
                 <EndpointProvider>
                   <UserCentrifugeListener />
@@ -50,7 +50,7 @@ export default function PrivateLayout({
                   </SidebarProvider>
                 </EndpointProvider>
               </WorkflowProvider>
-            </OrganizationProvider>
+            </ProjectProvider>
           </QuotaProvider>
         </SubscriptionProvider>
       </UserProvider>

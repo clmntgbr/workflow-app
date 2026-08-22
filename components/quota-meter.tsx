@@ -115,7 +115,7 @@ export function QuotaMeter({
         {!available
           ? lockedHint
           : isCritical
-            ? "Quota almost reached"
+            ? "Quota reached the limit"
             : `${formatCount(left)} ${unit} left · ${Math.round(pct)}% used`}
       </p>
     </div>

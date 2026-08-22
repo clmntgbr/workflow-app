@@ -75,7 +75,7 @@ export interface StepRun {
   stepId: string
   workflowId: string
   endpointId: string
-  organizationId: string
+  projectId: string
   name: string
   description: string | null
   url: string
@@ -161,7 +161,7 @@ export interface WorkflowRunStepRunDetail {
 export interface WorkflowRun {
   id: string
   workflowId: string
-  organizationId: string
+  projectId: string
   status: WorkflowRunStatus
   triggeredBy: WorkflowRunTriggeredBy
   triggeredByUserId: string | null

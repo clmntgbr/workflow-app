@@ -1,7 +1,7 @@
 "use client"
 
 import { initPaginate, PaginateQuery } from "@/lib/paginate"
-import { useOrganization } from "@/lib/organization/context"
+import { useProject } from "@/lib/project/context"
 import { useCallback, useEffect, useReducer, useRef } from "react"
 import {
   createEndpoint as createEndpointRequest,
@@ -20,13 +20,13 @@ import {
 
 export function EndpointProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(endpointReducer, initialEndpointState)
-  const { activeOrganization } = useOrganization()
-  const bootstrappedOrgIdRef = useRef<string | null>(null)
+  const { activeProject } = useProject()
+  const bootstrappedProjectIdRef = useRef<string | null>(null)
   const lastQueryRef = useRef<PaginateQuery | undefined>(undefined)
 
   const fetchEndpoints = useCallback(
     async (query?: PaginateQuery) => {
-      if (!activeOrganization?.id) {
+      if (!activeProject?.id) {
         dispatch({
           type: "GET_ENDPOINTS",
           payload: initPaginate(),
@@ -53,7 +53,7 @@ export function EndpointProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: "GET_ENDPOINTS_LOADING", payload: false })
       }
     },
-    [activeOrganization?.id]
+    [activeProject?.id]
   )
 
   const fetchEndpoint = useCallback(async (id: string) => {
@@ -84,32 +84,32 @@ export function EndpointProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "SET_EDITING_ENDPOINT_ID", payload: id })
   }, [])
 
-  // Bootstrap once when an active org first appears.
-  // Org switches are refreshed by Centrifugo (`user.active_organization_changed`).
+  // Bootstrap once when an active project first appears.
+  // Project switches are refreshed by Centrifugo (`user.active_project_changed`).
   useEffect(() => {
-    const orgId = activeOrganization?.id ?? null
+    const projectId = activeProject?.id ?? null
 
-    if (!orgId) {
-      bootstrappedOrgIdRef.current = null
+    if (!projectId) {
+      bootstrappedProjectIdRef.current = null
       lastQueryRef.current = undefined
       dispatch({ type: "GET_ENDPOINTS", payload: initPaginate() })
       return
     }
 
-    if (bootstrappedOrgIdRef.current === orgId) return
+    if (bootstrappedProjectIdRef.current === projectId) return
 
-    const isFirstBootstrap = bootstrappedOrgIdRef.current === null
-    bootstrappedOrgIdRef.current = orgId
+    const isFirstBootstrap = bootstrappedProjectIdRef.current === null
+    bootstrappedProjectIdRef.current = projectId
 
     if (isFirstBootstrap) {
       void fetchEndpoints()
       return
     }
 
-    // Org switched: clear stale list; Centrifugo will refill.
+    // Project switched: clear stale list; Centrifugo will refill.
     lastQueryRef.current = undefined
     dispatch({ type: "GET_ENDPOINTS", payload: initPaginate() })
-  }, [activeOrganization?.id, fetchEndpoints])
+  }, [activeProject?.id, fetchEndpoints])
 
   return (
     <EndpointContext.Provider

@@ -10,47 +10,52 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useOrganization } from "@/lib/organization/context"
+import { useProject } from "@/lib/project/context"
 import { Building2, Check, ChevronsUpDown, Plus } from "lucide-react"
 import * as React from "react"
+import { toast } from "sonner"
 
-export function OrganizationSwitcher() {
+export function ProjectSwitcher() {
   const {
-    organizations,
-    activeOrganization,
+    projects,
+    activeProject,
     isLoading,
-    activateOrganization,
-    createOrganization,
-  } = useOrganization()
+    activateProject,
+    createProject,
+  } = useProject()
   const [isPending, setIsPending] = React.useState(false)
 
-  const handleActivate = async (organizationId: string) => {
-    if (organizationId === activeOrganization?.id || isPending) return
+  const handleActivate = async (projectId: string) => {
+    if (projectId === activeProject?.id || isPending) return
     try {
       setIsPending(true)
-      await activateOrganization(organizationId)
+      await activateProject(projectId)
     } finally {
       setIsPending(false)
     }
   }
 
   const handleCreate = async () => {
-    const name = window.prompt("Organization name")
+    const name = window.prompt("Project name")
     if (!name?.trim()) return
 
     try {
       setIsPending(true)
-      await createOrganization({ name: name.trim() })
+      await createProject({ name: name.trim() })
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create project"
+      )
     } finally {
       setIsPending(false)
     }
   }
 
-  if (isLoading && !activeOrganization) {
+  if (isLoading && !activeProject) {
     return <Skeleton className="h-9 w-44" />
   }
 
-  if (!activeOrganization && organizations.length === 0) {
+  if (!activeProject && projects.length === 0) {
     return (
       <Button
         variant="outline"
@@ -60,7 +65,7 @@ export function OrganizationSwitcher() {
         disabled={isPending}
       >
         <Plus className="size-4" />
-        Create organization
+        Create project
       </Button>
     )
   }
@@ -79,7 +84,7 @@ export function OrganizationSwitcher() {
               <Building2 className="size-3.5" />
             </span>
             <span className="truncate font-medium">
-              {activeOrganization?.name ?? "Select organization"}
+              {activeProject?.name ?? "Select project"}
             </span>
           </span>
           <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
@@ -91,19 +96,19 @@ export function OrganizationSwitcher() {
         sideOffset={4}
       >
         <DropdownMenuLabel className="text-xs text-muted-foreground">
-          Organizations
+          Projects
         </DropdownMenuLabel>
-        {organizations.map((organization) => (
+        {projects.map((project) => (
           <DropdownMenuItem
-            key={organization.id}
-            onClick={() => handleActivate(organization.id)}
+            key={project.id}
+            onClick={() => handleActivate(project.id)}
             className="gap-2 p-2"
           >
             <span className="flex size-6 items-center justify-center rounded-md border">
               <Building2 className="size-3.5 shrink-0" />
             </span>
-            <span className="flex-1 truncate">{organization.name}</span>
-            {organization.isActive ? (
+            <span className="flex-1 truncate">{project.name}</span>
+            {project.isActive ? (
               <Check className="size-4 shrink-0" />
             ) : null}
           </DropdownMenuItem>
@@ -117,9 +122,7 @@ export function OrganizationSwitcher() {
           <span className="flex size-6 items-center justify-center rounded-md border bg-transparent">
             <Plus className="size-4" />
           </span>
-          <span className="font-medium text-muted-foreground">
-            Add organization
-          </span>
+          <span className="font-medium text-muted-foreground">Add project</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

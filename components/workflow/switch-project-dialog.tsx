@@ -12,19 +12,19 @@ import {
 import { Loader2Icon } from "lucide-react"
 import { useState } from "react"
 
-interface SwitchOrganizationDialogProps {
+interface SwitchProjectDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  organizationName: string
+  projectName: string
   onConfirm: () => Promise<void>
 }
 
-export function SwitchOrganizationDialog({
+export function SwitchProjectDialog({
   open,
   onOpenChange,
-  organizationName,
+  projectName,
   onConfirm,
-}: SwitchOrganizationDialogProps) {
+}: SwitchProjectDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
 
   const handleConfirm = async () => {
@@ -41,13 +41,11 @@ export function SwitchOrganizationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Switch organization</DialogTitle>
+          <DialogTitle>Switch project</DialogTitle>
           <DialogDescription>
             This workflow belongs to{" "}
-            <span className="font-medium text-foreground">
-              {organizationName}
-            </span>
-            . Switch to that organization to open it?
+            <span className="font-medium text-foreground">{projectName}</span>.
+            Switch to that project to open it?
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -59,7 +57,7 @@ export function SwitchOrganizationDialog({
             Cancel
           </Button>
           <Button onClick={handleConfirm} disabled={isLoading}>
-            Switch organization
+            Switch project
             {isLoading ? (
               <Loader2Icon className="h-4 w-4 animate-spin" />
             ) : null}

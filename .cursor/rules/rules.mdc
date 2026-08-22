@@ -7,12 +7,12 @@ alwaysApply: true
 
 ## Rule
 
-**Do not add automatic refetches after mutations or on org switch.** After the initial bootstrap, list/detail refresh must come from Centrifugo events via `UserCentrifugeListener`.
+**Do not add automatic refetches after mutations or on project switch.** After the initial bootstrap, list/detail refresh must come from Centrifugo events via `UserCentrifugeListener`.
 
 ## Bootstrap (allowed once)
 
-- `UserProvider` / `OrganizationProvider`: fetch on mount only.
-- `WorkflowProvider` / `EndpointProvider`: fetch **once** when an active org first appears. On org switch, clear stale lists and wait for Centrifugo — do **not** call `fetchWorkflows` / `fetchEndpoints` in a `useEffect` tied to `activeOrganization`.
+- `UserProvider` / `ProjectProvider`: fetch on mount only.
+- `WorkflowProvider` / `EndpointProvider`: fetch **once** when an active project first appears. On project switch, clear stale lists and wait for Centrifugo — do **not** call `fetchWorkflows` / `fetchEndpoints` in a `useEffect` tied to `activeProject`.
 
 ## After mutations
 
@@ -34,8 +34,8 @@ Handle new events in `lib/centrifugo/types.ts` + `user-centrifuge-listener.tsx`.
 | Event | Action |
 |---|---|
 | `user.*` | `GET /api/users/me` |
-| `user.active_organization_changed` | orgs + workflows + endpoints (+ me via user.*) |
-| `organization.created` | orgs + workflows + endpoints |
+| `user.active_project_changed` | projects + workflows + endpoints (+ me via user.*) |
+| `project.created` | projects + workflows + endpoints |
 | `workflow.created/updated/deleted` | `GET /api/workflows` |
 | `workflow.updated` | also `GET /api/workflows/:id` (page subscribers via `subscribeWorkflowDetailRefetch`) |
 | `endpoint.created/deleted` | `GET /api/endpoints` |
@@ -56,7 +56,7 @@ Variables: use `subscribeWorkflowVariablesRefetch` on the workflow page — scop
 
 ## Do not
 
-- Refetch workflows/endpoints in providers when `activeOrganization` changes (duplicates Centrifugo).
+- Refetch workflows/endpoints in providers when `activeProject` changes (duplicates Centrifugo).
 - Poll or `setInterval` for lists.
 - Invent event types not emitted by the backend.
 

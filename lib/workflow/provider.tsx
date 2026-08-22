@@ -1,7 +1,7 @@
 "use client"
 
 import { initPaginate, PaginateQuery } from "@/lib/paginate"
-import { useOrganization } from "@/lib/organization/context"
+import { useProject } from "@/lib/project/context"
 import { useCallback, useEffect, useReducer, useRef } from "react"
 import {
   createWorkflow as createWorkflowRequest,
@@ -19,12 +19,12 @@ import {
 
 export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(workflowReducer, initialWorkflowState)
-  const { activeOrganization } = useOrganization()
-  const bootstrappedOrgIdRef = useRef<string | null>(null)
+  const { activeProject } = useProject()
+  const bootstrappedProjectIdRef = useRef<string | null>(null)
 
   const fetchWorkflows = useCallback(
     async (query?: PaginateQuery) => {
-      if (!activeOrganization?.id) {
+      if (!activeProject?.id) {
         dispatch({
           type: "GET_WORKFLOWS",
           payload: initPaginate(),
@@ -45,7 +45,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         dispatch({ type: "GET_WORKFLOWS_LOADING", payload: false })
       }
     },
-    [activeOrganization?.id]
+    [activeProject?.id]
   )
 
   // Mutations only — list refresh comes from Centrifugo.
@@ -67,30 +67,30 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "REMOVE_WORKFLOW", payload: id })
   }, [])
 
-  // Bootstrap once when an active org first appears.
-  // Org switches are refreshed by Centrifugo (`user.active_organization_changed`).
+  // Bootstrap once when an active project first appears.
+  // Project switches are refreshed by Centrifugo (`user.active_project_changed`).
   useEffect(() => {
-    const orgId = activeOrganization?.id ?? null
+    const projectId = activeProject?.id ?? null
 
-    if (!orgId) {
-      bootstrappedOrgIdRef.current = null
+    if (!projectId) {
+      bootstrappedProjectIdRef.current = null
       dispatch({ type: "GET_WORKFLOWS", payload: initPaginate() })
       return
     }
 
-    if (bootstrappedOrgIdRef.current === orgId) return
+    if (bootstrappedProjectIdRef.current === projectId) return
 
-    const isFirstBootstrap = bootstrappedOrgIdRef.current === null
-    bootstrappedOrgIdRef.current = orgId
+    const isFirstBootstrap = bootstrappedProjectIdRef.current === null
+    bootstrappedProjectIdRef.current = projectId
 
     if (isFirstBootstrap) {
       void fetchWorkflows()
       return
     }
 
-    // Org switched: clear stale list; Centrifugo will refill.
+    // Project switched: clear stale list; Centrifugo will refill.
     dispatch({ type: "GET_WORKFLOWS", payload: initPaginate() })
-  }, [activeOrganization?.id, fetchWorkflows])
+  }, [activeProject?.id, fetchWorkflows])
 
   return (
     <WorkflowContext.Provider

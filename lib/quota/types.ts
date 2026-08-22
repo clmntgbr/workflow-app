@@ -29,6 +29,7 @@ export interface QuotaLimits {
 
 export interface QuotaUsage {
   workflowRuns: MonthlyQuotaCounter
+  projects: QuotaCounter
   workflows: QuotaCounter
   endpoints: QuotaCounter
   members: QuotaCounter

@@ -23,6 +23,7 @@ import { useSubscription } from "@/lib/subscription/context"
 import type { Subscription } from "@/lib/subscription/types"
 import {
   ArrowUpRight,
+  Building2,
   CalendarClock,
   CreditCard,
   GitBranch,
@@ -279,7 +280,7 @@ function SubscriptionContent({
             Account limits
           </h3>
           <p className="text-xs text-muted-foreground">
-            Total across your organization, not reset monthly
+            Total across your project, not reset monthly
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -290,6 +291,14 @@ function SubscriptionContent({
             max={usage?.workflowRuns.max ?? planQuota.maxWorkflowRunsPerMonth}
             unit="runs"
             scope="monthly"
+          />
+          <QuotaMeter
+            icon={Building2}
+            label="Projects"
+            used={usage?.projects.used ?? 0}
+            max={usage?.projects.max ?? planQuota.maxProjects}
+            unit="projects"
+            scope="global"
           />
           <QuotaMeter
             icon={GitBranch}
@@ -309,9 +318,9 @@ function SubscriptionContent({
           />
           <QuotaMeter
             icon={Users}
-            label="Organization members"
+            label="Project members"
             used={usage?.members.used ?? 0}
-            max={usage?.members.max ?? planQuota.maxOrganizationMembers}
+            max={usage?.members.max ?? planQuota.maxProjectMembers}
             unit="members"
             scope="global"
           />

@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
-import { useOrganization } from "@/lib/organization/context"
+import { useProject } from "@/lib/project/context"
 import { useWorkflow } from "@/lib/workflow/context"
 import { Workflow } from "@/lib/workflow/types"
 import { PlusIcon, SettingsIcon } from "lucide-react"
@@ -11,7 +11,7 @@ import Link from "next/link"
 import { useState } from "react"
 
 export function WorkflowList() {
-  const { activeOrganization } = useOrganization()
+  const { activeProject } = useProject()
   const { workflows, isLoading } = useWorkflow()
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(
     null
@@ -36,10 +36,10 @@ export function WorkflowList() {
     setSelectedWorkflow(null)
   }
 
-  if (!activeOrganization) {
+  if (!activeProject) {
     return (
       <div className="p-6 text-sm text-muted-foreground">
-        Select or create an organization to manage workflows.
+        Select or create a project to manage workflows.
       </div>
     )
   }
@@ -50,7 +50,7 @@ export function WorkflowList() {
         <div>
           <h1 className="text-xl font-semibold">Workflows</h1>
           <p className="text-sm text-muted-foreground">
-            Workflows for {activeOrganization.name}
+            Workflows for {activeProject.name}
           </p>
         </div>
         <Button onClick={openCreate}>

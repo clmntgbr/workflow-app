@@ -1,6 +1,6 @@
 export type RealtimeResource =
   | "user"
-  | "organization"
+  | "project"
   | "workflow"
   | "endpoint"
   | "step"
@@ -17,7 +17,7 @@ export type RealtimeVerb =
   | "updated"
   | "deleted"
   | "imported"
-  | "active_organization_changed"
+  | "active_project_changed"
   | "member_added"
   | "member_removed"
   | "started"
@@ -31,7 +31,7 @@ export type RealtimeEventType = `${RealtimeResource}.${RealtimeVerb}`
 export interface UserStreamEvent {
   type: string
   userId?: string
-  organizationId?: string
+  projectId?: string
   endpointId?: string
   workflowId?: string
   workflowRunId?: string
@@ -43,7 +43,7 @@ export interface UserStreamEvent {
 
 const RESOURCES = new Set<string>([
   "user",
-  "organization",
+  "project",
   "workflow",
   "endpoint",
   "step",
@@ -61,7 +61,7 @@ const VERBS = new Set<string>([
   "updated",
   "deleted",
   "imported",
-  "active_organization_changed",
+  "active_project_changed",
   "member_added",
   "member_removed",
   "started",
@@ -117,20 +117,20 @@ export function isUserLifecycleEvent(event: UserStreamEvent): boolean {
   return getEventResource(event) === "user"
 }
 
-/** Refetch org list only on activate + create. */
-export function shouldRefetchOrganizations(event: UserStreamEvent): boolean {
+/** Refetch project list only on activate + create. */
+export function shouldRefetchProjects(event: UserStreamEvent): boolean {
   return (
-    eventTypeEquals(event, "user.active_organization_changed") ||
-    eventTypeEquals(event, "organization.created")
+    eventTypeEquals(event, "user.active_project_changed") ||
+    eventTypeEquals(event, "project.created")
   )
 }
 
-/** Refetch workflows on CRUD events and when the active org changes. */
+/** Refetch workflows on CRUD events and when the active project changes. */
 export function shouldRefetchWorkflows(event: UserStreamEvent): boolean {
   return (
     getEventResource(event) === "workflow" ||
-    eventTypeEquals(event, "user.active_organization_changed") ||
-    eventTypeEquals(event, "organization.created")
+    eventTypeEquals(event, "user.active_project_changed") ||
+    eventTypeEquals(event, "project.created")
   )
 }
 
@@ -143,8 +143,8 @@ export function shouldRefetchAllEndpoints(event: UserStreamEvent): boolean {
     eventTypeEquals(event, "endpoint.created") ||
     eventTypeEquals(event, "endpoint.deleted") ||
     eventTypeEquals(event, "endpoint.imported") ||
-    eventTypeEquals(event, "user.active_organization_changed") ||
-    eventTypeEquals(event, "organization.created")
+    eventTypeEquals(event, "user.active_project_changed") ||
+    eventTypeEquals(event, "project.created")
   )
 }
 

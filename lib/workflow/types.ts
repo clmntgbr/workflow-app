@@ -17,7 +17,7 @@ export interface Workflow {
   name: string
   description: string
   status: WorkflowStatus | string
-  organizationId: string
+  projectId: string
   scheduleType: ScheduleType | string
   scheduleIntervalValue: number
   scheduleIntervalUnit: ScheduleUnit | string

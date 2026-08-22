@@ -4,7 +4,7 @@ export interface User {
   firstName?: string
   lastName?: string
   email?: string
-  activeOrganizationId?: string | null
+  activeProjectId?: string | null
   /** @deprecated use firstName */
   firstname?: string
   /** @deprecated use lastName */

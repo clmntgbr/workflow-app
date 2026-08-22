@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { StepDrawer } from "@/components/workflow/step-drawer"
 import { CanvasStep } from "@/components/workflow/step-node"
-import { SwitchOrganizationDialog } from "@/components/workflow/switch-organization-dialog"
+import { SwitchProjectDialog } from "@/components/workflow/switch-project-dialog"
 import { VariableUsageDrawer } from "@/components/workflow/variable-usage-drawer"
 import { WorkflowAnalytics } from "@/components/workflow/workflow-analytics"
 import {
@@ -20,7 +20,7 @@ import { WorkflowVariablesDrawer } from "@/components/workflow/workflow-variable
 import { useEndpoint } from "@/lib/endpoint/context"
 import { Endpoint } from "@/lib/endpoint/types"
 import { parseQueryRecord } from "@/lib/endpoint/utils"
-import { useOrganization } from "@/lib/organization/context"
+import { useProject } from "@/lib/project/context"
 import { cn } from "@/lib/utils"
 import { parseRunStatus } from "@/lib/workflow-run/types"
 import {
@@ -45,7 +45,7 @@ import {
   updateStepPosition,
   updateWorkflowStep,
   WorkflowNotFoundError,
-  WorkflowWrongOrganizationError,
+  WorkflowWrongProjectError,
 } from "@/lib/workflow/api"
 import { subscribeWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
 import { subscribeWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
@@ -264,20 +264,18 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [tab, setTab] = useState<Tab>("overview")
 
   const router = useRouter()
-  const { activeOrganization, activateOrganization, organizations } =
-    useOrganization()
+  const { activeProject, activateProject, projects } = useProject()
   const { endpoints } = useEndpoint()
 
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isNotFound, setIsNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [wrongOrganization, setWrongOrganization] = useState<{
-    organizationId: string
-    organizationName: string
+  const [wrongProject, setWrongProject] = useState<{
+    projectId: string
+    projectName: string
   } | null>(null)
-  const [isSwitchOrganizationOpen, setIsSwitchOrganizationOpen] =
-    useState(false)
+  const [isSwitchProjectOpen, setIsSwitchProjectOpen] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isVariablesDrawerOpen, setIsVariablesDrawerOpen] = useState(false)
   const [selectedStep, setSelectedStep] = useState<CanvasStep | null>(null)
@@ -340,15 +338,15 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   }, [workflowId])
 
   useEffect(() => {
-    if (!activeOrganization?.id) return
+    if (!activeProject?.id) return
 
     let cancelled = false
 
     const load = async () => {
       setIsLoading(true)
       setIsNotFound(false)
-      setWrongOrganization(null)
-      setIsSwitchOrganizationOpen(false)
+      setWrongProject(null)
+      setIsSwitchProjectOpen(false)
       setError(null)
 
       try {
@@ -357,12 +355,12 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       } catch (err) {
         if (cancelled) return
 
-        if (err instanceof WorkflowWrongOrganizationError) {
-          setWrongOrganization({
-            organizationId: err.organizationId,
-            organizationName: err.organizationName,
+        if (err instanceof WorkflowWrongProjectError) {
+          setWrongProject({
+            projectId: err.projectId,
+            projectName: err.projectName,
           })
-          setIsSwitchOrganizationOpen(true)
+          setIsSwitchProjectOpen(true)
           setWorkflow(null)
           setIsLoading(false)
           return
@@ -386,10 +384,10 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     return () => {
       cancelled = true
     }
-  }, [workflowId, activeOrganization?.id])
+  }, [workflowId, activeProject?.id])
 
   useEffect(() => {
-    if (!activeOrganization?.id) return
+    if (!activeProject?.id) return
 
     let cancelled = false
 
@@ -410,7 +408,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     return () => {
       cancelled = true
     }
-  }, [activeOrganization?.id, loadSteps, loadConnections, loadVariables])
+  }, [activeProject?.id, loadSteps, loadConnections, loadVariables])
 
   useEffect(() => {
     return subscribeWorkflowStepsRefetch(workflowId, () => {
@@ -520,7 +518,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     }
   }
 
-  if (!activeOrganization?.id || isLoading) {
+  if (!activeProject?.id || isLoading) {
     return (
       <div className="h-full space-y-4 overflow-auto p-6">
         <Skeleton className="h-8 w-64" />
@@ -530,22 +528,22 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     )
   }
 
-  if (wrongOrganization) {
-    const knownOrg = organizations.find(
-      (organization) => organization.id === wrongOrganization.organizationId
+  if (wrongProject) {
+    const knownProject = projects.find(
+      (project) => project.id === wrongProject.projectId
     )
 
     return (
       <>
         <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-6 text-center">
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">Wrong organization</h1>
+            <h1 className="text-2xl font-semibold">Wrong project</h1>
             <p className="max-w-md text-sm text-muted-foreground">
               This workflow belongs to{" "}
               <span className="font-medium text-foreground">
-                {knownOrg?.name ?? wrongOrganization.organizationName}
+                {knownProject?.name ?? wrongProject.projectName}
               </span>
-              . Switch organization to open it.
+              . Switch project to open it.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
@@ -555,21 +553,19 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
                 Back to workflows
               </Link>
             </Button>
-            <Button onClick={() => setIsSwitchOrganizationOpen(true)}>
-              Switch organization
+            <Button onClick={() => setIsSwitchProjectOpen(true)}>
+              Switch project
             </Button>
           </div>
         </div>
-        <SwitchOrganizationDialog
-          open={isSwitchOrganizationOpen}
-          onOpenChange={setIsSwitchOrganizationOpen}
-          organizationName={
-            knownOrg?.name ?? wrongOrganization.organizationName
-          }
+        <SwitchProjectDialog
+          open={isSwitchProjectOpen}
+          onOpenChange={setIsSwitchProjectOpen}
+          projectName={knownProject?.name ?? wrongProject.projectName}
           onConfirm={async () => {
-            await activateOrganization(wrongOrganization.organizationId)
-            setWrongOrganization(null)
-            setIsSwitchOrganizationOpen(false)
+            await activateProject(wrongProject.projectId)
+            setWrongProject(null)
+            setIsSwitchProjectOpen(false)
           }}
         />
       </>

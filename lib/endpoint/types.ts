@@ -25,7 +25,7 @@ export interface Endpoint {
   retryCount: number
   retryDelay: number
   status: EndpointStatus | string
-  organizationId: string
+  projectId: string
   createdAt: string
   updatedAt: string
 }
