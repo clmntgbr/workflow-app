@@ -102,7 +102,7 @@ export interface StepRun {
   updatedAt: string
 }
 
-/** Nested workflow snapshot returned by GET /api/workflow-runs/:id */
+/** Nested workflow snapshot returned by GET /api/workflows/:workflowId/runs/:id */
 export interface WorkflowRunWorkflow {
   id: string
   name: string
@@ -119,7 +119,7 @@ export interface WorkflowRunWorkflow {
   notifyOnCancel: boolean
 }
 
-/** Nested step definition returned on stepRuns by GET /api/workflow-runs/:id */
+/** Nested step definition returned on stepRuns by GET /api/workflows/:workflowId/runs/:id */
 export interface WorkflowRunStep {
   id: string
   endpointId: string
@@ -174,7 +174,7 @@ export interface WorkflowRun {
   stepRuns?: StepRun[]
 }
 
-/** Detail payload from GET /api/workflow-runs/:id */
+/** Detail payload from GET /api/workflows/:workflowId/runs/:id */
 export interface WorkflowRunDetail {
   id: string
   status: WorkflowRunStatus

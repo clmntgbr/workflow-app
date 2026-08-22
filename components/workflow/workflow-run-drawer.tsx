@@ -28,6 +28,7 @@ export function WorkflowRunDrawer({
   const [loadedRunId, setLoadedRunId] = useState<string | null>(null)
 
   const activeRunId = isOpen && run ? run.id : null
+  const activeWorkflowId = isOpen && run ? run.workflowId : null
 
   if (!activeRunId && loadedRunId !== null) {
     setLoadedRunId(null)
@@ -37,17 +38,18 @@ export function WorkflowRunDrawer({
   }
 
   useEffect(() => {
-    if (!activeRunId) return
+    if (!activeRunId || !activeWorkflowId) return
 
     let cancelled = false
     const requestId = activeRunId
+    const workflowId = activeWorkflowId
 
     const load = async () => {
       setIsLoading(true)
       setError(null)
 
       try {
-        const full = await getWorkflowRun(requestId)
+        const full = await getWorkflowRun(workflowId, requestId)
         if (cancelled) return
         setDetailedRun(full)
         setLoadedRunId(requestId)
@@ -65,7 +67,7 @@ export function WorkflowRunDrawer({
     return () => {
       cancelled = true
     }
-  }, [activeRunId])
+  }, [activeRunId, activeWorkflowId])
 
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right">

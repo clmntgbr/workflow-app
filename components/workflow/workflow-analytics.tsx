@@ -58,14 +58,14 @@ export function WorkflowAnalytics({ workflowId }: WorkflowAnalyticsProps) {
   const load = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) setIsLoading(true)
     try {
-      const data = await getWorkflowRunAnalytics()
+      const data = await getWorkflowRunAnalytics(workflowId)
       setAnalytics(data)
     } catch {
       if (!options?.silent) setAnalytics(null)
     } finally {
       if (!options?.silent) setIsLoading(false)
     }
-  }, [])
+  }, [workflowId])
 
   useEffect(() => {
     void load()

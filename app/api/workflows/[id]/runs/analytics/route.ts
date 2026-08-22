@@ -16,7 +16,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
     const { id } = await context.params
     const response = await fetch(
-      `${BACKEND_API_URL}/api/workflow-runs/${id}`,
+      `${BACKEND_API_URL}/api/workflows/${id}/runs/analytics`,
       {
         method: "GET",
         headers: createAuthHeaders(auth.token),

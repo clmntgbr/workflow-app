@@ -116,23 +116,6 @@ export const getActiveWorkflowRun = async (
   return latest
 }
 
-export const listWorkflowRuns = async (
-  query?: PaginateQuery
-): Promise<Paginate<WorkflowRun>> => {
-  const response = await fetch(
-    `/api/workflow-runs${buildQueryString(query)}`,
-    {
-      method: "GET",
-    }
-  )
-
-  if (!response.ok) {
-    throw new Error("Failed to list workflow runs")
-  }
-
-  return response.json()
-}
-
 export const listWorkflowRunsByWorkflow = async (
   workflowId: string,
   query?: PaginateQuery
@@ -151,23 +134,33 @@ export const listWorkflowRunsByWorkflow = async (
   return response.json()
 }
 
-export const getWorkflowRunAnalytics =
-  async (): Promise<WorkflowRunAnalytics> => {
-    const response = await fetch("/api/workflow-runs/analytics", {
+export const getWorkflowRunAnalytics = async (
+  workflowId: string
+): Promise<WorkflowRunAnalytics> => {
+  const response = await fetch(
+    `/api/workflows/${workflowId}/runs/analytics`,
+    {
       method: "GET",
-    })
-
-    if (!response.ok) {
-      throw new Error("Failed to load analytics")
     }
+  )
 
-    return response.json()
+  if (!response.ok) {
+    throw new Error("Failed to load analytics")
   }
 
-export const getWorkflowRun = async (id: string): Promise<WorkflowRunDetail> => {
-  const response = await fetch(`/api/workflow-runs/${id}`, {
-    method: "GET",
-  })
+  return response.json()
+}
+
+export const getWorkflowRun = async (
+  workflowId: string,
+  runId: string
+): Promise<WorkflowRunDetail> => {
+  const response = await fetch(
+    `/api/workflows/${workflowId}/runs/${runId}`,
+    {
+      method: "GET",
+    }
+  )
 
   if (!response.ok) {
     throw new Error("Failed to get workflow run")
