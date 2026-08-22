@@ -183,16 +183,16 @@ function SubscriptionContent({
 }) {
   const { quota: usage } = useQuota()
   const plan = subscription.plan!
-  const quota = plan.quota
+  const planQuota = plan.quota
+  const limits = usage?.limits
 
-  const periodStart = usage?.periodStart ?? subscription.startDate
-  const periodEnd = usage?.periodEnd ?? subscription.endDate
+  const periodStart = usage?.workflowRuns.periodStart ?? subscription.startDate
+  const periodEnd = usage?.workflowRuns.periodEnd ?? subscription.endDate
   const remainingDays = daysUntil(periodEnd)
   const cycleProgress = computeCycleProgress(periodStart, periodEnd)
 
   const hasPortal = Boolean(subscription.stripeCustomerId)
-  const isFree =
-    plan.price === 0 || getBasePlanSlug(plan.slug) === "free"
+  const isFree = plan.price === 0 || getBasePlanSlug(plan.slug) === "free"
 
   return (
     <div className="flex flex-col gap-4">
@@ -235,7 +235,10 @@ function SubscriptionContent({
 
           <div className="flex flex-col gap-4 border-t border-border/70 p-5 sm:p-6 lg:border-t-0 lg:border-l">
             <div className="flex items-center gap-2 text-sm font-semibold">
-              <CalendarClock className="size-4 text-primary" aria-hidden="true" />
+              <CalendarClock
+                className="size-4 text-primary"
+                aria-hidden="true"
+              />
               Billing period
             </div>
 
@@ -255,7 +258,10 @@ function SubscriptionContent({
               <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
                 {isFree ? (
                   <>
-                    <InfinityIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                    <InfinityIcon
+                      className="size-3.5 shrink-0"
+                      aria-hidden="true"
+                    />
                     Plan with no expiration date
                   </>
                 ) : (
@@ -267,69 +273,148 @@ function SubscriptionContent({
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2">
-        <QuotaMeter
-          icon={Play}
-          label="Workflow runs"
-          used={usage?.workflowRunsUsed ?? 0}
-          max={usage?.workflowRunsMax ?? quota.maxWorkflowRunsPerMonth}
-          unit="runs"
-        />
-        <QuotaMeter
-          icon={GitBranch}
-          label="Workflows"
-          used={usage?.workflowsUsed ?? 0}
-          max={usage?.workflowsMax ?? quota.maxWorkflows}
-          unit="workflows"
-        />
-        <QuotaMeter
-          icon={Globe}
-          label="Endpoints"
-          used={usage?.endpointsUsed ?? 0}
-          max={usage?.endpointsMax ?? quota.maxEndpoints}
-          unit="endpoints"
-        />
-        <QuotaMeter
-          icon={Users}
-          label="Organization members"
-          used={usage?.membersUsed ?? 0}
-          max={usage?.membersMax ?? quota.maxOrganizationMembers}
-          unit="members"
-        />
+      <section className="space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">
+            Account limits
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Total across your organization, not reset monthly
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <QuotaMeter
+            icon={Play}
+            label="Workflow runs"
+            used={usage?.workflowRuns.used ?? 0}
+            max={usage?.workflowRuns.max ?? planQuota.maxWorkflowRunsPerMonth}
+            unit="runs"
+            scope="monthly"
+          />
+          <QuotaMeter
+            icon={GitBranch}
+            label="Workflows"
+            used={usage?.workflows.used ?? 0}
+            max={usage?.workflows.max ?? planQuota.maxWorkflows}
+            unit="workflows"
+            scope="global"
+          />
+          <QuotaMeter
+            icon={Globe}
+            label="Endpoints"
+            used={usage?.endpoints.used ?? 0}
+            max={usage?.endpoints.max ?? planQuota.maxEndpoints}
+            unit="endpoints"
+            scope="global"
+          />
+          <QuotaMeter
+            icon={Users}
+            label="Organization members"
+            used={usage?.members.used ?? 0}
+            max={usage?.members.max ?? planQuota.maxOrganizationMembers}
+            unit="members"
+            scope="global"
+          />
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5">
-        <h3 className="text-lg font-bold">What your plan includes</h3>
+        <h3 className="text-lg font-bold">Plan limits</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Global caps that apply regardless of billing period
+        </p>
         <div className="mt-4 divide-y divide-border/70">
           <DetailRow
             icon={GitBranch}
             label="Steps per workflow"
-            value={formatCount(quota.maxStepsPerWorkflow)}
+            value={formatCount(
+              limits?.maxStepsPerWorkflow ?? planQuota.maxStepsPerWorkflow
+            )}
+          />
+          <DetailRow
+            icon={GitBranch}
+            label="Variables per workflow"
+            value={formatCount(
+              limits?.maxVariablesPerWorkflow ??
+                planQuota.maxVariablesPerWorkflow
+            )}
           />
           <DetailRow
             icon={History}
             label="Run history retention"
-            value={`${quota.runHistoryRetentionDays} days`}
+            value={`${
+              limits?.runHistoryRetentionDays ??
+              planQuota.runHistoryRetentionDays
+            } days`}
           />
           <DetailRow
             icon={Globe}
             label="Max request body"
-            value={formatKb(quota.maxRequestBodySizeKb)}
+            value={formatKb(
+              limits?.maxRequestBodySizeKb ?? planQuota.maxRequestBodySizeKb
+            )}
+          />
+          <DetailRow
+            icon={Globe}
+            label="Max response body"
+            value={formatKb(
+              limits?.maxResponseBodySizeKb ?? planQuota.maxResponseBodySizeKb
+            )}
+          />
+          <DetailRow
+            icon={Play}
+            label="Concurrent runs"
+            value={formatCount(
+              usage?.concurrentRuns.max ?? planQuota.maxConcurrentRuns
+            )}
+          />
+          <DetailRow
+            icon={Play}
+            label="Max step timeout"
+            value={`${
+              limits?.maxStepTimeoutSeconds ?? planQuota.maxStepTimeoutSeconds
+            }s`}
+          />
+          <DetailRow
+            icon={Play}
+            label="Max retries per step"
+            value={formatCount(
+              limits?.maxRetryCountPerStep ?? planQuota.maxRetryCountPerStep
+            )}
+          />
+          <DetailRow
+            icon={Sparkles}
+            label="Executor priority"
+            value={formatCount(
+              limits?.executorPriority ?? planQuota.executorPriority
+            )}
           />
           <DetailRow
             icon={Sparkles}
             label="OpenAPI import"
-            value={quota.allowsOpenApiImport ? "Yes" : "No"}
+            value={
+              (limits?.allowsOpenApiImport ?? planQuota.allowsOpenApiImport)
+                ? "Yes"
+                : "No"
+            }
           />
           <DetailRow
             icon={Sparkles}
             label="Insights"
-            value={quota.allowsInsights ? "Yes" : "No"}
+            value={
+              (limits?.allowsInsights ?? planQuota.allowsInsights)
+                ? "Yes"
+                : "No"
+            }
           />
           <DetailRow
             icon={Sparkles}
             label="Data export"
-            value={quota.allowsDataExport ? "Yes" : "No"}
+            value={
+              (limits?.allowsDataExport ?? planQuota.allowsDataExport)
+                ? "Yes"
+                : "No"
+            }
           />
         </div>
       </section>

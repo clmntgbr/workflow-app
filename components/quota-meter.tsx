@@ -4,6 +4,10 @@ import { cn } from "@/lib/utils"
 import { Lock } from "lucide-react"
 import type { ComponentType } from "react"
 import { formatCount } from "@/lib/plan/pricing"
+import {
+  QUOTA_SCOPE_LABEL,
+  type QuotaScope,
+} from "@/lib/quota/scope"
 
 const SEGMENTS = 20
 
@@ -13,6 +17,7 @@ interface QuotaMeterProps {
   used: number
   max: number
   unit: string
+  scope?: QuotaScope
   periodLabel?: string
   lockedHint?: string
   className?: string
@@ -24,10 +29,12 @@ export function QuotaMeter({
   used,
   max,
   unit,
-  periodLabel = "This month",
+  scope = "global",
+  periodLabel,
   lockedHint = "Upgrade your plan to unlock.",
   className,
 }: QuotaMeterProps) {
+  const resolvedPeriodLabel = periodLabel ?? QUOTA_SCOPE_LABEL[scope]
   const available = max > 0
   const safeUsed = Math.max(0, used)
   const safeMax = Math.max(0, max)
@@ -51,7 +58,7 @@ export function QuotaMeter({
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">{label}</p>
-            <p className="text-xs text-muted-foreground">{periodLabel}</p>
+            <p className="text-xs text-muted-foreground">{resolvedPeriodLabel}</p>
           </div>
         </div>
 

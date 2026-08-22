@@ -111,13 +111,15 @@ export function formatKb(kb: number): string {
 
 export function getQuotaFeatures(quota: Quota): string[] {
   return [
-    `${formatCount(quota.maxWorkflows)} workflows`,
-    `${formatCount(quota.maxStepsPerWorkflow)} steps / workflow`,
-    `${formatCount(quota.maxEndpoints)} endpoints`,
-    `${formatCount(quota.maxVariablesPerWorkflow)} variables / workflow`,
     `${formatCount(quota.maxWorkflowRunsPerMonth)} runs / month`,
+    `${formatCount(quota.maxWorkflows)} workflows (total)`,
+    `${formatCount(quota.maxEndpoints)} endpoints (total)`,
+    `${formatCount(quota.maxStepsPerWorkflow)} steps / workflow (total)`,
+    `${formatCount(quota.maxVariablesPerWorkflow)} variables / workflow (total)`,
     `${formatCount(quota.maxConcurrentRuns)} concurrent runs`,
     `${quota.runHistoryRetentionDays} days run history`,
+    `Request body up to ${formatKb(quota.maxRequestBodySizeKb)} (total)`,
+    `Response body up to ${formatKb(quota.maxResponseBodySizeKb)} (total)`,
     quota.allowsOpenApiImport ? "OpenAPI import" : "Manual endpoints only",
     quota.allowsInsights ? "Workflow insights" : "Basic analytics",
     quota.allowsDataExport ? "Data export" : "No data export",

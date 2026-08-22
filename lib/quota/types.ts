@@ -1,21 +1,18 @@
-export interface QuotaUsage {
+export interface MonthlyQuotaCounter {
   periodStart: string
   periodEnd: string
-  workflowRunsUsed: number
-  workflowRunsMax: number
-  workflowRunsLeft: number
-  workflowsUsed: number
-  workflowsMax: number
-  workflowsLeft: number
-  endpointsUsed: number
-  endpointsMax: number
-  endpointsLeft: number
-  membersUsed: number
-  membersMax: number
-  membersLeft: number
-  concurrentRunsUsed: number
-  concurrentRunsMax: number
-  concurrentRunsLeft: number
+  used: number
+  max: number
+  left: number
+}
+
+export interface QuotaCounter {
+  used: number
+  max: number
+  left: number
+}
+
+export interface QuotaLimits {
   maxStepsPerWorkflow: number
   maxVariablesPerWorkflow: number
   minScheduleIntervalMinutes: number
@@ -28,6 +25,15 @@ export interface QuotaUsage {
   allowsInsights: boolean
   allowsDataExport: boolean
   executorPriority: number
+}
+
+export interface QuotaUsage {
+  workflowRuns: MonthlyQuotaCounter
+  workflows: QuotaCounter
+  endpoints: QuotaCounter
+  members: QuotaCounter
+  concurrentRuns: QuotaCounter
+  limits: QuotaLimits
 }
 
 export interface QuotaState {
