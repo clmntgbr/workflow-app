@@ -1,6 +1,8 @@
 "use client"
 
 import { OrganizationSwitcher } from "@/components/organization/organization-switcher"
+import { openSubscriptionDrawer } from "@/components/subscription-drawer-host"
+import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import {
   SignedIn,
@@ -9,17 +11,35 @@ import {
   SignUpButton,
   UserButton,
 } from "@clerk/nextjs"
+import { CreditCard, Sparkles } from "lucide-react"
+import Link from "next/link"
 
 export function AppHeader() {
   return (
-    <header className="flex h-16 items-center justify-between gap-4 border-b border-gray-200 p-4 sticky top-0 z-10 bg-white">
+    <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b border-gray-200 bg-white p-4">
       <div className="flex items-center gap-3">
         <SignedIn>
           <SidebarTrigger />
           <OrganizationSwitcher />
         </SignedIn>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <SignedIn>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/pricing">
+              <Sparkles className="size-4" />
+              Pricing
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => openSubscriptionDrawer()}
+          >
+            <CreditCard className="size-4" />
+            Subscription
+          </Button>
+        </SignedIn>
         <SignedOut>
           <SignInButton />
           <SignUpButton>

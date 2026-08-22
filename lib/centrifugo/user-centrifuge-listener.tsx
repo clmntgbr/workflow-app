@@ -3,6 +3,8 @@
 import { useEndpoint } from "@/lib/endpoint/context"
 import { notifyEndpointsRefetch } from "@/lib/endpoint/endpoint-realtime"
 import { useOrganization } from "@/lib/organization/context"
+import { useQuota } from "@/lib/quota/context"
+import { useSubscription } from "@/lib/subscription/context"
 import { useUser } from "@/lib/user/context"
 import { useWorkflow } from "@/lib/workflow/context"
 import { notifyWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
@@ -11,7 +13,9 @@ import { notifyWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable
 import { notifyWorkflowDetailRefetch } from "@/lib/workflow/workflow-realtime"
 import { notifyWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
 import { useCallback, useEffect, useRef } from "react"
+import { toast } from "sonner"
 import {
+  getEventResource,
   isUserLifecycleEvent,
   isUserStreamEvent,
   shouldRefetchAllEndpoints,
@@ -38,12 +42,17 @@ export function UserCentrifugeListener() {
     fetchEndpoint,
     editingEndpointId,
   } = useEndpoint()
+  const { fetchSubscription, markPaymentSucceeded } = useSubscription()
+  const { fetchQuota } = useQuota()
 
   const fetchUserRef = useRef(fetchUser)
   const fetchOrganizationsRef = useRef(fetchOrganizations)
   const fetchWorkflowsRef = useRef(fetchWorkflows)
   const fetchEndpointsRef = useRef(fetchEndpoints)
   const fetchEndpointRef = useRef(fetchEndpoint)
+  const fetchSubscriptionRef = useRef(fetchSubscription)
+  const fetchQuotaRef = useRef(fetchQuota)
+  const markPaymentSucceededRef = useRef(markPaymentSucceeded)
   const editingEndpointIdRef = useRef(editingEndpointId)
   const orgDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
@@ -77,6 +86,9 @@ export function UserCentrifugeListener() {
     fetchWorkflowsRef.current = fetchWorkflows
     fetchEndpointsRef.current = fetchEndpoints
     fetchEndpointRef.current = fetchEndpoint
+    fetchSubscriptionRef.current = fetchSubscription
+    fetchQuotaRef.current = fetchQuota
+    markPaymentSucceededRef.current = markPaymentSucceeded
     editingEndpointIdRef.current = editingEndpointId
   }, [
     fetchUser,
@@ -84,6 +96,9 @@ export function UserCentrifugeListener() {
     fetchWorkflows,
     fetchEndpoints,
     fetchEndpoint,
+    fetchSubscription,
+    fetchQuota,
+    markPaymentSucceeded,
     editingEndpointId,
   ])
 
@@ -291,6 +306,38 @@ export function UserCentrifugeListener() {
 
       if (shouldRefetchVariables(data)) {
         debouncedRefreshVariables(data.workflowId)
+      }
+
+      const resource = getEventResource(data)
+
+      if (resource === "quota") {
+        void fetchQuotaRef.current()
+        return
+      }
+
+      if (resource === "subscription") {
+        void fetchSubscriptionRef.current()
+        void fetchQuotaRef.current()
+        return
+      }
+
+      if (resource === "payment") {
+        void fetchSubscriptionRef.current()
+        void fetchQuotaRef.current()
+
+        const status = data.status?.toLowerCase()
+        if (status === "succeeded" || status === "success") {
+          markPaymentSucceededRef.current()
+          toast.success("Payment successful", {
+            description: "Your subscription is now active.",
+          })
+        } else if (status === "failed" || status === "failure") {
+          toast.error("Payment failed", {
+            description:
+              "Your payment could not be processed. Please try again.",
+          })
+        }
+        return
       }
 
       if (isUserLifecycleEvent(data)) {

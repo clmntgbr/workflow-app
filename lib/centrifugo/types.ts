@@ -8,6 +8,9 @@ export type RealtimeResource =
   | "workflowRun"
   | "stepRun"
   | "variable"
+  | "subscription"
+  | "payment"
+  | "quota"
 
 export type RealtimeVerb =
   | "created"
@@ -48,6 +51,9 @@ const RESOURCES = new Set<string>([
   "workflowRun",
   "stepRun",
   "variable",
+  "subscription",
+  "payment",
+  "quota",
 ])
 
 const VERBS = new Set<string>([
