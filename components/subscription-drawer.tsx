@@ -60,15 +60,8 @@ export function SubscriptionDrawer({
   onOpenChange,
   onGoPricing,
 }: SubscriptionDrawerProps) {
-  const { subscription, isLoading, fetchSubscription } = useSubscription()
-  const { fetchQuota } = useQuota()
+  const { subscription, isLoading } = useSubscription()
   const [portalLoading, setPortalLoading] = useState(false)
-
-  useEffect(() => {
-    if (!open) return
-    void fetchSubscription()
-    void fetchQuota()
-  }, [open, fetchSubscription, fetchQuota])
 
   const handleOpenPortal = async () => {
     setPortalLoading(true)

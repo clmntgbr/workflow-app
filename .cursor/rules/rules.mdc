@@ -11,7 +11,7 @@ alwaysApply: true
 
 ## Bootstrap (allowed once)
 
-- `UserProvider` / `ProjectProvider`: fetch on mount only.
+- `UserProvider` / `ProjectProvider` / `SubscriptionProvider` / `QuotaProvider`: fetch on mount only.
 - `WorkflowProvider` / `EndpointProvider`: fetch **once** when an active project first appears. On project switch, clear stale lists and wait for Centrifugo — do **not** call `fetchWorkflows` / `fetchEndpoints` in a `useEffect` tied to `activeProject`.
 
 ## After mutations

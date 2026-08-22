@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useReducer } from "react"
+import { useCallback, useEffect, useReducer } from "react"
 import {
   createSubscription as createSubscriptionRequest,
   getSubscription,
@@ -74,6 +74,10 @@ export function SubscriptionProvider({
   const resetPaymentSucceeded = useCallback(() => {
     dispatch({ type: "RESET_PAYMENT_SUCCEEDED" })
   }, [])
+
+  useEffect(() => {
+    void fetchSubscription()
+  }, [fetchSubscription])
 
   return (
     <SubscriptionContext.Provider
