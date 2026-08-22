@@ -1,4 +1,5 @@
 import { ThemeProvider } from "@/components/theme-provider"
+import { PlanProvider } from "@/lib/plan/provider"
 import { cn } from "@/lib/utils"
 import { ClerkProvider } from "@clerk/nextjs"
 import { Metadata } from "next"
@@ -35,7 +36,9 @@ export default function RootLayout({
     >
       <body>
         <ClerkProvider>
-          <ThemeProvider>{children}</ThemeProvider>
+          <ThemeProvider>
+            <PlanProvider>{children}</PlanProvider>
+          </ThemeProvider>
         </ClerkProvider>
       </body>
     </html>
