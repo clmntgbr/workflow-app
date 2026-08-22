@@ -301,13 +301,14 @@ export function StepDrawer({
 
                   <div className="flex flex-col gap-6 md:col-span-2">
                     {step?.endpoint ? (
-                      <StepPreview
-                        name={step.endpoint.name}
-                        method={step.endpoint.method}
-                        url={step.endpoint.url}
-                        description={step.endpoint.description}
-                        className="mb-6"
-                      />
+                      <div className="mb-6 flex w-full items-center gap-3 rounded-lg border border-border bg-card px-4 py-2">
+                        <StepPreview
+                          name={step.endpoint.name}
+                          method={step.endpoint.method}
+                          url={step.endpoint.url}
+                          className="min-w-0 flex-1"
+                        />
+                      </div>
                     ) : null}
                     <Field>
                       <Controller
