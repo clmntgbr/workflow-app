@@ -21,6 +21,7 @@ import {
   shouldRefetchAllEndpoints,
   shouldRefetchConnections,
   shouldRefetchProjects,
+  shouldRefetchQuotaFromWorkflowRunEvents,
   shouldRefetchSingleEndpoint,
   shouldRefetchSteps,
   shouldRefetchStepsFromRunEvents,
@@ -73,6 +74,9 @@ export function UserCentrifugeListener() {
     ReturnType<typeof setTimeout> | undefined
   >(undefined)
   const variableDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  )
+  const quotaDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   )
   const pendingStepWorkflowIdsRef = useRef<Set<string>>(new Set())
@@ -225,6 +229,14 @@ export function UserCentrifugeListener() {
     }, REFRESH_DEBOUNCE_MS)
   }, [])
 
+  const debouncedRefreshQuotaAndSubscription = useCallback(() => {
+    if (quotaDebounceRef.current) clearTimeout(quotaDebounceRef.current)
+    quotaDebounceRef.current = setTimeout(() => {
+      void fetchQuotaRef.current()
+      void fetchSubscriptionRef.current()
+    }, REFRESH_DEBOUNCE_MS)
+  }, [])
+
   useEffect(() => {
     return () => {
       if (orgDebounceRef.current) clearTimeout(orgDebounceRef.current)
@@ -239,6 +251,9 @@ export function UserCentrifugeListener() {
       }
       if (variableDebounceRef.current) {
         clearTimeout(variableDebounceRef.current)
+      }
+      if (quotaDebounceRef.current) {
+        clearTimeout(quotaDebounceRef.current)
       }
     }
   }, [])
@@ -308,6 +323,10 @@ export function UserCentrifugeListener() {
         debouncedRefreshVariables(data.workflowId)
       }
 
+      if (shouldRefetchQuotaFromWorkflowRunEvents(data)) {
+        debouncedRefreshQuotaAndSubscription()
+      }
+
       const resource = getEventResource(data)
 
       if (resource === "quota") {
@@ -352,6 +371,7 @@ export function UserCentrifugeListener() {
       debouncedRefreshConnections,
       debouncedRefreshWorkflowRuns,
       debouncedRefreshVariables,
+      debouncedRefreshQuotaAndSubscription,
     ]
   )
 

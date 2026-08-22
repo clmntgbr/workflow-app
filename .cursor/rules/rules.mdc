@@ -43,6 +43,7 @@ Handle new events in `lib/centrifugo/types.ts` + `user-centrifuge-listener.tsx`.
 | `step.created/updated/deleted` | `GET .../workflows/:id/steps` (page subscribers) |
 | `connection.created/deleted` | `GET .../workflows/:id/connections` (page subscribers) |
 | `workflowRun.started/succeeded/failed/cancelled` | workflow runs list+detail (workflow page subscribers) |
+| `workflowRun.succeeded/failed/cancelled` | also `GET /api/quota` + `GET /api/subscription` |
 | `stepRun.started/succeeded/failed` | workflow runs list+detail (workflow page subscribers) |
 | `variable.created/updated` | `GET .../workflows/:id/variables` (page subscribers) + available vars if step drawer open |
 

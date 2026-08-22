@@ -193,6 +193,17 @@ export function shouldRefetchWorkflowRuns(event: UserStreamEvent): boolean {
   )
 }
 
+/** Refresh quota (and subscription) when a workflow run finishes. */
+export function shouldRefetchQuotaFromWorkflowRunEvents(
+  event: UserStreamEvent
+): boolean {
+  return (
+    eventTypeEquals(event, "workflowRun.succeeded") ||
+    eventTypeEquals(event, "workflowRun.failed") ||
+    eventTypeEquals(event, "workflowRun.cancelled")
+  )
+}
+
 export function shouldRefetchVariables(event: UserStreamEvent): boolean {
   return (
     eventTypeEquals(event, "variable.created") ||
