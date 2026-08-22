@@ -23,6 +23,27 @@ function buildQueryString(query?: PaginateQuery): string {
   return serialized ? `?${serialized}` : ""
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+async function readWorkflowErrorMessage(
+  response: Response,
+  fallback: string
+): Promise<string> {
+  try {
+    const data: unknown = await response.json()
+    const record = asRecord(data)
+    const nested = asRecord(record?.data)
+    const message = nested?.message ?? record?.message
+    if (typeof message === "string" && message.trim()) return message
+  } catch {
+    // Ignore unreadable error bodies.
+  }
+  return fallback
+}
+
 export const listWorkflows = async (
   query?: PaginateQuery
 ): Promise<Paginate<Workflow>> => {
@@ -47,7 +68,9 @@ export const createWorkflow = async (
   })
 
   if (!response.ok) {
-    throw new Error("Failed to create workflow")
+    throw new Error(
+      await readWorkflowErrorMessage(response, "Failed to create workflow")
+    )
   }
 
   return response.json()
@@ -120,7 +143,9 @@ export const updateWorkflow = async (
   })
 
   if (!response.ok) {
-    throw new Error("Failed to update workflow")
+    throw new Error(
+      await readWorkflowErrorMessage(response, "Failed to update workflow")
+    )
   }
 
   return response.json()

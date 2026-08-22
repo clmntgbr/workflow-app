@@ -1,11 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import {
-  Drawer,
-  DrawerContent,
-  DrawerTitle,
-} from "@/components/ui/drawer"
+import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
 import { usePlans } from "@/lib/plan/context"
 import {
   PLAN_ORDER,
@@ -171,7 +167,9 @@ export function PlanChangeDrawer({
                     <TargetIcon className="size-5" aria-hidden="true" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold">{preview.targetPlanName}</p>
+                    <p className="text-sm font-bold">
+                      {preview.targetPlanName}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {preview.targetPlanPrice != null
                         ? formatPlanPrice(preview.targetPlanPrice, currency)
@@ -221,9 +219,7 @@ export function PlanChangeDrawer({
                         ? formatDate(preview.periodStart)
                         : "—"}{" "}
                       →{" "}
-                      {preview.periodEnd
-                        ? formatDate(preview.periodEnd)
-                        : "—"}
+                      {preview.periodEnd ? formatDate(preview.periodEnd) : "—"}
                     </p>
                   </div>
                 )}
@@ -262,7 +258,10 @@ export function PlanChangeDrawer({
                               </p>
                               {line.proration && (
                                 <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-secondary/60 px-1.5 py-0.5 text-[0.6rem] font-medium text-muted-foreground">
-                                  <Clock className="size-2" aria-hidden="true" />
+                                  <Clock
+                                    className="size-2"
+                                    aria-hidden="true"
+                                  />
                                   Proration
                                 </span>
                               )}
@@ -331,7 +330,10 @@ export function PlanChangeDrawer({
               >
                 {isConfirming ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    <Loader2
+                      className="size-4 animate-spin"
+                      aria-hidden="true"
+                    />
                     Confirming…
                   </>
                 ) : (

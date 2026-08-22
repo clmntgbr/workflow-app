@@ -1,13 +1,10 @@
 "use client"
 
+import { formatCount } from "@/lib/plan/pricing"
+import { QUOTA_SCOPE_LABEL, type QuotaScope } from "@/lib/quota/scope"
 import { cn } from "@/lib/utils"
 import { Lock } from "lucide-react"
 import type { ComponentType } from "react"
-import { formatCount } from "@/lib/plan/pricing"
-import {
-  QUOTA_SCOPE_LABEL,
-  type QuotaScope,
-} from "@/lib/quota/scope"
 
 const SEGMENTS = 20
 
@@ -58,12 +55,11 @@ export function QuotaMeter({
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">{label}</p>
-            <p className="text-xs text-muted-foreground">{resolvedPeriodLabel}</p>
           </div>
         </div>
 
         {available ? (
-          <p className="text-2xl font-bold tabular-nums text-foreground">
+          <p className="text-2xl font-bold text-foreground tabular-nums">
             {formatCount(safeUsed)}
             <span className="text-base font-normal text-muted-foreground">
               /{formatCount(safeMax)}

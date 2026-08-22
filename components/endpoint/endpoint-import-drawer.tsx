@@ -30,6 +30,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, UploadIcon } from "lucide-react"
 import { useState } from "react"
 import { Controller, useForm, useWatch } from "react-hook-form"
+import { toast } from "sonner"
 
 const emptyFormValues: ImportEndpointFormValues = {
   file: undefined as unknown as File,
@@ -56,7 +57,6 @@ export function EndpointImportDrawer({
   const [isSaving, setIsSaving] = useState(false)
   const [isFileValid, setIsFileValid] = useState<boolean | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
-  const [submitError, setSubmitError] = useState<string | null>(null)
   const [wasOpen, setWasOpen] = useState(false)
 
   const {
@@ -80,7 +80,6 @@ export function EndpointImportDrawer({
     reset(emptyFormValues)
     setIsFileValid(null)
     setFileInputKey((key) => key + 1)
-    setSubmitError(null)
     setIsSaving(false)
   } else if (!isOpen && wasOpen) {
     setWasOpen(false)
@@ -90,7 +89,6 @@ export function EndpointImportDrawer({
     reset(emptyFormValues)
     setIsFileValid(null)
     setFileInputKey((key) => key + 1)
-    setSubmitError(null)
     onOpenChange(false)
   }
 
@@ -98,8 +96,6 @@ export function EndpointImportDrawer({
     file: File | null,
     onChange: (file: File | null) => void
   ) => {
-    setSubmitError(null)
-
     if (!file) {
       onChange(null)
       setIsFileValid(null)
@@ -128,13 +124,12 @@ export function EndpointImportDrawer({
     }
 
     setIsSaving(true)
-    setSubmitError(null)
 
     try {
       await importEndpoints(data.file, toImportEndpointsPayload(data))
       onClose()
     } catch (error) {
-      setSubmitError(
+      toast.error(
         error instanceof Error ? error.message : "Failed to import endpoints"
       )
     } finally {
@@ -442,13 +437,7 @@ export function EndpointImportDrawer({
             </div>
 
             <div className="shrink-0 border-t bg-background px-6 py-4">
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  {submitError ? (
-                    <p className="text-sm text-destructive">{submitError}</p>
-                  ) : null}
-                </div>
-                <div className="flex flex-col-reverse gap-3 sm:flex-row">
+              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                   <Button
                     type="button"
                     variant="outline"
@@ -468,7 +457,6 @@ export function EndpointImportDrawer({
                       <Loader2Icon className="ml-2 h-4 w-4 animate-spin" />
                     ) : null}
                   </Button>
-                </div>
               </div>
             </div>
           </form>

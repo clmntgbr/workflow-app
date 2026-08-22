@@ -29,6 +29,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Controller, useForm, useWatch } from "react-hook-form"
+import { toast } from "sonner"
 import z from "zod"
 
 type WorkflowFormValues = z.infer<typeof workflowSchema>
@@ -185,6 +186,10 @@ export function WorkflowDrawer({
         onSaved?.(updated)
       }
       onClose()
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save workflow"
+      )
     } finally {
       setIsSaving(false)
     }
