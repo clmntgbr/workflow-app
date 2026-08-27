@@ -4,6 +4,7 @@ import CustomInput from "@/components/custom-input"
 import CustomSwitch from "@/components/custom-switch"
 import CustomTextarea from "@/components/custom-textarea"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { RadioDropdown } from "@/components/radio-dropdown"
 import { Button } from "@/components/ui/button"
 import {
   Drawer,
@@ -50,15 +51,6 @@ const SCHEDULE_UNITS: { value: ScheduleUnit; label: string }[] = [
   { value: "year", label: "Years" },
 ]
 
-const TIMEZONES = [
-  "UTC",
-  "Europe/Paris",
-  "Europe/London",
-  "America/New_York",
-  "America/Los_Angeles",
-  "Asia/Tokyo",
-]
-
 const emptyFormValues: WorkflowFormValues = {
   name: "",
   description: "",
@@ -66,7 +58,6 @@ const emptyFormValues: WorkflowFormValues = {
   scheduleIntervalValue: 1,
   scheduleIntervalUnit: "hour",
   scheduleAt: "",
-  scheduleTimezone: "UTC",
   notificationsEnabled: false,
   notifyOnSuccess: false,
   notifyOnFailure: false,
@@ -103,7 +94,6 @@ function getWorkflowFormValues(
       ? (workflow.scheduleIntervalUnit as ScheduleUnit)
       : "hour",
     scheduleAt: toDatetimeLocalValue(workflow.scheduleAt),
-    scheduleTimezone: workflow.scheduleTimezone || "UTC",
     notificationsEnabled: workflow.notificationsEnabled ?? false,
     notifyOnSuccess: workflow.notifyOnSuccess ?? false,
     notifyOnFailure: workflow.notifyOnFailure ?? false,
@@ -327,18 +317,22 @@ export function WorkflowDrawer({
                       render={({ field }) => (
                         <div className="space-y-2">
                           <Label htmlFor="workflow-schedule-type">Type</Label>
-                          <select
+                          <RadioDropdown
                             id="workflow-schedule-type"
-                            value={field.value}
-                            onChange={field.onChange}
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-                          >
-                            {SCHEDULE_TYPES.map((type) => (
-                              <option key={type.value} value={type.value}>
-                                {type.label}
-                              </option>
-                            ))}
-                          </select>
+                            value={
+                              SCHEDULE_TYPES.find(
+                                (type) => type.value === field.value
+                              ) ?? SCHEDULE_TYPES[0]
+                            }
+                            onValueChange={(type) =>
+                              field.onChange(type.value)
+                            }
+                            options={SCHEDULE_TYPES}
+                            getValue={(type) => type.value}
+                            getLabel={(type) => type.label}
+                            groupLabel="Schedule type"
+                            placeholder="Select type"
+                          />
                         </div>
                       )}
                     />
@@ -379,18 +373,22 @@ export function WorkflowDrawer({
                               <Label htmlFor="workflow-schedule-interval-unit">
                                 Unit
                               </Label>
-                              <select
+                              <RadioDropdown
                                 id="workflow-schedule-interval-unit"
-                                value={field.value}
-                                onChange={field.onChange}
-                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-                              >
-                                {SCHEDULE_UNITS.map((unit) => (
-                                  <option key={unit.value} value={unit.value}>
-                                    {unit.label}
-                                  </option>
-                                ))}
-                              </select>
+                                value={
+                                  SCHEDULE_UNITS.find(
+                                    (unit) => unit.value === field.value
+                                  ) ?? SCHEDULE_UNITS[0]
+                                }
+                                onValueChange={(unit) =>
+                                  field.onChange(unit.value)
+                                }
+                                options={SCHEDULE_UNITS}
+                                getValue={(unit) => unit.value}
+                                getLabel={(unit) => unit.label}
+                                groupLabel="Interval unit"
+                                placeholder="Select unit"
+                              />
                               {errors.scheduleIntervalUnit?.message ? (
                                 <p className="text-xs text-destructive">
                                   {errors.scheduleIntervalUnit.message}
@@ -433,46 +431,9 @@ export function WorkflowDrawer({
                               </p>
                             ) : (
                               <p className="text-xs text-muted-foreground">
-                                Exact date and time for a one-off run
+                                Exact date and time in your local timezone
                               </p>
                             )}
-                          </div>
-                        )}
-                      />
-                    </Field>
-                  ) : null}
-
-                  {scheduleType !== "none" ? (
-                    <Field>
-                      <Controller
-                        name="scheduleTimezone"
-                        control={control}
-                        render={({ field }) => (
-                          <div className="space-y-2">
-                            <Label htmlFor="workflow-schedule-timezone">
-                              Timezone
-                            </Label>
-                            <select
-                              id="workflow-schedule-timezone"
-                              value={field.value}
-                              onChange={field.onChange}
-                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-                            >
-                              {[
-                                ...TIMEZONES,
-                                field.value && !TIMEZONES.includes(field.value)
-                                  ? field.value
-                                  : null,
-                              ]
-                                .filter((value): value is string =>
-                                  Boolean(value)
-                                )
-                                .map((timezone) => (
-                                  <option key={timezone} value={timezone}>
-                                    {timezone}
-                                  </option>
-                                ))}
-                            </select>
                           </div>
                         )}
                       />

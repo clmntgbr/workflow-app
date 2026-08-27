@@ -47,7 +47,6 @@ export const workflowSchema = z
     scheduleIntervalValue: z.number().int().min(1).optional(),
     scheduleIntervalUnit: scheduleUnitSchema.or(z.literal("")).optional(),
     scheduleAt: z.string().optional(),
-    scheduleTimezone: z.string().min(1, "Timezone is required"),
     notificationsEnabled: z.boolean(),
     notifyOnSuccess: z.boolean(),
     notifyOnFailure: z.boolean(),
@@ -132,7 +131,7 @@ function toSchedulePayload(values: WorkflowFormValues) {
         : ("" as const),
     scheduleAt:
       scheduleType === "once" ? fromDatetimeLocalValue(values.scheduleAt) : null,
-    scheduleTimezone: values.scheduleTimezone || "UTC",
+    scheduleTimezone: "UTC",
   }
 }
 
