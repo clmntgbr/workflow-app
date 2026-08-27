@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { CanvasStep } from "@/components/workflow/step-node"
+import { StepAssertionsSection } from "@/components/workflow/step-assertions-section"
 import { StepVariablesSection } from "@/components/workflow/step-variables-section"
 import { VariableAutocompleteField } from "@/components/workflow/variable-autocomplete-field"
 import { useEndpoint } from "@/lib/endpoint/context"
@@ -34,6 +35,8 @@ import {
   toUpdateWorkflowStepPayload,
 } from "@/lib/workflow/step-schema"
 import { UpdateWorkflowStepInput } from "@/lib/workflow/types"
+import { listStepAssertions } from "@/lib/workflow/assertion/api"
+import { Assertion } from "@/lib/workflow/assertion/types"
 import { listAvailableVariables } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { subscribeWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
@@ -201,6 +204,7 @@ export function StepDrawer({
   const [availableVariables, setAvailableVariables] = useState<
     WorkflowVariable[]
   >([])
+  const [assertions, setAssertions] = useState<Assertion[]>([])
 
   const {
     handleSubmit,
@@ -237,6 +241,30 @@ export function StepDrawer({
         if (!cancelled) setAvailableVariables(next)
       } catch {
         if (!cancelled) setAvailableVariables([])
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, workflowId, step])
+
+  useEffect(() => {
+    if (!isOpen || !step || step.id.startsWith("temp-")) {
+      setAssertions([])
+      return
+    }
+
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const next = await listStepAssertions(workflowId, step.id)
+        if (!cancelled) setAssertions(next)
+      } catch {
+        if (!cancelled) setAssertions([])
       }
     }
 
@@ -617,6 +645,29 @@ export function StepDrawer({
                         variables={variables}
                         onVariablesChange={onVariablesChange}
                         onRequestDelete={onRequestDeleteVariable}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+
+                <Separator className="my-10" />
+
+                <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
+                  <div className="space-y-1">
+                    <h2 className="font-semibold">Assertions</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Validate the response after this step runs. Failed
+                      assertions fail the step run and can trigger retries.
+                    </p>
+                  </div>
+                  <div className="md:col-span-2">
+                    {step ? (
+                      <StepAssertionsSection
+                        workflowId={workflowId}
+                        stepId={step.id}
+                        enabled={!step.id.startsWith("temp-")}
+                        assertions={assertions}
+                        onAssertionsChange={setAssertions}
                       />
                     ) : null}
                   </div>

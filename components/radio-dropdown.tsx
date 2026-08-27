@@ -28,6 +28,7 @@ type RadioDropdownProps<T> = {
   className?: string
   triggerClassName?: string
   contentClassName?: string
+  modal?: boolean
 }
 
 function defaultGetValue<T>(option: T): string {
@@ -58,6 +59,7 @@ export function RadioDropdown<T>({
   className,
   triggerClassName,
   contentClassName,
+  modal = true,
 }: RadioDropdownProps<T>) {
   const selectedValue = value == null ? "" : getValue(value)
   const selectedLabel = value == null ? null : getLabel(value)
@@ -68,7 +70,7 @@ export function RadioDropdown<T>({
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={modal}>
       <DropdownMenuTrigger asChild disabled={disabled} className={className}>
         <Button
           id={id}

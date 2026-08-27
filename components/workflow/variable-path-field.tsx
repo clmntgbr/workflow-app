@@ -4,6 +4,7 @@ import { FieldDescription } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { listStepAssertionPaths } from "@/lib/workflow/assertion/api"
 import { listStepVariablePaths } from "@/lib/workflow/variable/api"
 import { Code2, Loader2Icon } from "lucide-react"
 import { useEffect, useId, useRef, useState } from "react"
@@ -23,6 +24,7 @@ interface VariablePathFieldProps {
   maxLength?: number
   hasCharacterLimit?: boolean
   disabled?: boolean
+  pathsKind?: "variable" | "assertion"
 }
 
 export function VariablePathField({
@@ -37,6 +39,7 @@ export function VariablePathField({
   maxLength = 255,
   hasCharacterLimit = true,
   disabled = false,
+  pathsKind = "variable",
 }: VariablePathFieldProps) {
   const generatedId = useId()
   const resolvedId = id ?? generatedId
@@ -73,8 +76,13 @@ export function VariablePathField({
         setIsLoadingMore(false)
       }
 
+      const fetchPaths =
+        pathsKind === "assertion"
+          ? listStepAssertionPaths
+          : listStepVariablePaths
+
       try {
-        const result = await listStepVariablePaths(workflowId, stepId, {
+        const result = await fetchPaths(workflowId, stepId, {
           page: 1,
           limit: PAGE_LIMIT,
           search: debouncedSearch || undefined,
@@ -96,7 +104,7 @@ export function VariablePathField({
     return () => {
       cancelled = true
     }
-  }, [open, workflowId, stepId, debouncedSearch])
+  }, [open, workflowId, stepId, debouncedSearch, pathsKind])
 
   useEffect(() => {
     if (!open) return
@@ -118,7 +126,12 @@ export function VariablePathField({
         loadingMoreRef.current = true
         setIsLoadingMore(true)
 
-        void listStepVariablePaths(workflowId, stepId, {
+        const fetchPaths =
+          pathsKind === "assertion"
+            ? listStepAssertionPaths
+            : listStepVariablePaths
+
+        void fetchPaths(workflowId, stepId, {
           page: nextPage,
           limit: PAGE_LIMIT,
           search: debouncedSearch || undefined,
@@ -148,7 +161,7 @@ export function VariablePathField({
 
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [open, page, totalPages, workflowId, stepId, debouncedSearch])
+  }, [open, page, totalPages, workflowId, stepId, debouncedSearch, pathsKind])
 
   useEffect(() => {
     if (!open) return
