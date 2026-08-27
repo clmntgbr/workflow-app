@@ -12,12 +12,14 @@ import { WorkflowRun, WorkflowRunDetail } from "@/lib/workflow-run/types"
 import { useEffect, useState } from "react"
 
 interface WorkflowRunDrawerProps {
+  workflowId: string
   run: WorkflowRun | null
   isOpen: boolean
   onOpenChange: (open: boolean) => void
 }
 
 export function WorkflowRunDrawer({
+  workflowId,
   run,
   isOpen,
   onOpenChange,
@@ -25,34 +27,28 @@ export function WorkflowRunDrawer({
   const [detailedRun, setDetailedRun] = useState<WorkflowRunDetail | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [loadedRunId, setLoadedRunId] = useState<string | null>(null)
 
   const activeRunId = isOpen && run ? run.id : null
-  const activeWorkflowId = isOpen && run ? run.workflowId : null
-
-  if (!activeRunId && loadedRunId !== null) {
-    setLoadedRunId(null)
-    setDetailedRun(null)
-    setError(null)
-    setIsLoading(false)
-  }
 
   useEffect(() => {
-    if (!activeRunId || !activeWorkflowId) return
+    if (!activeRunId) {
+      setDetailedRun(null)
+      setError(null)
+      setIsLoading(false)
+      return
+    }
 
     let cancelled = false
-    const requestId = activeRunId
-    const workflowId = activeWorkflowId
 
     const load = async () => {
       setIsLoading(true)
       setError(null)
+      setDetailedRun(null)
 
       try {
-        const full = await getWorkflowRun(workflowId, requestId)
+        const full = await getWorkflowRun(workflowId, activeRunId)
         if (cancelled) return
         setDetailedRun(full)
-        setLoadedRunId(requestId)
       } catch {
         if (cancelled) return
         setError("Failed to load workflow run")
@@ -67,7 +63,7 @@ export function WorkflowRunDrawer({
     return () => {
       cancelled = true
     }
-  }, [activeRunId, activeWorkflowId])
+  }, [activeRunId, workflowId])
 
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right">
@@ -91,6 +87,15 @@ export function WorkflowRunDrawer({
             </div>
           ) : error ? (
             <p className="text-sm text-muted-foreground">{error}</p>
+          ) : detailedRun ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                Run #{detailedRun.id.split("-")[0]}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Status: {detailedRun.status}
+              </p>
+            </div>
           ) : null}
         </div>
       </DrawerContent>

@@ -237,6 +237,7 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
       ) : null}
 
       <WorkflowRunDrawer
+        workflowId={workflowId}
         run={selectedRun}
         isOpen={isRunDrawerOpen}
         onOpenChange={(open) => {
