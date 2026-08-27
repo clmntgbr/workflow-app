@@ -1,4 +1,8 @@
 import { initPaginate, Paginate } from "@/lib/paginate"
+import {
+  AssertionOperator,
+  AssertionSource,
+} from "@/lib/workflow/assertion/types"
 
 /** Shared status for workflow runs and step runs. */
 export const RUN_STATUSES = [
@@ -42,8 +46,47 @@ export interface StepRunPosition {
 
 export interface StepRunResponseSnapshot {
   status: number
-  headers: Record<string, string>
-  body: unknown
+  headers?: Record<string, string>
+  body?: unknown
+}
+
+/** Assertion snapshot embedded in step run results. */
+export interface StepRunAssertionSnapshot {
+  id: string
+  description: string | null
+  source: AssertionSource
+  path: string | null
+  operator: AssertionOperator
+  expectedValue: string | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export interface StepRunAssertionResult {
+  assertion: StepRunAssertionSnapshot
+  passed: boolean
+  actualValue: unknown
+  message: string | null
+}
+
+/** Insight row returned on GET /api/workflows/:workflowId/runs/:id stepRuns. */
+export interface WorkflowRunInsight {
+  id: string
+  startTime: string | null
+  endTime: string | null
+  queueTime: number | null
+  dnsLookupDuration: number | null
+  tcpConnectionTime: number | null
+  tlsHandshakeTime: number | null
+  ttfb: number | null
+  duration: number | null
+  statusCode: number | null
+  responseSize: number | null
+  requestSize: number | null
+  attemptNumber: number
+  totalAttempts: number
+  errorMessage: string | null
+  errorType: string | null
 }
 
 /** Timing fields from the API are milliseconds. */
@@ -113,6 +156,7 @@ export interface WorkflowRunWorkflow {
   scheduleIntervalUnit: string | null
   scheduleAt: string | null
   scheduleTimezone: string
+  nextRunAt: string | null
   notificationsEnabled: boolean
   notifyOnSuccess: boolean
   notifyOnFailure: boolean
@@ -151,7 +195,8 @@ export interface WorkflowRunStepRunDetail {
   status: StepRunStatus
   attempt: number
   responseSnapshot: StepRunResponseSnapshot | null
-  insights?: Insight[]
+  assertionsResult?: StepRunAssertionResult[]
+  insights?: WorkflowRunInsight[]
   step: WorkflowRunStep
   startedAt: string | null
   finishedAt: string | null
