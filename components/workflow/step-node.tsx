@@ -11,8 +11,8 @@ import {
   CheckIcon,
   LoaderCircleIcon,
   MinusIcon,
-  PencilIcon,
-  Trash2Icon,
+  Pencil,
+  Trash2,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -91,50 +91,50 @@ export function StepNode({ data }: NodeProps) {
 
       <div
         className={cn(
-          "group relative flex w-80 cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4 py-2 transition-all duration-200",
+          "group relative flex w-80 cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-all duration-200",
           "hover:shadow-sm"
         )}
         onClick={() => onEdit(step)}
       >
-        <div
-          className={cn(
-            "absolute top-1/2 -right-2 z-10 flex -translate-y-1/2 flex-col gap-1",
-            "opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-          )}
-        >
-          <button
-            type="button"
-            aria-label="Edit step"
-            className="nodrag nopan flex size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-            onClick={(event) => {
-              event.stopPropagation()
-              onEdit(step)
-            }}
-          >
-            <PencilIcon className="size-3.5" />
-          </button>
-          <button
-            type="button"
-            aria-label="Delete step"
-            className="nodrag nopan flex size-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
-            onClick={(event) => {
-              event.stopPropagation()
-              setIsDeleteOpen(true)
-            }}
-          >
-            <Trash2Icon className="size-3.5" />
-          </button>
-        </div>
-
         <StepPreview
           name={step.name}
           method={step.method}
           url={step.path}
           className="min-w-0 flex-1"
         />
-        {step.lastRunStatus ? (
-          <LastRunStatusIcon status={step.lastRunStatus} />
-        ) : null}
+
+        <div className="relative ml-auto h-6 w-[3.25rem] shrink-0">
+          {step.lastRunStatus ? (
+            <div className="absolute inset-y-0 right-0 flex items-center transition-opacity duration-200 group-hover:opacity-0">
+              <LastRunStatusIcon status={step.lastRunStatus} />
+            </div>
+          ) : null}
+
+          <div className="absolute inset-y-0 -right-2 flex items-center gap-px rounded-full border border-border bg-background p-px opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100">
+            <button
+              type="button"
+              aria-label="Edit step"
+              className="nodrag nopan grid size-6 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-400"
+              onClick={(event) => {
+                event.stopPropagation()
+                onEdit(step)
+              }}
+            >
+              <Pencil className="size-3" strokeWidth={1.6} />
+            </button>
+            <button
+              type="button"
+              aria-label="Delete step"
+              className="nodrag nopan grid size-6 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+              onClick={(event) => {
+                event.stopPropagation()
+                setIsDeleteOpen(true)
+              }}
+            >
+              <Trash2 className="size-3" strokeWidth={1.6} />
+            </button>
+          </div>
+        </div>
       </div>
 
       <Handle
