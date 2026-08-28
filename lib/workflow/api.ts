@@ -3,6 +3,7 @@ import {
   CreateWorkflowConnectionInput,
   CreateWorkflowStepInput,
   CreateWorkflowInput,
+  UpdateDelayWorkflowStepInput,
   UpdateWorkflowInput,
   UpdateWorkflowStepInput,
   Workflow,
@@ -189,17 +190,59 @@ export const createWorkflowStep = async (
   workflowId: string,
   input: CreateWorkflowStepInput
 ): Promise<unknown> => {
+  const body =
+    input.type === "delay"
+      ? {
+          type: "delay",
+          delayDurationSeconds: input.delayDurationSeconds,
+          position: input.position,
+          ...(input.name ? { name: input.name } : {}),
+          ...(input.description ? { description: input.description } : {}),
+        }
+      : {
+          type: "http",
+          endpointId: input.endpointId,
+          position: input.position,
+        }
+
   const response = await fetch(`/api/workflows/${workflowId}/steps`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      endpointId: input.endpointId,
-      position: input.position,
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {
-    throw new Error("Failed to create workflow step")
+    throw new Error(
+      await readWorkflowErrorMessage(response, "Failed to create workflow step")
+    )
+  }
+
+  return response.json()
+}
+
+export const updateDelayWorkflowStep = async (
+  workflowId: string,
+  stepId: string,
+  input: UpdateDelayWorkflowStepInput
+): Promise<unknown> => {
+  const response = await fetch(
+    `/api/workflows/${workflowId}/steps/${stepId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "delay",
+        name: input.name,
+        description: input.description ?? "",
+        delayDurationSeconds: input.delayDurationSeconds,
+      }),
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      await readWorkflowErrorMessage(response, "Failed to update delay step")
+    )
   }
 
   return response.json()
@@ -232,7 +275,9 @@ export const updateWorkflowStep = async (
   )
 
   if (!response.ok) {
-    throw new Error("Failed to update workflow step")
+    throw new Error(
+      await readWorkflowErrorMessage(response, "Failed to update workflow step")
+    )
   }
 
   return response.json()

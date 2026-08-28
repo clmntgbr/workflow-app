@@ -5,6 +5,7 @@ export function StepCounts(steps: StepRun[]) {
     success: steps.filter((s) => s.status === "success").length,
     failed: steps.filter((s) => s.status === "failed").length,
     running: steps.filter((s) => s.status === "running").length,
+    waiting: steps.filter((s) => s.status === "waiting").length,
     pending: steps.filter((s) => s.status === "pending").length,
     skipped: steps.filter((s) => s.status === "skipped").length,
     cancelled: steps.filter((s) => s.status === "cancelled").length,
@@ -12,13 +13,14 @@ export function StepCounts(steps: StepRun[]) {
 }
 
 export function GetStepSummary(steps: StepRun[]) {
-  const { success, failed, running, pending, skipped, cancelled } =
+  const { success, failed, running, waiting, pending, skipped, cancelled } =
     StepCounts(steps)
 
   return {
     success: success > 0 && `${success} completed`,
     failed: failed > 0 && `${failed} failed`,
     running: running > 0 && `${running} running`,
+    waiting: waiting > 0 && `${waiting} waiting`,
     pending: pending > 0 && `${pending} pending`,
     skipped: skipped > 0 && `${skipped} skipped`,
     cancelled: cancelled > 0 && `${cancelled} cancelled`,
@@ -83,6 +85,13 @@ export const StatusStyles: Record<
     dot: "bg-sky-500",
     ring: "ring-sky-200",
     label: "Running",
+  },
+  waiting: {
+    bg: "bg-violet-50",
+    text: "text-violet-700",
+    dot: "bg-violet-500",
+    ring: "ring-violet-200",
+    label: "Waiting",
   },
   pending: {
     bg: "bg-amber-50",

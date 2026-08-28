@@ -23,7 +23,10 @@ import {
   useReactFlow,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
+import { TimerIcon } from "lucide-react"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+
+const DELAY_DRAG_MIME = "application/workflow-delay"
 
 const nodeTypes = { stepNode: StepNode }
 const edgeTypes = { deleteEdge: DeleteEdgeButton }
@@ -45,6 +48,7 @@ interface WorkflowCanvasProps {
     position: { x: number; y: number }
     preview: EndpointDragPayload
   }) => Promise<void>
+  onCreateDelayStep: (position: { x: number; y: number }) => Promise<void>
   onMoveStep: (
     stepId: string,
     position: { x: number; y: number }
@@ -93,6 +97,7 @@ function CanvasInner({
   steps,
   connections,
   onCreateStep,
+  onCreateDelayStep,
   onMoveStep,
   onCreateConnection,
   onDeleteConnection,
@@ -105,6 +110,7 @@ function CanvasInner({
     steps,
     connections,
     onCreateStep,
+    onCreateDelayStep,
     onMoveStep,
     onCreateConnection,
     onDeleteConnection,
@@ -118,6 +124,7 @@ function CanvasInner({
       steps,
       connections,
       onCreateStep,
+      onCreateDelayStep,
       onMoveStep,
       onCreateConnection,
       onDeleteConnection,
@@ -214,26 +221,39 @@ function CanvasInner({
   const onDrop = useCallback(
     async (event: React.DragEvent) => {
       event.preventDefault()
-      const raw = event.dataTransfer.getData("application/workflow-endpoint")
-      if (!raw) return
-
-      const endpoint = JSON.parse(raw) as EndpointDragPayload
       const position = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       })
+      const flowPosition = {
+        x: Number(position.x.toFixed(2)),
+        y: Number(position.y.toFixed(2)),
+      }
+
+      const delayRaw = event.dataTransfer.getData(DELAY_DRAG_MIME)
+      if (delayRaw) {
+        await propsRef.current.onCreateDelayStep(flowPosition)
+        return
+      }
+
+      const raw = event.dataTransfer.getData("application/workflow-endpoint")
+      if (!raw) return
+
+      const endpoint = JSON.parse(raw) as EndpointDragPayload
 
       await propsRef.current.onCreateStep({
         endpointId: endpoint.id,
-        position: {
-          x: Number(position.x.toFixed(2)),
-          y: Number(position.y.toFixed(2)),
-        },
+        position: flowPosition,
         preview: endpoint,
       })
     },
     [screenToFlowPosition]
   )
+
+  const handleDelayDragStart = useCallback((event: React.DragEvent) => {
+    event.dataTransfer.setData(DELAY_DRAG_MIME, "delay")
+    event.dataTransfer.effectAllowed = "copy"
+  }, [])
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault()
@@ -242,6 +262,19 @@ function CanvasInner({
 
   return (
     <div className="relative h-full min-h-0 w-full flex-1 overflow-hidden bg-[#f8f9fb]">
+      <div className="pointer-events-none absolute top-4 right-4 z-10">
+        <button
+          type="button"
+          draggable
+          onDragStart={handleDelayDragStart}
+          className="pointer-events-auto flex size-10 cursor-grab items-center justify-center rounded-lg border border-violet-200 bg-white text-violet-700 shadow-sm transition-colors hover:bg-violet-50 active:cursor-grabbing"
+          aria-label="Drag delay step onto canvas"
+          title="Drag to add a delay step"
+        >
+          <TimerIcon className="size-5" />
+        </button>
+      </div>
+
       <ReactFlow
         className="h-full w-full"
         nodes={nodes}

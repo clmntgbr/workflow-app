@@ -28,7 +28,7 @@ function StepProgressBar({
   steps: StepRun[]
   totalSteps: number
 }) {
-  const { success, failed, running, pending, skipped, cancelled } =
+  const { success, failed, running, waiting, pending, skipped, cancelled } =
     StepCounts(steps)
 
   const pct = (count: number) => (count / totalSteps) * 100
@@ -52,6 +52,12 @@ function StepProgressBar({
           <div
             className="h-full animate-pulse bg-blue-500 transition-all"
             style={{ width: `${pct(running)}%` }}
+          />
+        )}
+        {waiting > 0 && (
+          <div
+            className="h-full bg-violet-500 transition-all"
+            style={{ width: `${pct(waiting)}%` }}
           />
         )}
         {pending > 0 && (
@@ -201,6 +207,7 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
                       {summary.success && <span>{summary.success}</span>}
                       {summary.failed && <span>{summary.failed}</span>}
                       {summary.running && <span>{summary.running}</span>}
+                      {summary.waiting && <span>{summary.waiting}</span>}
                       {summary.pending && <span>{summary.pending}</span>}
                       {summary.skipped && <span>{summary.skipped}</span>}
                       {summary.cancelled && <span>{summary.cancelled}</span>}

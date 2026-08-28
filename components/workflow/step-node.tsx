@@ -6,22 +6,28 @@ import { Endpoint } from "@/lib/endpoint/types"
 import { GetStatusStyle } from "@/lib/misc"
 import { cn } from "@/lib/utils"
 import { RunStatus } from "@/lib/workflow-run/types"
+import { formatDelayDuration } from "@/lib/workflow/delay"
+import { StepType } from "@/lib/workflow/types"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
 import {
   CheckIcon,
+  ClockIcon,
   LoaderCircleIcon,
   MinusIcon,
   Pencil,
+  TimerIcon,
   Trash2,
 } from "lucide-react"
 import { useState } from "react"
 
 export type CanvasStep = {
   id: string
+  type: StepType
   index?: string
   name: string
   description: string | null
-  endpointId: string
+  endpointId: string | null
+  delayDurationSeconds: number | null
   method: string
   path: string
   headers: Record<string, string>
@@ -46,6 +52,10 @@ export type StepNodeData = {
   onDelete: (stepId: string) => Promise<void>
 }
 
+export function isDelayStep(step: Pick<CanvasStep, "type">): boolean {
+  return step.type === "delay"
+}
+
 function LastRunStatusIcon({ status }: { status: RunStatus }) {
   const style = GetStatusStyle(status)
 
@@ -68,6 +78,9 @@ function LastRunStatusIcon({ status }: { status: RunStatus }) {
       {status === "running" || status === "pending" ? (
         <LoaderCircleIcon className="size-3 animate-spin text-amber-600" />
       ) : null}
+      {status === "waiting" ? (
+        <ClockIcon className="size-3 text-violet-600" />
+      ) : null}
       {status === "cancelled" || status === "skipped" ? (
         <span className="flex size-3 items-center justify-center rounded-full bg-muted text-muted-foreground">
           <MinusIcon className="size-2 stroke-[3]" />
@@ -77,9 +90,33 @@ function LastRunStatusIcon({ status }: { status: RunStatus }) {
   )
 }
 
+function DelayStepNodeContent({ step }: { step: CanvasStep }) {
+  const durationLabel =
+    step.delayDurationSeconds != null
+      ? formatDelayDuration(step.delayDurationSeconds)
+      : "—"
+
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-violet-700">
+        <TimerIcon className="size-3.5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[12px] font-semibold text-foreground">
+          {step.name}
+        </p>
+      </div>
+      <span className="shrink-0 rounded-full border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
+        {durationLabel}
+      </span>
+    </div>
+  )
+}
+
 export function StepNode({ data }: NodeProps) {
   const { step, onEdit, onDelete } = data as unknown as StepNodeData
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const delayStep = isDelayStep(step)
 
   return (
     <>
@@ -91,19 +128,24 @@ export function StepNode({ data }: NodeProps) {
 
       <div
         className={cn(
-          "group relative flex w-80 cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-all duration-200",
+          "group relative flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card transition-all duration-200",
+          delayStep ? "w-48 border-violet-200/80 px-2 py-1.5" : "w-80 px-3 py-2",
           "hover:shadow-sm"
         )}
         onClick={() => onEdit(step)}
       >
-        <StepPreview
-          name={step.name}
-          method={step.method}
-          url={step.path}
-          className="min-w-0 flex-1"
-        />
+        {delayStep ? (
+          <DelayStepNodeContent step={step} />
+        ) : (
+          <StepPreview
+            name={step.name}
+            method={step.method}
+            url={step.path}
+            className="min-w-0 flex-1"
+          />
+        )}
 
-        <div className="relative ml-auto h-6 w-[3.25rem] shrink-0">
+        <div className="relative ml-auto h-6 w-10 shrink-0">
           {step.lastRunStatus ? (
             <div className="absolute inset-y-0 right-0 flex items-center transition-opacity duration-200 group-hover:opacity-0">
               <LastRunStatusIcon status={step.lastRunStatus} />

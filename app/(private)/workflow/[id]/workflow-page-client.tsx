@@ -4,8 +4,9 @@ import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Title } from "@/components/title"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DelayStepModal } from "@/components/workflow/delay-step-modal"
 import { StepDrawer } from "@/components/workflow/step-drawer"
-import { CanvasStep } from "@/components/workflow/step-node"
+import { CanvasStep, isDelayStep } from "@/components/workflow/step-node"
 import { SwitchProjectDialog } from "@/components/workflow/switch-project-dialog"
 import { VariableUsageDrawer } from "@/components/workflow/variable-usage-drawer"
 import { WorkflowActivityLog } from "@/components/workflow/workflow-activity-log"
@@ -42,6 +43,7 @@ import {
   getWorkflowConnections,
   getWorkflowStep,
   getWorkflowSteps,
+  updateDelayWorkflowStep,
   updateStepPosition,
   updateWorkflowStep,
   WorkflowNotFoundError,
@@ -49,6 +51,8 @@ import {
 } from "@/lib/workflow/api"
 import { subscribeWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
 import { subscribeWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
+import { DEFAULT_DELAY_DURATION_SECONDS } from "@/lib/workflow/delay"
+import { inferStepType } from "@/lib/workflow/step-validation"
 import {
   UpdateWorkflowStepInput,
   Workflow,
@@ -185,7 +189,17 @@ function mapItemToCanvasStep(
   if (!record) return null
 
   const id = pickString(record, ["id", "stepId", "step_id"])
-  const endpointId = pickString(record, ["endpointId", "endpoint_id"])
+  const stepType = inferStepType(record)
+  const endpointIdRaw = record.endpointId ?? record.endpoint_id
+  const endpointId =
+    typeof endpointIdRaw === "string" && endpointIdRaw.trim()
+      ? endpointIdRaw
+      : null
+  const delayDurationSeconds = pickNumber(
+    record,
+    ["delayDurationSeconds", "delay_duration_seconds"],
+    0
+  )
   const stepName = pickString(record, ["name", "stepName", "step_name"])
   const url = pickString(record, ["url", "path"])
   const method = pickString(record, ["method"])
@@ -197,7 +211,43 @@ function mapItemToCanvasStep(
     parsePosition(record.position) ??
     (fallback ? { x: fallback.x, y: fallback.y } : null)
 
-  if (!id || !endpointId || !position) return null
+  if (!id || !position) return null
+
+  if (stepType === "delay") {
+    return {
+      id,
+      type: "delay",
+      ...(indexRaw ? { index: indexRaw } : {}),
+      name: stepName ?? "Delay",
+      description:
+        typeof record.description === "string"
+          ? record.description
+          : record.description === null
+            ? null
+            : null,
+      endpointId: null,
+      delayDurationSeconds: delayDurationSeconds > 0 ? delayDurationSeconds : null,
+      method: "",
+      path: "",
+      headers: {},
+      query: {},
+      body: {},
+      timeout: 0,
+      retryOnFailure: false,
+      retryCount: 0,
+      retryDelay: 0,
+      executionOrder: pickNumber(record, ["executionOrder", "execution_order"]),
+      treeIndex: pickNumber(record, ["treeIndex", "tree_index"]),
+      status: pickString(record, ["status"]) ?? undefined,
+      lastRunStatus: parseRunStatus(
+        record.lastRunStatus ?? record.last_run_status
+      ),
+      x: position.x,
+      y: position.y,
+    }
+  }
+
+  if (!endpointId) return null
 
   const nestedEndpoint = asRecord(record.endpoint)
   const endpoint =
@@ -215,10 +265,12 @@ function mapItemToCanvasStep(
 
   return {
     id,
+    type: "http",
     ...(indexRaw ? { index: indexRaw } : {}),
     name: stepName ?? endpoint?.name ?? endpointId,
     description,
     endpointId,
+    delayDurationSeconds: null,
     method: method ?? endpoint?.method ?? "GET",
     path: url ?? endpoint?.url ?? "/",
     headers: parseStringRecord(record.headers),
@@ -283,6 +335,10 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [isVariablesDrawerOpen, setIsVariablesDrawerOpen] = useState(false)
   const [selectedStep, setSelectedStep] = useState<CanvasStep | null>(null)
   const [isStepDrawerOpen, setIsStepDrawerOpen] = useState(false)
+  const [selectedDelayStep, setSelectedDelayStep] = useState<CanvasStep | null>(
+    null
+  )
+  const [isDelayModalOpen, setIsDelayModalOpen] = useState(false)
   const [steps, setSteps] = useState<CanvasStep[]>([])
   const [connections, setConnections] = useState<WorkflowConnection[]>([])
   const [variables, setVariables] = useState<WorkflowVariable[]>([])
@@ -608,9 +664,11 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     const tempId = `temp-${crypto.randomUUID()}`
     const optimisticStep: CanvasStep = {
       id: tempId,
+      type: "http",
       name: input.preview.name || endpoint?.name || "Step",
       description: input.preview.description ?? endpoint?.description ?? null,
       endpointId: input.endpointId,
+      delayDurationSeconds: null,
       method: input.preview.method || endpoint?.method || "GET",
       path: input.preview.path || endpoint?.url || "/",
       headers: endpoint?.headers ?? {},
@@ -705,6 +763,70 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     }
   }
 
+  const handleCreateDelayStep = async (position: Point) => {
+    const tempId = `temp-${crypto.randomUUID()}`
+    const optimisticStep: CanvasStep = {
+      id: tempId,
+      type: "delay",
+      name: "Delay",
+      description: null,
+      endpointId: null,
+      delayDurationSeconds: DEFAULT_DELAY_DURATION_SECONDS,
+      method: "",
+      path: "",
+      headers: {},
+      query: {},
+      body: {},
+      timeout: 0,
+      retryOnFailure: false,
+      retryCount: 0,
+      retryDelay: 0,
+      x: position.x,
+      y: position.y,
+    }
+
+    setSteps((current) => [...current, optimisticStep])
+
+    try {
+      const created = await createWorkflowStep(workflowId, {
+        type: "delay",
+        delayDurationSeconds: DEFAULT_DELAY_DURATION_SECONDS,
+        position,
+        name: "Delay",
+      })
+
+      const mapped = mapItemToCanvasStep(created, endpointById, optimisticStep)
+      if (mapped) {
+        setSteps((current) =>
+          current.map((step) => (step.id === tempId ? mapped : step))
+        )
+      }
+    } catch (creationError) {
+      setSteps((current) => current.filter((step) => step.id !== tempId))
+      throw creationError
+    }
+  }
+
+  const handleSaveDelayStep = async (delayDurationSeconds: number) => {
+    if (!selectedDelayStep || selectedDelayStep.id.startsWith("temp-")) {
+      throw new Error("Delay step is not ready to save")
+    }
+
+    await updateDelayWorkflowStep(workflowId, selectedDelayStep.id, {
+      name: selectedDelayStep.name,
+      description: selectedDelayStep.description ?? "",
+      delayDurationSeconds,
+    })
+
+    setSteps((current) =>
+      current.map((step) =>
+        step.id === selectedDelayStep.id
+          ? { ...step, delayDurationSeconds }
+          : step
+      )
+    )
+  }
+
   const handleMoveStep = async (stepId: string, position: Point) => {
     const previous = steps.find((step) => step.id === stepId)
     if (!previous) return
@@ -753,6 +875,21 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   }
 
   const handleEditStep = (step: CanvasStep) => {
+    if (isDelayStep(step)) {
+      if (step.id.startsWith("temp-")) return
+
+      setSelectedDelayStep(step)
+      setIsDelayModalOpen(true)
+
+      void getWorkflowStep(workflowId, step.id)
+        .then((payload) => {
+          const mapped = mapItemToCanvasStep(payload, endpointById, step)
+          if (mapped) setSelectedDelayStep(mapped)
+        })
+        .catch(() => {})
+      return
+    }
+
     setSelectedStep(step)
     setIsStepDrawerOpen(true)
 
@@ -943,6 +1080,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           steps={steps}
           connections={connections}
           onCreateStep={handleCreateStep}
+          onCreateDelayStep={handleCreateDelayStep}
           onMoveStep={handleMoveStep}
           onCreateConnection={handleCreateConnection}
           onDeleteConnection={handleDeleteConnection}
@@ -984,6 +1122,16 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           </div>
         </div>
       </div>
+
+      <DelayStepModal
+        open={isDelayModalOpen}
+        onOpenChange={(open) => {
+          setIsDelayModalOpen(open)
+          if (!open) setSelectedDelayStep(null)
+        }}
+        step={selectedDelayStep}
+        onSave={handleSaveDelayStep}
+      />
 
       <StepDrawer
         workflowId={workflowId}

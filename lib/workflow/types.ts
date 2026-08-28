@@ -64,10 +64,23 @@ export interface UpdateWorkflowInput {
   notifyOnCancel: boolean
 }
 
-export interface CreateWorkflowStepInput {
-  endpointId: string
-  position: unknown
-}
+export type StepType = "http" | "delay"
+
+export type CreateWorkflowStepInput =
+  | {
+      type?: "http"
+      endpointId: string
+      position: { x: number; y: number }
+      delayDurationSeconds?: null
+    }
+  | {
+      type: "delay"
+      endpointId?: null
+      delayDurationSeconds: number
+      position: { x: number; y: number }
+      name?: string
+      description?: string
+    }
 
 export interface UpdateWorkflowStepInput {
   name: string
@@ -81,6 +94,12 @@ export interface UpdateWorkflowStepInput {
   retryOnFailure: boolean
   retryCount: number
   retryDelay: number
+}
+
+export interface UpdateDelayWorkflowStepInput {
+  name: string
+  description?: string
+  delayDurationSeconds: number
 }
 
 export interface WorkflowConnection {

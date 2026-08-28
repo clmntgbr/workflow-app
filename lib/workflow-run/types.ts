@@ -8,6 +8,7 @@ import {
 export const RUN_STATUSES = [
   "pending",
   "running",
+  "waiting",
   "success",
   "failed",
   "cancelled",
@@ -136,6 +137,7 @@ export interface StepRun {
   position: StepRunPosition
   status: StepRunStatus
   attempt: number
+  resumeAt: string | null
   responseSnapshot: StepRunResponseSnapshot | null
   insights?: Insight[]
   startedAt: string | null
@@ -194,6 +196,7 @@ export interface WorkflowRunStepRunDetail {
   executionOrder: number
   status: StepRunStatus
   attempt: number
+  resumeAt: string | null
   responseSnapshot: StepRunResponseSnapshot | null
   assertionsResult?: StepRunAssertionResult[]
   insights?: WorkflowRunInsight[]

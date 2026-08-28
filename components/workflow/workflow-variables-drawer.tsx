@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { CanvasStep } from "@/components/workflow/step-node"
+import { CanvasStep, isDelayStep } from "@/components/workflow/step-node"
 import { StepPreview } from "@/components/workflow/step-preview"
 import { VariableDrawer } from "@/components/workflow/variable-drawer"
 import {
@@ -69,10 +69,12 @@ export function WorkflowVariablesDrawer({
     useState<WorkflowVariableKind>("extracted")
   const [stepSearch, setStepSearch] = useState("")
 
+  const httpSteps = steps.filter((step) => !isDelayStep(step))
+
   const filteredSteps = (() => {
     const query = stepSearch.trim().toLowerCase()
-    if (!query) return steps
-    return steps.filter(
+    if (!query) return httpSteps
+    return httpSteps.filter(
       (step) =>
         step.name.toLowerCase().includes(query) ||
         step.path.toLowerCase().includes(query)
@@ -164,7 +166,7 @@ export function WorkflowVariablesDrawer({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="min-w-80 p-0">
-                    {steps.length > 0 ? (
+                    {httpSteps.length > 0 ? (
                       <>
                         <DropdownMenuGroup>
                           <DropdownMenuLabel className="hidden">
@@ -218,7 +220,7 @@ export function WorkflowVariablesDrawer({
                           />
                         </DropdownMenuItem>
                       ))}
-                      {steps.length > 0 && filteredSteps.length === 0 ? (
+                      {httpSteps.length > 0 && filteredSteps.length === 0 ? (
                         <p className="px-3 py-2 text-sm text-muted-foreground">
                           No steps found
                         </p>
