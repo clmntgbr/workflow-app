@@ -36,22 +36,26 @@ Handle new events in `lib/centrifugo/types.ts` + `user-centrifuge-listener.tsx`.
 | `user.*` | `GET /api/users/me` |
 | `user.active_project_changed` | projects + workflows + endpoints (+ me via user.*) |
 | `project.created` | projects + workflows + endpoints |
-| `workflow.created/updated/deleted` | `GET /api/workflows` |
+| `workflow.created/updated/deleted` | `GET /api/workflows` + workflow activity logs |
 | `workflow.updated` | also `GET /api/workflows/:id` (page subscribers via `subscribeWorkflowDetailRefetch`) |
 | `endpoint.created/deleted` | `GET /api/endpoints` |
 | `endpoint.updated` | single `GET /api/endpoints/:id` if editing that id, else list |
-| `step.created/updated/deleted` | `GET .../workflows/:id/steps` (page subscribers) |
+| `step.created/updated/deleted` | `GET .../workflows/:id/steps` (page subscribers) + workflow activity logs |
 | `connection.created/deleted` | `GET .../workflows/:id/connections` (page subscribers) |
 | `workflowRun.started/finished` | workflow runs list+detail (workflow page subscribers) |
-| `workflowRun.finished` | also `GET /api/quota` + `GET /api/subscription` |
+| `workflowRun.finished` | also `GET /api/quota` + `GET /api/subscription` + workflow activity logs |
 | `stepRun.started/succeeded/failed` | workflow runs list+detail (workflow page subscribers) |
-| `variable.created/updated` | `GET .../workflows/:id/variables` (page subscribers) + available vars if step drawer open |
+| `stepRun.succeeded/failed` | workflow activity logs (workflow page subscribers) |
+| `variable.created/updated/deleted` | `GET .../workflows/:id/variables` (page subscribers) + available vars if step drawer open + workflow activity logs |
+| `assertion.created/updated/deleted` | workflow activity logs (workflow page subscribers) |
 
 Steps/connections: use `subscribeWorkflowStepsRefetch` / `subscribeWorkflowConnectionsRefetch` on the workflow page — scoped by `workflowId` from the event.
 
 Workflow detail: use `subscribeWorkflowDetailRefetch` on the workflow page — scoped by `workflowId` from `workflow.updated`.
 
 Workflow runs: use `subscribeWorkflowRunsRefetch` on the workflow page (keep the panel mounted even when Canvas is visible) — scoped by `workflowId` when present; `stepRun.succeeded/failed` may omit `workflowId` and notify all open workflow-page subscribers.
+
+Activity logs: use `subscribeWorkflowActivityRefetch` on the workflow page — scoped by `workflowId` when present; `stepRun.succeeded/failed` may omit `workflowId` and notify all open workflow-page subscribers.
 
 Variables: use `subscribeWorkflowVariablesRefetch` on the workflow page — scoped by `workflowId` from the event.
 

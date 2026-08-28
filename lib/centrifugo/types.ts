@@ -8,6 +8,7 @@ export type RealtimeResource =
   | "workflowRun"
   | "stepRun"
   | "variable"
+  | "assertion"
   | "subscription"
   | "payment"
   | "quota"
@@ -52,6 +53,7 @@ const RESOURCES = new Set<string>([
   "workflowRun",
   "stepRun",
   "variable",
+  "assertion",
   "subscription",
   "payment",
   "quota",
@@ -188,6 +190,27 @@ export function shouldRefetchWorkflowRuns(event: UserStreamEvent): boolean {
     eventTypeEquals(event, "stepRun.started") ||
     eventTypeEquals(event, "stepRun.succeeded") ||
     eventTypeEquals(event, "stepRun.failed")
+  )
+}
+
+/** Refresh workflow activity logs when runs finish or workflow resources change. */
+export function shouldRefetchWorkflowActivity(event: UserStreamEvent): boolean {
+  return (
+    eventTypeEquals(event, "workflowRun.finished") ||
+    eventTypeEquals(event, "stepRun.succeeded") ||
+    eventTypeEquals(event, "stepRun.failed") ||
+    eventTypeEquals(event, "workflow.created") ||
+    eventTypeEquals(event, "workflow.updated") ||
+    eventTypeEquals(event, "workflow.deleted") ||
+    eventTypeEquals(event, "step.created") ||
+    eventTypeEquals(event, "step.updated") ||
+    eventTypeEquals(event, "step.deleted") ||
+    eventTypeEquals(event, "variable.created") ||
+    eventTypeEquals(event, "variable.updated") ||
+    eventTypeEquals(event, "variable.deleted") ||
+    eventTypeEquals(event, "assertion.created") ||
+    eventTypeEquals(event, "assertion.updated") ||
+    eventTypeEquals(event, "assertion.deleted")
   )
 }
 

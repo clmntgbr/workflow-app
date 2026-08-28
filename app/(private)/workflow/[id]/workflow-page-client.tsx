@@ -8,6 +8,7 @@ import { StepDrawer } from "@/components/workflow/step-drawer"
 import { CanvasStep } from "@/components/workflow/step-node"
 import { SwitchProjectDialog } from "@/components/workflow/switch-project-dialog"
 import { VariableUsageDrawer } from "@/components/workflow/variable-usage-drawer"
+import { WorkflowActivityLog } from "@/components/workflow/workflow-activity-log"
 import { WorkflowAnalytics } from "@/components/workflow/workflow-analytics"
 import {
   EndpointDragPayload,
@@ -22,7 +23,6 @@ import { Endpoint } from "@/lib/endpoint/types"
 import { parseQueryRecord } from "@/lib/endpoint/utils"
 import { useProject } from "@/lib/project/context"
 import { cn } from "@/lib/utils"
-import { parseRunStatus } from "@/lib/workflow-run/types"
 import {
   getActiveWorkflowRun,
   startWorkflowRun,
@@ -30,7 +30,7 @@ import {
   WorkflowRunConflictError,
 } from "@/lib/workflow-run/api"
 import { subscribeWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
-import { WorkflowRun } from "@/lib/workflow-run/types"
+import { parseRunStatus, WorkflowRun } from "@/lib/workflow-run/types"
 import {
   activateWorkflow,
   createWorkflowConnection,
@@ -73,6 +73,7 @@ import {
   HistoryIcon,
   LayersIcon,
   Loader2Icon,
+  ScrollTextIcon,
   SettingsIcon,
 } from "lucide-react"
 import Link from "next/link"
@@ -259,6 +260,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const Tabs = [
     { label: "Overview", key: "overview", Icon: LayersIcon },
     { label: "Analytics", key: "analytics", Icon: HistoryIcon },
+    { label: "Activity", key: "activity", Icon: ScrollTextIcon },
   ] as const
 
   type Tab = (typeof Tabs)[number]["key"]
@@ -966,6 +968,19 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
             </div>
             <WorkflowAnalytics workflowId={workflowId} />
             <WorkflowRunsPanel workflowId={workflowId} />
+          </div>
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f8f9fb]",
+          tab !== "activity" && "hidden"
+        )}
+      >
+        <div className="container mx-auto flex min-h-0 flex-1 flex-col px-4">
+          <div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-6 pt-10 pb-4">
+            <WorkflowActivityLog workflowId={workflowId} />
           </div>
         </div>
       </div>

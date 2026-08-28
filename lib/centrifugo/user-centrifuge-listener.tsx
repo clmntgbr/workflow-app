@@ -7,6 +7,7 @@ import { useQuota } from "@/lib/quota/context"
 import { useSubscription } from "@/lib/subscription/context"
 import { useUser } from "@/lib/user/context"
 import { useWorkflow } from "@/lib/workflow/context"
+import { notifyWorkflowActivityRefetch } from "@/lib/workflow/activity/activity-realtime"
 import { notifyWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
 import { notifyWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
 import { notifyWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
@@ -27,6 +28,7 @@ import {
   shouldRefetchStepsFromRunEvents,
   shouldRefetchVariables,
   shouldRefetchWorkflowDetail,
+  shouldRefetchWorkflowActivity,
   shouldRefetchWorkflowRuns,
   shouldRefetchWorkflows,
 } from "./types"
@@ -73,6 +75,9 @@ export function UserCentrifugeListener() {
   const workflowRunDebounceRef = useRef<
     ReturnType<typeof setTimeout> | undefined
   >(undefined)
+  const workflowActivityDebounceRef = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined)
   const variableDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   )
@@ -82,6 +87,7 @@ export function UserCentrifugeListener() {
   const pendingStepWorkflowIdsRef = useRef<Set<string>>(new Set())
   const pendingConnectionWorkflowIdsRef = useRef<Set<string>>(new Set())
   const pendingWorkflowRunWorkflowIdsRef = useRef<Set<string>>(new Set())
+  const pendingWorkflowActivityWorkflowIdsRef = useRef<Set<string>>(new Set())
   const pendingVariableWorkflowIdsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
@@ -203,6 +209,32 @@ export function UserCentrifugeListener() {
     }, REFRESH_DEBOUNCE_MS)
   }, [])
 
+  const debouncedRefreshWorkflowActivity = useCallback((workflowId?: string) => {
+    if (workflowId) {
+      pendingWorkflowActivityWorkflowIdsRef.current.add(workflowId)
+    } else {
+      pendingWorkflowActivityWorkflowIdsRef.current.clear()
+      pendingWorkflowActivityWorkflowIdsRef.current.add("*")
+    }
+
+    if (workflowActivityDebounceRef.current) {
+      clearTimeout(workflowActivityDebounceRef.current)
+    }
+    workflowActivityDebounceRef.current = setTimeout(() => {
+      const workflowIds = Array.from(pendingWorkflowActivityWorkflowIdsRef.current)
+      pendingWorkflowActivityWorkflowIdsRef.current.clear()
+
+      if (workflowIds.includes("*")) {
+        notifyWorkflowActivityRefetch()
+        return
+      }
+
+      for (const id of workflowIds) {
+        notifyWorkflowActivityRefetch(id)
+      }
+    }, REFRESH_DEBOUNCE_MS)
+  }, [])
+
   const debouncedRefreshVariables = useCallback((workflowId?: string) => {
     if (workflowId) {
       pendingVariableWorkflowIdsRef.current.add(workflowId)
@@ -248,6 +280,9 @@ export function UserCentrifugeListener() {
       }
       if (workflowRunDebounceRef.current) {
         clearTimeout(workflowRunDebounceRef.current)
+      }
+      if (workflowActivityDebounceRef.current) {
+        clearTimeout(workflowActivityDebounceRef.current)
       }
       if (variableDebounceRef.current) {
         clearTimeout(variableDebounceRef.current)
@@ -319,6 +354,10 @@ export function UserCentrifugeListener() {
         debouncedRefreshWorkflowRuns(data.workflowId)
       }
 
+      if (shouldRefetchWorkflowActivity(data)) {
+        debouncedRefreshWorkflowActivity(data.workflowId)
+      }
+
       if (shouldRefetchVariables(data)) {
         debouncedRefreshVariables(data.workflowId)
       }
@@ -370,6 +409,7 @@ export function UserCentrifugeListener() {
       debouncedRefreshSteps,
       debouncedRefreshConnections,
       debouncedRefreshWorkflowRuns,
+      debouncedRefreshWorkflowActivity,
       debouncedRefreshVariables,
       debouncedRefreshQuotaAndSubscription,
     ]
