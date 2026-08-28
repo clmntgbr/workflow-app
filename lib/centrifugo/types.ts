@@ -21,6 +21,7 @@ export type RealtimeVerb =
   | "member_added"
   | "member_removed"
   | "started"
+  | "finished"
   | "succeeded"
   | "failed"
   | "cancelled"
@@ -65,6 +66,7 @@ const VERBS = new Set<string>([
   "member_added",
   "member_removed",
   "started",
+  "finished",
   "succeeded",
   "failed",
   "cancelled",
@@ -167,9 +169,7 @@ export function shouldRefetchStepsFromRunEvents(
   return (
     eventTypeEquals(event, "stepRun.succeeded") ||
     eventTypeEquals(event, "stepRun.failed") ||
-    eventTypeEquals(event, "workflowRun.succeeded") ||
-    eventTypeEquals(event, "workflowRun.failed") ||
-    eventTypeEquals(event, "workflowRun.cancelled")
+    eventTypeEquals(event, "workflowRun.finished")
   )
 }
 
@@ -184,9 +184,7 @@ export function shouldRefetchWorkflowRuns(event: UserStreamEvent): boolean {
   return (
     eventTypeEquals(event, "workflowRun.created") ||
     eventTypeEquals(event, "workflowRun.started") ||
-    eventTypeEquals(event, "workflowRun.succeeded") ||
-    eventTypeEquals(event, "workflowRun.failed") ||
-    eventTypeEquals(event, "workflowRun.cancelled") ||
+    eventTypeEquals(event, "workflowRun.finished") ||
     eventTypeEquals(event, "stepRun.started") ||
     eventTypeEquals(event, "stepRun.succeeded") ||
     eventTypeEquals(event, "stepRun.failed")
@@ -197,11 +195,7 @@ export function shouldRefetchWorkflowRuns(event: UserStreamEvent): boolean {
 export function shouldRefetchQuotaFromWorkflowRunEvents(
   event: UserStreamEvent
 ): boolean {
-  return (
-    eventTypeEquals(event, "workflowRun.succeeded") ||
-    eventTypeEquals(event, "workflowRun.failed") ||
-    eventTypeEquals(event, "workflowRun.cancelled")
-  )
+  return eventTypeEquals(event, "workflowRun.finished")
 }
 
 export function shouldRefetchVariables(event: UserStreamEvent): boolean {
