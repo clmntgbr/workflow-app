@@ -257,7 +257,7 @@ function CanvasInner({
         fitView
         snapToGrid
         snapGrid={[5, 5]}
-        fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
+        fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
         deleteKeyCode={null}
         connectionLineType={ConnectionLineType.SmoothStep}
       >

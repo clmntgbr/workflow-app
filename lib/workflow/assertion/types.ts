@@ -62,11 +62,13 @@ export function sourceNeedsPath(source: AssertionSource): boolean {
   return source === "header" || source === "body"
 }
 
-export function operatorNeedsExpectedValue(operator: AssertionOperator): boolean {
+export function operatorNeedsExpectedValue(
+  operator: AssertionOperator
+): boolean {
   return !OPERATORS_WITHOUT_EXPECTED_VALUE.includes(operator)
 }
 
-export function formatAssertionSummary(assertion: Assertion): string {
+export function getAssertionSummaryParts(assertion: Assertion): string[] {
   const parts: string[] = [assertion.source]
 
   if (assertion.source !== "status" && assertion.path) {
@@ -80,8 +82,12 @@ export function formatAssertionSummary(assertion: Assertion): string {
     assertion.expectedValue != null &&
     assertion.expectedValue !== ""
   ) {
-    parts.push(`"${assertion.expectedValue}"`)
+    parts.push(assertion.expectedValue)
   }
 
-  return parts.join(" · ")
+  return parts
+}
+
+export function formatAssertionSummary(assertion: Assertion): string {
+  return getAssertionSummaryParts(assertion).join(" · ")
 }

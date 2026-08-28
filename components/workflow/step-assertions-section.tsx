@@ -6,11 +6,20 @@ import { AssertionDrawer } from "@/components/workflow/assertion-drawer"
 import { deleteAssertion } from "@/lib/workflow/assertion/api"
 import {
   Assertion,
+  AssertionSource,
   formatAssertionSummary,
+  getAssertionSummaryParts,
 } from "@/lib/workflow/assertion/types"
+import { cn } from "@/lib/utils"
 import { CheckCircle2, PlusIcon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 import { Badge } from "../ui/badge"
+
+const SOURCE_BADGE_STYLES: Record<AssertionSource, string> = {
+  status: "border-sky-200 bg-sky-50 text-sky-700",
+  header: "border-violet-200 bg-violet-50 text-violet-700",
+  body: "border-emerald-200 bg-emerald-50 text-emerald-700",
+}
 
 interface StepAssertionsSectionProps {
   workflowId: string
@@ -101,18 +110,19 @@ export function StepAssertionsSection({
                 <span className="flex size-6 shrink-0 items-center justify-center rounded-md border">
                   <CheckCircle2 className="size-3.5 shrink-0" />
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-bold">
-                    {formatAssertionSummary(assertion)}
-                  </span>
-                  {assertion.description ? (
-                    <span className="block truncate text-muted-foreground">
-                      {assertion.description}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="shrink-0 px-1.5 py-0.5">
-                  <Badge variant="secondary">{assertion.operator}</Badge>
+                <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+                  {getAssertionSummaryParts(assertion).map((part, index) => (
+                    <Badge
+                      key={`${assertion.id}-${index}`}
+                      variant={index === 0 ? "outline" : "secondary"}
+                      className={cn(
+                        "max-w-full truncate font-normal",
+                        index === 0 && SOURCE_BADGE_STYLES[assertion.source]
+                      )}
+                    >
+                      {part}
+                    </Badge>
+                  ))}
                 </span>
               </button>
               <div className="flex shrink-0 items-center rounded-md">
@@ -143,8 +153,7 @@ export function StepAssertionsSection({
         assertion={activeEditing}
         nested
         isOpen={
-          isDrawerOpen &&
-          (editingAssertion === null || Boolean(activeEditing))
+          isDrawerOpen && (editingAssertion === null || Boolean(activeEditing))
         }
         onOpenChange={(open) => {
           setIsDrawerOpen(open)

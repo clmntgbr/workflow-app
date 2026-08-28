@@ -25,6 +25,20 @@ export function GetStepSummary(steps: StepRun[]) {
   }
 }
 
+export function FormatRunDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—"
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return "—"
+
+  return date.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
 export function GetRelativeTime(iso: string): string {
   const d = new Date(iso)
   const now = Date.now()

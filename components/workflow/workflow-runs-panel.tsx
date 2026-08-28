@@ -3,7 +3,7 @@
 import { ListPagination } from "@/components/list-pagination"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  GetRelativeTime,
+  FormatRunDateTime,
   GetRunDuration,
   GetStepSummary,
   StepCounts,
@@ -191,7 +191,9 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
                       </div>
 
                       <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
-                        <span>{GetRelativeTime(run.createdAt)}</span>
+                        <span>
+                          {FormatRunDateTime(run.startedAt ?? run.createdAt)}
+                        </span>
                       </div>
                     </div>
 
