@@ -52,7 +52,7 @@ import {
 import { subscribeWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
 import { subscribeWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
 import { DEFAULT_DELAY_DURATION_SECONDS } from "@/lib/workflow/delay"
-import { inferStepType } from "@/lib/workflow/step-validation"
+import { inferStepType, isValidStepEndpointId } from "@/lib/workflow/step-validation"
 import {
   UpdateWorkflowStepInput,
   Workflow,
@@ -191,10 +191,7 @@ function mapItemToCanvasStep(
   const id = pickString(record, ["id", "stepId", "step_id"])
   const stepType = inferStepType(record)
   const endpointIdRaw = record.endpointId ?? record.endpoint_id
-  const endpointId =
-    typeof endpointIdRaw === "string" && endpointIdRaw.trim()
-      ? endpointIdRaw
-      : null
+  const endpointId = isValidStepEndpointId(endpointIdRaw) ? String(endpointIdRaw).trim() : null
   const delayDurationSeconds = pickNumber(
     record,
     ["delayDurationSeconds", "delay_duration_seconds"],

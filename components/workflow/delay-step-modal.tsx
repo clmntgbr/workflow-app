@@ -83,7 +83,10 @@ export function DelayStepModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" overlayClassName="z-90">
+      <DialogContent
+        className="z-[100] sm:max-w-md"
+        overlayClassName="z-[95]"
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TimerIcon className="size-4 text-violet-600" />
@@ -112,6 +115,8 @@ export function DelayStepModal({
               <Label htmlFor="delay-duration-unit">Unit</Label>
               <RadioDropdown
                 id="delay-duration-unit"
+                modal={false}
+                contentClassName="z-[110]"
                 value={
                   DELAY_DURATION_UNITS.find(
                     (unit) => unit.value === durationUnit

@@ -6,14 +6,23 @@ export function parseStepType(value: unknown): StepType {
   return "http"
 }
 
+const NIL_UUID = "00000000-0000-0000-0000-000000000000"
+
+export function isValidStepEndpointId(value: unknown): boolean {
+  if (value == null) return false
+  if (typeof value !== "string") return false
+  const trimmed = value.trim()
+  if (!trimmed || trimmed === NIL_UUID) return false
+  return true
+}
+
 export function inferStepType(record: Record<string, unknown>): StepType {
   const explicit = record.type
   if (explicit === "delay") return "delay"
   if (explicit === "http") return "http"
 
   const endpointIdRaw = record.endpointId ?? record.endpoint_id
-  const hasEndpoint =
-    typeof endpointIdRaw === "string" && endpointIdRaw.trim().length > 0
+  const hasEndpoint = isValidStepEndpointId(endpointIdRaw)
   const delaySecondsRaw =
     record.delayDurationSeconds ?? record.delay_duration_seconds
   const delaySeconds =
