@@ -56,13 +56,22 @@ export function isDelayStep(step: Pick<CanvasStep, "type">): boolean {
   return step.type === "delay"
 }
 
-function LastRunStatusIcon({ status }: { status: RunStatus }) {
+function LastRunStatusIcon({
+  status,
+  isDelay = false,
+}: {
+  status: RunStatus
+  isDelay?: boolean
+}) {
   const style = GetStatusStyle(status)
+  const isDelayInProgress =
+    isDelay &&
+    (status === "waiting" || status === "running" || status === "pending")
 
   return (
     <span
-      title={`Last run: ${style.label}`}
-      aria-label={`Last run status: ${style.label}`}
+      title={`Last run: ${isDelayInProgress ? "Waiting" : style.label}`}
+      aria-label={`Last run status: ${isDelayInProgress ? "Waiting" : style.label}`}
       className="shrink-0"
     >
       {status === "success" ? (
@@ -75,11 +84,19 @@ function LastRunStatusIcon({ status }: { status: RunStatus }) {
           !
         </span>
       ) : null}
-      {status === "running" || status === "pending" ? (
+      {isDelayInProgress ? (
+        <ClockIcon
+          className={cn(
+            "size-3 text-violet-600",
+            status === "waiting" && "animate-pulse"
+          )}
+        />
+      ) : null}
+      {!isDelay && (status === "running" || status === "pending") ? (
         <LoaderCircleIcon className="size-3 animate-spin text-amber-600" />
       ) : null}
-      {status === "waiting" ? (
-        <ClockIcon className="size-3 text-violet-600" />
+      {!isDelay && status === "waiting" ? (
+        <ClockIcon className="size-3 animate-pulse text-violet-600" />
       ) : null}
       {status === "cancelled" || status === "skipped" ? (
         <span className="flex size-3 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -148,7 +165,7 @@ export function StepNode({ data }: NodeProps) {
         <div className="relative ml-auto h-6 w-10 shrink-0">
           {step.lastRunStatus ? (
             <div className="absolute inset-y-0 right-0 flex items-center transition-opacity duration-200 group-hover:opacity-0">
-              <LastRunStatusIcon status={step.lastRunStatus} />
+              <LastRunStatusIcon status={step.lastRunStatus} isDelay={delayStep} />
             </div>
           ) : null}
 

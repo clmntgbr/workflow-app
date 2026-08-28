@@ -164,7 +164,7 @@ export function shouldRefetchSteps(event: UserStreamEvent): boolean {
   )
 }
 
-/** Refresh canvas steps so `lastRunStatus` stays in sync after run completion. */
+/** Refresh canvas steps so `lastRunStatus` stays in sync after run events. */
 export function shouldRefetchStepsFromRunEvents(
   event: UserStreamEvent
 ): boolean {

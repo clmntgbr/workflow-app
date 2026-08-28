@@ -497,7 +497,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       const run = await getActiveWorkflowRun(workflowId)
       setActiveRun(run)
     } catch {
-      // keep current run state
+      // Keep current run state on transient errors.
     }
   }, [workflowId])
 
