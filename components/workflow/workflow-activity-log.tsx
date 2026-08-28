@@ -82,7 +82,7 @@ function ActivityLogShell({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-slate-700 bg-slate-900 font-mono text-sm shadow-none",
+        "overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-sm shadow-none",
         className
       )}
     >
@@ -273,9 +273,7 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
         <ActivityLogShell>
           <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
             <ScrollTextIcon className="mb-3 size-8 text-slate-600" />
-            <p className="text-sm font-medium text-slate-300">
-              No activity yet
-            </p>
+            <p className="text-sm text-slate-300">No activity yet</p>
             <p className="mt-1 text-xs text-slate-500">
               Workflow events will appear here as they happen.
             </p>
