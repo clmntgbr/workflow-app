@@ -71,7 +71,7 @@ function LastRunStatusIcon({ status }: { status: RunStatus }) {
         </span>
       ) : null}
       {status === "failed" ? (
-        <span className="flex size-3 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold leading-none text-white">
+        <span className="flex size-3 items-center justify-center rounded-full bg-red-500 text-[8px] leading-none font-bold text-white">
           !
         </span>
       ) : null}
@@ -129,7 +129,7 @@ export function StepNode({ data }: NodeProps) {
       <div
         className={cn(
           "group relative flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card transition-all duration-200",
-          delayStep ? "w-48 border-violet-200/80 px-2 py-1.5" : "w-80 px-3 py-2",
+          delayStep ? "w-48 border-violet-200/80 px-3 py-2" : "w-80 px-3 py-2",
           "hover:shadow-sm"
         )}
         onClick={() => onEdit(step)}
