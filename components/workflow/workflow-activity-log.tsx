@@ -1,14 +1,12 @@
 "use client"
 
-import { EmptyComponent } from "@/components/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { subscribeWorkflowActivityRefetch } from "@/lib/workflow/activity/activity-realtime"
 import { listWorkflowActivity } from "@/lib/workflow/activity/api"
 import {
   formatActivityTime,
-  getActivityEntryDetails,
-  getActivityLevelClass,
+  getActivityLevelClassDark,
   WorkflowActivityEntry,
 } from "@/lib/workflow/activity/types"
 import { Loader2Icon, ScrollTextIcon } from "lucide-react"
@@ -16,36 +14,106 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 const PAGE_LIMIT = 20
 
-function reverseChronologicalPage(
-  entries: WorkflowActivityEntry[]
-): WorkflowActivityEntry[] {
-  return [...entries].reverse()
-}
-
 function mergeOlderEntries(
   current: WorkflowActivityEntry[],
   olderPage: WorkflowActivityEntry[]
 ): WorkflowActivityEntry[] {
   const seen = new Set(current.map((entry) => entry.id))
-  const prepended = reverseChronologicalPage(olderPage).filter(
-    (entry) => !seen.has(entry.id)
-  )
-  return [...prepended, ...current]
+  const appended = olderPage.filter((entry) => !seen.has(entry.id))
+  return [...current, ...appended]
+}
+
+function prependNewEntries(
+  current: WorkflowActivityEntry[],
+  freshPage: WorkflowActivityEntry[]
+): WorkflowActivityEntry[] {
+  const seen = new Set(current.map((entry) => entry.id))
+  const newOnes = freshPage.filter((entry) => !seen.has(entry.id))
+  if (newOnes.length === 0) return current
+  return [...newOnes, ...current]
+}
+
+function getScrollParent(element: HTMLElement | null): HTMLElement {
+  if (!element) return document.documentElement
+
+  let parent = element.parentElement
+  while (parent) {
+    const { overflowY } = getComputedStyle(parent)
+    if (overflowY === "auto" || overflowY === "scroll") return parent
+    parent = parent.parentElement
+  }
+
+  return document.documentElement
+}
+
+function getScrollTop(element: HTMLElement): number {
+  return element === document.documentElement
+    ? window.scrollY
+    : element.scrollTop
+}
+
+function setScrollTop(element: HTMLElement, value: number): void {
+  if (element === document.documentElement) {
+    window.scrollTo(0, value)
+    return
+  }
+  element.scrollTop = value
+}
+
+function getScrollHeight(element: HTMLElement): number {
+  return element === document.documentElement
+    ? document.documentElement.scrollHeight
+    : element.scrollHeight
 }
 
 interface WorkflowActivityLogProps {
   workflowId: string
 }
 
+function ActivityLogShell({
+  children,
+  className,
+  scrollRef,
+}: {
+  children: React.ReactNode
+  className?: string
+  scrollRef?: React.RefObject<HTMLDivElement | null>
+}) {
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-xl border border-slate-700 bg-slate-900 font-mono text-sm shadow-none",
+        className
+      )}
+    >
+      <div className="flex items-center border-b border-slate-700 bg-slate-800 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <div className="size-3 rounded-full bg-rose-500" />
+          <div className="size-3 rounded-full bg-amber-500" />
+          <div className="size-3 rounded-full bg-emerald-500" />
+        </div>
+      </div>
+      <div
+        ref={scrollRef}
+        className="min-h-[min(70vh,720px)] overflow-auto"
+        style={{
+          scrollbarWidth: "thin",
+          scrollbarColor: "#334155 transparent",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
   const requestIdRef = useRef(0)
   const loadingMoreRef = useRef(false)
-  const shouldScrollToBottomRef = useRef(true)
-  const listRef = useRef<HTMLDivElement>(null)
-  const topSentinelRef = useRef<HTMLDivElement>(null)
+  const bottomSentinelRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const [entries, setEntries] = useState<WorkflowActivityEntry[]>([])
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -58,10 +126,8 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
 
       if (!options?.silent) {
         loadingMoreRef.current = false
-        shouldScrollToBottomRef.current = true
         setIsLoading(true)
         setHasError(false)
-        setExpanded({})
       }
 
       try {
@@ -71,18 +137,24 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
         })
         if (requestId !== requestIdRef.current) return
 
-        const freshPage = reverseChronologicalPage(result.members)
-
         if (options?.silent) {
-          setEntries((current) => {
-            const seen = new Set(current.map((entry) => entry.id))
-            const newOnes = freshPage.filter((entry) => !seen.has(entry.id))
-            if (newOnes.length === 0) return current
-            shouldScrollToBottomRef.current = true
-            return [...current, ...newOnes]
+          const scrollParent =
+            scrollContainerRef.current ??
+            getScrollParent(bottomSentinelRef.current)
+          const previousScrollHeight = getScrollHeight(scrollParent)
+          const previousScrollTop = getScrollTop(scrollParent)
+
+          setEntries((current) => prependNewEntries(current, result.members))
+
+          requestAnimationFrame(() => {
+            const nextScrollHeight = getScrollHeight(scrollParent)
+            setScrollTop(
+              scrollParent,
+              previousScrollTop + (nextScrollHeight - previousScrollHeight)
+            )
           })
         } else {
-          setEntries(freshPage)
+          setEntries(result.members)
         }
 
         setPage(result.page)
@@ -115,23 +187,12 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
   }, [workflowId, load])
 
   useEffect(() => {
-    if (!shouldScrollToBottomRef.current || entries.length === 0) return
-
-    const list = listRef.current
-    if (!list) return
-
-    requestAnimationFrame(() => {
-      list.scrollTop = list.scrollHeight
-      shouldScrollToBottomRef.current = false
-    })
-  }, [entries, isLoading])
-
-  useEffect(() => {
     if (page >= totalPages || totalPages === 0) return
 
-    const sentinel = topSentinelRef.current
-    const root = listRef.current
-    if (!sentinel || !root) return
+    const sentinel = bottomSentinelRef.current
+    if (!sentinel) return
+
+    const scrollParent = scrollContainerRef.current ?? getScrollParent(sentinel)
 
     const observer = new IntersectionObserver(
       (observerEntries) => {
@@ -145,8 +206,6 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
         loadingMoreRef.current = true
         setIsLoadingMore(true)
 
-        const previousScrollHeight = root.scrollHeight
-
         void listWorkflowActivity(workflowId, {
           page: nextPage,
           limit: PAGE_LIMIT,
@@ -157,11 +216,6 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
             setEntries((current) => mergeOlderEntries(current, result.members))
             setPage(result.page)
             setTotalPages(result.totalPages)
-
-            requestAnimationFrame(() => {
-              const nextScrollHeight = root.scrollHeight
-              root.scrollTop += nextScrollHeight - previousScrollHeight
-            })
           })
           .catch(() => {
             // keep current list
@@ -173,90 +227,105 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
             }
           })
       },
-      { root, rootMargin: "80px", threshold: 0 }
+      {
+        root: scrollParent === document.documentElement ? null : scrollParent,
+        rootMargin: "80px",
+        threshold: 0,
+      }
     )
 
     observer.observe(sentinel)
     return () => observer.disconnect()
   }, [workflowId, page, totalPages])
 
+  if (isLoading && entries.length === 0) {
+    return (
+      <div className="pb-7">
+        <ActivityLogShell>
+          <div className="space-y-2 px-6 py-3">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <Skeleton
+                key={index}
+                className="h-8 w-full rounded bg-slate-800"
+              />
+            ))}
+          </div>
+        </ActivityLogShell>
+      </div>
+    )
+  }
+
+  if (hasError) {
+    return (
+      <div className="pb-7">
+        <ActivityLogShell>
+          <p className="px-4 py-8 text-center text-sm text-slate-400">
+            Failed to load activity logs.
+          </p>
+        </ActivityLogShell>
+      </div>
+    )
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="pb-7">
+        <ActivityLogShell>
+          <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
+            <ScrollTextIcon className="mb-3 size-8 text-slate-600" />
+            <p className="text-sm font-medium text-slate-300">
+              No activity yet
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Workflow events will appear here as they happen.
+            </p>
+          </div>
+        </ActivityLogShell>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-background text-sm shadow-sm">
-      <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
+    <div className="pb-7">
+      <ActivityLogShell scrollRef={scrollContainerRef}>
+        <ul>
+          {entries.map((item) => (
+            <li
+              key={item.id}
+              className="border-t border-slate-800 px-6 first:border-t-0"
+            >
+              <div className="flex w-full items-start gap-3 px-4 py-1.5">
+                <span className="shrink-0 text-slate-500 tabular-nums">
+                  {formatActivityTime(item.occurredAt)}
+                </span>
+                <span
+                  className={cn(
+                    "w-12 shrink-0 uppercase",
+                    getActivityLevelClassDark(item.level)
+                  )}
+                >
+                  {item.level}
+                </span>
+                <span className="w-56 shrink-0 truncate text-slate-400">
+                  {item.action}
+                </span>
+                <span className="min-w-0 flex-1 wrap-break-word text-slate-100">
+                  {item.message}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+
         {isLoadingMore ? (
-          <div className="flex items-center justify-center gap-2 border-b border-border/60 px-3 py-2 text-xs text-muted-foreground">
+          <div className="flex items-center justify-center gap-2 border-t border-slate-800 px-3 py-2 text-xs text-slate-500">
             <Loader2Icon className="size-3.5 animate-spin" />
             Loading older events…
           </div>
         ) : null}
 
-        <div ref={topSentinelRef} className="h-px shrink-0" aria-hidden />
-
-        {isLoading ? (
-          <div className="space-y-2 px-3 py-3">
-            {Array.from({ length: 10 }).map((_, index) => (
-              <Skeleton key={index} className="h-8 w-full rounded" />
-            ))}
-          </div>
-        ) : hasError ? (
-          <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-            Failed to load activity logs.
-          </div>
-        ) : entries.length === 0 ? (
-          <div className="px-4 py-10">
-            <EmptyComponent
-              title="No activity yet"
-              description="Workflow events will appear here as they happen."
-              icon={<ScrollTextIcon className="size-5 text-muted-foreground" />}
-            />
-          </div>
-        ) : (
-          <ul>
-            {entries.map((item) => {
-              const open = !!expanded[item.id]
-
-              return (
-                <li
-                  key={item.id}
-                  className="border-t border-border/60 first:border-t-0"
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpanded((state) => ({
-                        ...state,
-                        [item.id]: !state[item.id],
-                      }))
-                    }
-                    className="flex w-full items-start gap-3 px-3 py-1.5 text-left hover:bg-accent/50"
-                  >
-                    <span className="shrink-0 text-muted-foreground tabular-nums">
-                      {formatActivityTime(item.occurredAt)}
-                    </span>
-                    <span
-                      className={cn(
-                        "w-12 shrink-0 uppercase",
-                        getActivityLevelClass(item.level)
-                      )}
-                    >
-                      {item.level}
-                    </span>
-                    <span className="min-w-0 flex-1 wrap-break-word text-foreground">
-                      {item.message}
-                    </span>
-                  </button>
-
-                  {open ? (
-                    <pre className="overflow-x-auto border-t border-border/60 bg-muted px-3 py-2 text-[11px] text-muted-foreground">
-                      {JSON.stringify(getActivityEntryDetails(item), null, 2)}
-                    </pre>
-                  ) : null}
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </div>
+        <div ref={bottomSentinelRef} className="h-px shrink-0" aria-hidden />
+      </ActivityLogShell>
     </div>
   )
 }

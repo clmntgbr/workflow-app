@@ -147,7 +147,10 @@ export function formatActivityTime(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return "—"
 
-  return date.toLocaleTimeString("fr-FR", {
+  return date.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
@@ -170,6 +173,25 @@ export function getActivityLevelClass(level: WorkflowActivityLevel): string {
       return "font-semibold text-rose-700"
     default:
       return "text-muted-foreground"
+  }
+}
+
+export function getActivityLevelClassDark(level: WorkflowActivityLevel): string {
+  switch (level) {
+    case "debug":
+      return "text-slate-500"
+    case "info":
+      return "text-sky-400"
+    case "notice":
+      return "text-indigo-400"
+    case "warning":
+      return "text-amber-400"
+    case "error":
+      return "text-rose-400"
+    case "critical":
+      return "font-semibold text-rose-300"
+    default:
+      return "text-slate-400"
   }
 }
 

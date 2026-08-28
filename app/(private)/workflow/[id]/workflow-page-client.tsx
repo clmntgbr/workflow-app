@@ -974,12 +974,12 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f8f9fb]",
+          "min-h-0 flex-1 overflow-auto bg-[#f8f9fb]",
           tab !== "activity" && "hidden"
         )}
       >
-        <div className="container mx-auto flex min-h-0 flex-1 flex-col px-4">
-          <div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-6 pt-10 pb-4">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto flex flex-col gap-6 py-6">
             <WorkflowActivityLog workflowId={workflowId} />
           </div>
         </div>
