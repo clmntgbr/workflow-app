@@ -164,6 +164,8 @@ export function StepAssertionsSection({
         onConfirm={confirmDelete}
         onDeleted={() => setAssertionToDelete(null)}
         errorMessage="Failed to delete assertion. Please try again."
+        className="z-[100]"
+        overlayClassName="z-[95]"
       />
     </div>
   )

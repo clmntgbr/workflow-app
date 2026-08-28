@@ -34,8 +34,21 @@ function pickString(
   return null
 }
 
-function normalizeAssertion(raw: unknown): Assertion {
+function unwrapPayload(raw: unknown): unknown {
   const record = asRecord(raw)
+  if (!record) return raw
+
+  const nested = asRecord(record.data)
+  if (nested) return nested
+
+  return raw
+}
+
+function normalizeAssertion(
+  raw: unknown,
+  context?: { workflowId?: string; stepId?: string }
+): Assertion {
+  const record = asRecord(unwrapPayload(raw))
   if (!record) {
     throw new Error("Invalid assertion payload")
   }
@@ -43,20 +56,14 @@ function normalizeAssertion(raw: unknown): Assertion {
   const id = pickString(record, ["id"])
   const source = pickString(record, ["source"])
   const operator = pickString(record, ["operator"])
-  const stepId = pickString(record, ["stepId", "step_id"])
-  const workflowId = pickString(record, ["workflowId", "workflow_id"])
-  const createdAt = pickString(record, ["createdAt", "created_at"])
-  const updatedAt = pickString(record, ["updatedAt", "updated_at"])
+  const stepId =
+    pickString(record, ["stepId", "step_id"]) ?? context?.stepId ?? null
+  const workflowId =
+    pickString(record, ["workflowId", "workflow_id"]) ??
+    context?.workflowId ??
+    null
 
-  if (
-    !id ||
-    !source ||
-    !operator ||
-    !stepId ||
-    !workflowId ||
-    !createdAt ||
-    !updatedAt
-  ) {
+  if (!id || !source || !operator || !stepId || !workflowId) {
     throw new Error("Invalid assertion payload")
   }
 
@@ -71,8 +78,8 @@ function normalizeAssertion(raw: unknown): Assertion {
     expectedValue,
     stepId,
     workflowId,
-    createdAt,
-    updatedAt,
+    createdAt: pickString(record, ["createdAt", "created_at"]),
+    updatedAt: pickString(record, ["updatedAt", "updated_at"]),
   }
 }
 
@@ -114,7 +121,7 @@ export async function listStepAssertions(
       ? (asRecord(data)!.members as unknown[])
       : []
 
-  return items.map(normalizeAssertion)
+  return items.map((item) => normalizeAssertion(item, { workflowId, stepId }))
 }
 
 export async function listStepAssertionPaths(
@@ -149,7 +156,7 @@ export async function getAssertion(
     throw new Error(await readErrorMessage(response, "Failed to get assertion"))
   }
 
-  return normalizeAssertion(await response.json())
+  return normalizeAssertion(await response.json(), { workflowId })
 }
 
 function toBackendAssertionBody(
@@ -184,7 +191,7 @@ export async function createAssertion(
     )
   }
 
-  return normalizeAssertion(await response.json())
+  return normalizeAssertion(await response.json(), { workflowId, stepId })
 }
 
 export async function updateAssertion(
@@ -207,7 +214,7 @@ export async function updateAssertion(
     )
   }
 
-  return normalizeAssertion(await response.json())
+  return normalizeAssertion(await response.json(), { workflowId })
 }
 
 export async function deleteAssertion(

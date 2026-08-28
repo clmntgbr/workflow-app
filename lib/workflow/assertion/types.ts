@@ -38,8 +38,8 @@ export interface Assertion {
   expectedValue: string | null
   stepId: string
   workflowId: string
-  createdAt: string
-  updatedAt: string
+  createdAt?: string | null
+  updatedAt?: string | null
 }
 
 export interface CreateAssertionInput {
