@@ -169,6 +169,7 @@ export function shouldRefetchStepsFromRunEvents(
   event: UserStreamEvent
 ): boolean {
   return (
+    eventTypeEquals(event, "workflowRun.started") ||
     eventTypeEquals(event, "stepRun.succeeded") ||
     eventTypeEquals(event, "stepRun.failed") ||
     eventTypeEquals(event, "workflowRun.finished")
