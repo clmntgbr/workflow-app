@@ -11,6 +11,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { Field } from "@/components/ui/field"
+import { StepPreview } from "@/components/workflow/step-preview"
 import { VariablePathField } from "@/components/workflow/variable-path-field"
 import { cn } from "@/lib/utils"
 import {
@@ -24,10 +25,18 @@ import {
 import { Loader2Icon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 
+export type VariableDrawerStepPreview = {
+  name: string
+  method: string
+  path: string
+}
+
 interface VariableDrawerProps {
   workflowId: string
   /** Required when creating/editing an extracted variable. */
   stepId?: string | null
+  /** Source step preview for extracted variables (like endpoint on step drawer). */
+  step?: VariableDrawerStepPreview | null
   kind?: WorkflowVariableKind
   variable: WorkflowVariable | null
   isOpen: boolean
@@ -99,6 +108,7 @@ function resolveKind(
 export function VariableDrawer({
   workflowId,
   stepId = null,
+  step = null,
   kind: kindProp,
   variable,
   isOpen,
@@ -280,6 +290,16 @@ export function VariableDrawer({
               </div>
 
               <div className="flex flex-col gap-6 md:col-span-2">
+                {!isStatic && step ? (
+                  <div className="mb-6 flex w-full items-center gap-3 rounded-lg border border-border bg-card px-4 py-2">
+                    <StepPreview
+                      name={step.name}
+                      method={step.method}
+                      url={step.path}
+                      className="min-w-0 flex-1"
+                    />
+                  </div>
+                ) : null}
                 <Field>
                   <CustomInput
                     id="variable-drawer-name"

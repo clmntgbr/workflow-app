@@ -6,7 +6,6 @@ import { Endpoint } from "@/lib/endpoint/types"
 import { GetStatusStyle } from "@/lib/misc"
 import { cn } from "@/lib/utils"
 import { RunStatus } from "@/lib/workflow-run/types"
-import { formatConditionExpressionSummary } from "@/lib/workflow/condition"
 import { formatDelayDuration } from "@/lib/workflow/delay"
 import { StepType } from "@/lib/workflow/types"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
@@ -141,9 +140,7 @@ function DelayStepNodeContent({ step }: { step: CanvasStep }) {
   )
 }
 
-function ConditionStepNodeContent({ step }: { step: CanvasStep }) {
-  const expressionSummary = formatConditionExpressionSummary(step.expression)
-
+function ConditionStepNodeContent() {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
       <div className="flex min-w-0 items-center gap-2">
@@ -152,7 +149,7 @@ function ConditionStepNodeContent({ step }: { step: CanvasStep }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[12px] font-semibold text-foreground">
-            Condition: {expressionSummary}
+            Condition
           </p>
         </div>
       </div>
@@ -246,7 +243,7 @@ export function StepNode({ data }: NodeProps) {
         {delayStep ? (
           <DelayStepNodeContent step={step} />
         ) : conditionStep ? (
-          <ConditionStepNodeContent step={step} />
+          <ConditionStepNodeContent />
         ) : (
           <StepPreview
             name={step.name}

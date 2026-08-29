@@ -15,8 +15,6 @@ import { Separator } from "@/components/ui/separator"
 import { ConditionExpressionField } from "@/components/workflow/condition-expression-field"
 import { CanvasStep } from "@/components/workflow/step-node"
 import { validateConditionExpression } from "@/lib/workflow/step-validation"
-import { listAvailableVariables } from "@/lib/workflow/variable/api"
-import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { Loader2Icon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
 
@@ -49,37 +47,23 @@ export function ConditionStepDrawer({
   onSave,
   onDelete,
 }: ConditionStepDrawerProps) {
-  const isReady = Boolean(step && !step.id.startsWith("temp-"))
+  const [displayStep, setDisplayStep] = useState<CanvasStep | null>(
+    step ?? null
+  )
+  const isReady = Boolean(displayStep && !displayStep.id.startsWith("temp-"))
   const [name, setName] = useState("Condition")
   const [description, setDescription] = useState("")
   const [expression, setExpression] = useState("true")
-  const [variables, setVariables] = useState<WorkflowVariable[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   useEffect(() => {
-    if (!isOpen || !step || step.id.startsWith("temp-")) {
-      setVariables([])
-      return
-    }
-
-    let cancelled = false
-    void listAvailableVariables(workflowId, step.id)
-      .then((next) => {
-        if (!cancelled) setVariables(next)
-      })
-      .catch(() => {
-        if (!cancelled) setVariables([])
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [isOpen, workflowId, step])
+    if (step) setDisplayStep(step)
+  }, [step])
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen || !step) return
 
     const values = getConditionFormValues(step)
     setName(values.name)
@@ -90,7 +74,7 @@ export function ConditionStepDrawer({
   }, [isOpen, step])
 
   const onClose = () => {
-    const values = getConditionFormValues(step)
+    const values = getConditionFormValues(displayStep)
     setName(values.name)
     setDescription(values.description)
     setExpression(values.expression)
@@ -132,7 +116,7 @@ export function ConditionStepDrawer({
     }
   }
 
-  if (!step) return null
+  if (!displayStep) return null
 
   return (
     <>
@@ -208,7 +192,8 @@ export function ConditionStepDrawer({
                     <ConditionExpressionField
                       value={expression}
                       onChange={setExpression}
-                      variables={variables}
+                      workflowId={workflowId}
+                      stepId={displayStep.id}
                       disabled={!isReady}
                       error={error}
                     />
@@ -219,7 +204,7 @@ export function ConditionStepDrawer({
               <div className="shrink-0 border-t bg-background px-6 py-4">
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    {step && onDelete ? (
+                    {onDelete ? (
                       <Button
                         type="button"
                         variant="destructive"
@@ -259,13 +244,13 @@ export function ConditionStepDrawer({
         </DrawerContent>
       </Drawer>
 
-      {step && onDelete ? (
+      {onDelete ? (
         <DeleteConfirmDialog
           open={isDeleteOpen}
           onOpenChange={setIsDeleteOpen}
           title="Delete step"
           description="This action cannot be undone. The step and its connections will be removed."
-          onConfirm={() => onDelete(step.id)}
+          onConfirm={() => onDelete(displayStep.id)}
           onDeleted={onClose}
           errorMessage="Failed to delete step. Please try again."
         />

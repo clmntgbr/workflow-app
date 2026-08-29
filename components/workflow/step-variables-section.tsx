@@ -10,6 +10,11 @@ import { Badge } from "../ui/badge"
 interface StepVariablesSectionProps {
   workflowId: string
   stepId: string
+  step: {
+    name: string
+    method: string
+    path: string
+  }
   enabled: boolean
   variables: WorkflowVariable[]
   onVariablesChange: (variables: WorkflowVariable[]) => void
@@ -19,6 +24,7 @@ interface StepVariablesSectionProps {
 export function StepVariablesSection({
   workflowId,
   stepId,
+  step,
   enabled,
   variables,
   onVariablesChange,
@@ -122,6 +128,7 @@ export function StepVariablesSection({
       <VariableDrawer
         workflowId={workflowId}
         stepId={stepId}
+        step={step}
         kind="extracted"
         variable={activeEditing}
         nested

@@ -201,6 +201,7 @@ export function StepDrawer({
   const { endpoints } = useEndpoint()
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [displayStep, setDisplayStep] = useState<CanvasStep | null>(step)
   const [availableVariables, setAvailableVariables] = useState<
     WorkflowVariable[]
   >([])
@@ -223,12 +224,19 @@ export function StepDrawer({
   })
 
   useEffect(() => {
-    if (!isOpen) return
+    if (step && !isNonHttpStep(step)) {
+      setDisplayStep(step)
+    }
+  }, [step])
+
+  useEffect(() => {
+    if (!isOpen || !step || isNonHttpStep(step)) return
     reset(getStepFormValues(step))
   }, [isOpen, step, reset])
 
   useEffect(() => {
-    if (!isOpen || !step || step.id.startsWith("temp-")) {
+    if (!isOpen) return
+    if (!step || step.id.startsWith("temp-")) {
       setAvailableVariables([])
       return
     }
@@ -252,7 +260,8 @@ export function StepDrawer({
   }, [isOpen, workflowId, step])
 
   useEffect(() => {
-    if (!isOpen || !step || step.id.startsWith("temp-")) {
+    if (!isOpen) return
+    if (!step || step.id.startsWith("temp-")) {
       setAssertions([])
       return
     }
@@ -286,12 +295,12 @@ export function StepDrawer({
   }, [isOpen, workflowId, step])
 
   const onClose = () => {
-    reset(getStepFormValues(step))
+    reset(getStepFormValues(displayStep))
     onOpenChange(false)
   }
 
   const onSubmit = async (data: StepFormValues) => {
-    if (!step || isNonHttpStep(step)) return
+    if (!displayStep || isNonHttpStep(displayStep)) return
 
     setIsSaving(true)
     try {
@@ -302,9 +311,11 @@ export function StepDrawer({
     }
   }
 
-  if (!step || isNonHttpStep(step)) {
+  if (!displayStep || isNonHttpStep(displayStep)) {
     return null
   }
+
+  const activeStep = displayStep
 
   return (
     <>
@@ -332,12 +343,12 @@ export function StepDrawer({
                   </div>
 
                   <div className="flex flex-col gap-6 md:col-span-2">
-                    {step?.endpoint ? (
+                    {activeStep.endpoint ? (
                       <div className="mb-6 flex w-full items-center gap-3 rounded-lg border border-border bg-card px-4 py-2">
                         <StepPreview
-                          name={step.endpoint.name}
-                          method={step.endpoint.method}
-                          url={step.endpoint.url}
+                          name={activeStep.endpoint.name}
+                          method={activeStep.endpoint.method}
+                          url={activeStep.endpoint.url}
                           className="min-w-0 flex-1"
                         />
                       </div>
@@ -641,11 +652,16 @@ export function StepDrawer({
                     </p>
                   </div>
                   <div className="md:col-span-2">
-                    {step ? (
+                    {activeStep ? (
                       <StepVariablesSection
                         workflowId={workflowId}
-                        stepId={step.id}
-                        enabled={!step.id.startsWith("temp-")}
+                        stepId={activeStep.id}
+                        step={{
+                          name: activeStep.name,
+                          method: activeStep.method,
+                          path: activeStep.path,
+                        }}
+                        enabled={!activeStep.id.startsWith("temp-")}
                         variables={variables}
                         onVariablesChange={onVariablesChange}
                         onRequestDelete={onRequestDeleteVariable}
@@ -665,11 +681,11 @@ export function StepDrawer({
                     </p>
                   </div>
                   <div className="md:col-span-2">
-                    {step ? (
+                    {activeStep ? (
                       <StepAssertionsSection
                         workflowId={workflowId}
-                        stepId={step.id}
-                        enabled={!step.id.startsWith("temp-")}
+                        stepId={activeStep.id}
+                        enabled={!activeStep.id.startsWith("temp-")}
                         assertions={assertions}
                         onAssertionsChange={setAssertions}
                       />
@@ -681,7 +697,7 @@ export function StepDrawer({
               <div className="shrink-0 border-t bg-background px-6 py-4">
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    {step && onDelete ? (
+                    {onDelete ? (
                       <Button
                         type="button"
                         variant="destructive"
@@ -706,7 +722,7 @@ export function StepDrawer({
                     <Button
                       type="submit"
                       className="w-full sm:w-auto"
-                      disabled={isSaving || !step}
+                      disabled={isSaving}
                     >
                       Update
                       {isSaving ? (
@@ -721,13 +737,13 @@ export function StepDrawer({
         </DrawerContent>
       </Drawer>
 
-      {step && onDelete ? (
+      {onDelete ? (
         <DeleteConfirmDialog
           open={isDeleteOpen}
           onOpenChange={setIsDeleteOpen}
           title="Delete step"
           description="This action cannot be undone. The step and its connections will be removed."
-          onConfirm={() => onDelete(step.id)}
+          onConfirm={() => onDelete(activeStep.id)}
           onDeleted={() => {
             onClose()
             onDeleted?.()

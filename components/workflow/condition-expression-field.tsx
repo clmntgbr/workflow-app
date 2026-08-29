@@ -1,10 +1,11 @@
 "use client"
 
 import { RadioDropdown } from "@/components/radio-dropdown"
+import { Badge } from "@/components/ui/badge"
 import { FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { VariableAutocompleteField } from "@/components/workflow/variable-autocomplete-field"
+import { VariablePickerField } from "@/components/workflow/variable-picker-field"
 import {
   AssertionOperator,
   operatorNeedsExpectedValue,
@@ -14,13 +15,13 @@ import {
   CONDITION_OPERATORS,
   getOperatorLabel,
 } from "@/lib/workflow/condition"
-import { WorkflowVariable } from "@/lib/workflow/variable/types"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 
 interface ConditionExpressionFieldProps {
   value: string
   onChange: (expression: string) => void
-  variables: WorkflowVariable[]
+  workflowId: string
+  stepId: string
   disabled?: boolean
   error?: string | null
 }
@@ -88,30 +89,25 @@ function unquoteExpected(value: string): string {
 export function ConditionExpressionField({
   value,
   onChange,
-  variables,
+  workflowId,
+  stepId,
   disabled = false,
   error,
 }: ConditionExpressionFieldProps) {
-  const initial = useMemo(() => parseExpressionParts(value), [value])
-  const [variableToken, setVariableToken] = useState(initial.variableToken)
-  const [operator, setOperator] = useState<AssertionOperator>(initial.operator)
-  const [expectedValue, setExpectedValue] = useState(initial.expectedValue)
+  const parsedValue = useMemo(() => parseExpressionParts(value), [value])
+  const [variableToken, setVariableToken] = useState(parsedValue.variableToken)
+  const [operator, setOperator] = useState<AssertionOperator>(
+    parsedValue.operator
+  )
+  const [expectedValue, setExpectedValue] = useState(parsedValue.expectedValue)
+  const [prevValue, setPrevValue] = useState(value)
 
-  useEffect(() => {
-    const next = parseExpressionParts(value)
-    setVariableToken(next.variableToken)
-    setOperator(next.operator)
-    setExpectedValue(next.expectedValue)
-  }, [value])
-
-  const preview = useMemo(() => {
-    if (!variableToken.trim()) return value
-    try {
-      return buildConditionExpression(variableToken, operator, expectedValue)
-    } catch {
-      return value
-    }
-  }, [variableToken, operator, expectedValue, value])
+  if (value !== prevValue) {
+    setPrevValue(value)
+    setVariableToken(parsedValue.variableToken)
+    setOperator(parsedValue.operator)
+    setExpectedValue(parsedValue.expectedValue)
+  }
 
   const syncExpression = (
     nextVariable: string,
@@ -123,32 +119,36 @@ export function ConditionExpressionField({
       return
     }
     try {
-      onChange(buildConditionExpression(nextVariable, nextOperator, nextExpected))
+      onChange(
+        buildConditionExpression(nextVariable, nextOperator, nextExpected)
+      )
     } catch {
       // Keep previous expression until valid.
     }
   }
 
   const needsExpected = operatorNeedsExpectedValue(operator)
+  const displayVariable = variableToken.trim()
+    ? variableToken.replace(/^\{\{/, "").replace(/\}\}$/, "")
+    : null
+  const displayExpected = expectedValue.trim() || null
+  const hasPreviewParts = Boolean(displayVariable)
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Variable</Label>
-        <VariableAutocompleteField
-          value={variableToken}
-          onChange={(next) => {
-            if (disabled) return
-            setVariableToken(next)
-            syncExpression(next, operator, expectedValue)
-          }}
-          variables={variables}
-          placeholder="{{myVariable}}"
-        />
-        <FieldDescription>
-          Pick a workflow variable available from ancestor steps.
-        </FieldDescription>
-      </div>
+      <VariablePickerField
+        id="condition-variable"
+        workflowId={workflowId}
+        stepId={stepId}
+        value={variableToken}
+        disabled={disabled}
+        isRequired
+        onChange={(next) => {
+          if (disabled) return
+          setVariableToken(next)
+          syncExpression(next, operator, expectedValue)
+        }}
+      />
 
       <div className="space-y-2">
         <Label>Operator</Label>
@@ -182,17 +182,41 @@ export function ConditionExpressionField({
               syncExpression(variableToken, operator, next)
             }}
             placeholder="Expected value"
+            className="h-9"
           />
         </div>
       ) : null}
 
-      <div className="space-y-1 rounded-lg border border-border bg-muted/40 px-3 py-2">
+      <div className="space-y-3 rounded-lg border border-border bg-muted/40 px-3 py-4">
         <FieldLabel className="text-xs text-muted-foreground">
           Expression preview
         </FieldLabel>
-        <p className="font-mono text-xs break-all text-foreground">{preview || "—"}</p>
-        {error ? (
-          <p className="text-xs text-destructive">{error}</p>
+        {hasPreviewParts ? (
+          <div className="flex flex-wrap items-center gap-2 py-1">
+            <Badge
+              variant="secondary"
+              className="max-w-full font-mono font-bold text-green-700"
+            >
+              {displayVariable}
+            </Badge>
+            <Badge variant="outline" className="font-medium">
+              {getOperatorLabel(operator)}
+            </Badge>
+            {needsExpected && displayExpected ? (
+              <Badge variant="secondary" className="max-w-full font-mono">
+                {displayExpected}
+              </Badge>
+            ) : null}
+          </div>
+        ) : (
+          <p className="py-1 font-mono text-xs text-muted-foreground">—</p>
+        )}
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+        {!error ? (
+          <FieldDescription className="text-xs">
+            The expression is evaluated at runtime to pick the true or false
+            branch.
+          </FieldDescription>
         ) : null}
       </div>
     </div>

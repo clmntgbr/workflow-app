@@ -124,6 +124,10 @@ export function WorkflowVariablesDrawer({
     : createKind
 
   const formStepId = activeEditing?.stepId ?? createStepId
+  const formStep =
+    formStepId != null
+      ? (httpSteps.find((step) => step.id === formStepId) ?? null)
+      : null
 
   return (
     <>
@@ -289,6 +293,15 @@ export function WorkflowVariablesDrawer({
         <VariableDrawer
           workflowId={workflowId}
           stepId={formStepId}
+          step={
+            formStep
+              ? {
+                  name: formStep.name,
+                  method: formStep.method,
+                  path: formStep.path,
+                }
+              : null
+          }
           kind={formKind}
           variable={activeEditing}
           isOpen={
