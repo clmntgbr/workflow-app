@@ -4,9 +4,14 @@ import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { Title } from "@/components/title"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ConditionStepDrawer } from "@/components/workflow/condition-step-drawer"
 import { DelayStepModal } from "@/components/workflow/delay-step-modal"
 import { StepDrawer } from "@/components/workflow/step-drawer"
-import { CanvasStep, isDelayStep } from "@/components/workflow/step-node"
+import {
+  CanvasStep,
+  isConditionStep,
+  isDelayStep,
+} from "@/components/workflow/step-node"
 import { SwitchProjectDialog } from "@/components/workflow/switch-project-dialog"
 import { VariableUsageDrawer } from "@/components/workflow/variable-usage-drawer"
 import { WorkflowActivityLog } from "@/components/workflow/workflow-activity-log"
@@ -43,6 +48,7 @@ import {
   getWorkflowConnections,
   getWorkflowStep,
   getWorkflowSteps,
+  updateConditionWorkflowStep,
   updateDelayWorkflowStep,
   updateStepPosition,
   updateWorkflowStep,
@@ -51,12 +57,17 @@ import {
 } from "@/lib/workflow/api"
 import { subscribeWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
 import { subscribeWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
+import {
+  DEFAULT_CONDITION_EXPRESSION,
+  parseConditionBranch,
+} from "@/lib/workflow/condition"
 import { DEFAULT_DELAY_DURATION_SECONDS } from "@/lib/workflow/delay"
 import { inferStepType, isValidStepEndpointId } from "@/lib/workflow/step-validation"
 import {
   UpdateWorkflowStepInput,
   Workflow,
   WorkflowConnection,
+  ConditionBranch,
 } from "@/lib/workflow/types"
 import {
   deleteWorkflowVariable,
@@ -224,6 +235,43 @@ function mapItemToCanvasStep(
             : null,
       endpointId: null,
       delayDurationSeconds: delayDurationSeconds > 0 ? delayDurationSeconds : null,
+      expression: null,
+      method: "",
+      path: "",
+      headers: {},
+      query: {},
+      body: {},
+      timeout: 0,
+      retryOnFailure: false,
+      retryCount: 0,
+      retryDelay: 0,
+      executionOrder: pickNumber(record, ["executionOrder", "execution_order"]),
+      treeIndex: pickNumber(record, ["treeIndex", "tree_index"]),
+      status: pickString(record, ["status"]) ?? undefined,
+      lastRunStatus: parseRunStatus(
+        record.lastRunStatus ?? record.last_run_status
+      ),
+      x: position.x,
+      y: position.y,
+    }
+  }
+
+  if (stepType === "condition") {
+    const expression = pickString(record, ["expression"])
+    return {
+      id,
+      type: "condition",
+      ...(indexRaw ? { index: indexRaw } : {}),
+      name: stepName ?? "Condition",
+      description:
+        typeof record.description === "string"
+          ? record.description
+          : record.description === null
+            ? null
+            : null,
+      endpointId: null,
+      delayDurationSeconds: null,
+      expression: expression ?? null,
       method: "",
       path: "",
       headers: {},
@@ -268,6 +316,7 @@ function mapItemToCanvasStep(
     description,
     endpointId,
     delayDurationSeconds: null,
+    expression: null,
     method: method ?? endpoint?.method ?? "GET",
     path: url ?? endpoint?.url ?? "/",
     headers: parseStringRecord(record.headers),
@@ -336,6 +385,9 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     null
   )
   const [isDelayModalOpen, setIsDelayModalOpen] = useState(false)
+  const [selectedConditionStep, setSelectedConditionStep] =
+    useState<CanvasStep | null>(null)
+  const [isConditionDrawerOpen, setIsConditionDrawerOpen] = useState(false)
   const [steps, setSteps] = useState<CanvasStep[]>([])
   const [connections, setConnections] = useState<WorkflowConnection[]>([])
   const [variables, setVariables] = useState<WorkflowVariable[]>([])
@@ -381,7 +433,15 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
         if (!id || !sourceStepId || !targetStepId) return null
 
-        return { id, sourceStepId, targetStepId } satisfies WorkflowConnection
+        const branch = parseConditionBranch(record.branch)
+        const normalizedBranch = branch === undefined ? null : branch
+
+        return {
+          id,
+          sourceStepId,
+          targetStepId,
+          branch: normalizedBranch,
+        } satisfies WorkflowConnection
       })
       .filter((value): value is WorkflowConnection => value !== null)
 
@@ -666,6 +726,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       description: input.preview.description ?? endpoint?.description ?? null,
       endpointId: input.endpointId,
       delayDurationSeconds: null,
+      expression: null,
       method: input.preview.method || endpoint?.method || "GET",
       path: input.preview.path || endpoint?.url || "/",
       headers: endpoint?.headers ?? {},
@@ -769,6 +830,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       description: null,
       endpointId: null,
       delayDurationSeconds: DEFAULT_DELAY_DURATION_SECONDS,
+      expression: null,
       method: "",
       path: "",
       headers: {},
@@ -804,6 +866,51 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     }
   }
 
+  const handleCreateConditionStep = async (position: Point) => {
+    const tempId = `temp-${crypto.randomUUID()}`
+    const optimisticStep: CanvasStep = {
+      id: tempId,
+      type: "condition",
+      name: "Condition",
+      description: null,
+      endpointId: null,
+      delayDurationSeconds: null,
+      expression: DEFAULT_CONDITION_EXPRESSION,
+      method: "",
+      path: "",
+      headers: {},
+      query: {},
+      body: {},
+      timeout: 0,
+      retryOnFailure: false,
+      retryCount: 0,
+      retryDelay: 0,
+      x: position.x,
+      y: position.y,
+    }
+
+    setSteps((current) => [...current, optimisticStep])
+
+    try {
+      const created = await createWorkflowStep(workflowId, {
+        type: "condition",
+        expression: DEFAULT_CONDITION_EXPRESSION,
+        position,
+        name: "Condition",
+      })
+
+      const mapped = mapItemToCanvasStep(created, endpointById, optimisticStep)
+      if (mapped) {
+        setSteps((current) =>
+          current.map((step) => (step.id === tempId ? mapped : step))
+        )
+      }
+    } catch (creationError) {
+      setSteps((current) => current.filter((step) => step.id !== tempId))
+      throw creationError
+    }
+  }
+
   const handleSaveDelayStep = async (delayDurationSeconds: number) => {
     if (!selectedDelayStep || selectedDelayStep.id.startsWith("temp-")) {
       throw new Error("Delay step is not ready to save")
@@ -819,6 +926,35 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       current.map((step) =>
         step.id === selectedDelayStep.id
           ? { ...step, delayDurationSeconds }
+          : step
+      )
+    )
+  }
+
+  const handleSaveConditionStep = async (input: {
+    name: string
+    description: string
+    expression: string
+  }) => {
+    if (!selectedConditionStep || selectedConditionStep.id.startsWith("temp-")) {
+      throw new Error("Condition step is not ready to save")
+    }
+
+    await updateConditionWorkflowStep(
+      workflowId,
+      selectedConditionStep.id,
+      input
+    )
+
+    setSteps((current) =>
+      current.map((step) =>
+        step.id === selectedConditionStep.id
+          ? {
+              ...step,
+              name: input.name,
+              description: input.description || null,
+              expression: input.expression,
+            }
           : step
       )
     )
@@ -848,11 +984,17 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const handleCreateConnection = async (input: {
     sourceStepId: string
     targetStepId: string
+    branch?: ConditionBranch | null
   }) => {
     try {
       const created = await createWorkflowConnection(workflowId, input)
       return created
     } catch (saveError) {
+      toast.error(
+        saveError instanceof Error
+          ? saveError.message
+          : "Failed to create connection"
+      )
       throw saveError
     }
   }
@@ -887,6 +1029,21 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       return
     }
 
+    if (isConditionStep(step)) {
+      if (step.id.startsWith("temp-")) return
+
+      setSelectedConditionStep(step)
+      setIsConditionDrawerOpen(true)
+
+      void getWorkflowStep(workflowId, step.id)
+        .then((payload) => {
+          const mapped = mapItemToCanvasStep(payload, endpointById, step)
+          if (mapped) setSelectedConditionStep(mapped)
+        })
+        .catch(() => {})
+      return
+    }
+
     setSelectedStep(step)
     setIsStepDrawerOpen(true)
 
@@ -914,6 +1071,8 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     const previousSteps = steps
     const previousConnections = connections
     const wasEditing = selectedStep?.id === stepId
+    const wasEditingCondition = selectedConditionStep?.id === stepId
+    const wasEditingDelay = selectedDelayStep?.id === stepId
 
     setSteps((current) => current.filter((step) => step.id !== stepId))
     setConnections((current) =>
@@ -926,6 +1085,14 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     if (wasEditing) {
       setIsStepDrawerOpen(false)
       setSelectedStep(null)
+    }
+    if (wasEditingCondition) {
+      setIsConditionDrawerOpen(false)
+      setSelectedConditionStep(null)
+    }
+    if (wasEditingDelay) {
+      setIsDelayModalOpen(false)
+      setSelectedDelayStep(null)
     }
 
     try {
@@ -1078,6 +1245,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           connections={connections}
           onCreateStep={handleCreateStep}
           onCreateDelayStep={handleCreateDelayStep}
+          onCreateConditionStep={handleCreateConditionStep}
           onMoveStep={handleMoveStep}
           onCreateConnection={handleCreateConnection}
           onDeleteConnection={handleDeleteConnection}
@@ -1128,6 +1296,18 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         }}
         step={selectedDelayStep}
         onSave={handleSaveDelayStep}
+      />
+
+      <ConditionStepDrawer
+        workflowId={workflowId}
+        isOpen={isConditionDrawerOpen}
+        onOpenChange={(open) => {
+          setIsConditionDrawerOpen(open)
+          if (!open) setSelectedConditionStep(null)
+        }}
+        step={selectedConditionStep}
+        onSave={handleSaveConditionStep}
+        onDelete={handleDeleteStep}
       />
 
       <StepDrawer

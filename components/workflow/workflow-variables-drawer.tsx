@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { CanvasStep, isDelayStep } from "@/components/workflow/step-node"
+import { CanvasStep, isNonHttpStep } from "@/components/workflow/step-node"
 import { StepPreview } from "@/components/workflow/step-preview"
 import { VariableDrawer } from "@/components/workflow/variable-drawer"
 import {
@@ -69,7 +69,7 @@ export function WorkflowVariablesDrawer({
     useState<WorkflowVariableKind>("extracted")
   const [stepSearch, setStepSearch] = useState("")
 
-  const httpSteps = steps.filter((step) => !isDelayStep(step))
+  const httpSteps = steps.filter((step) => !isNonHttpStep(step))
 
   const filteredSteps = (() => {
     const query = stepSearch.trim().toLowerCase()

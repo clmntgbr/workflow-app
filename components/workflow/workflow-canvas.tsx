@@ -1,7 +1,17 @@
 "use client"
 
 import { DeleteEdgeButton } from "@/components/workflow/delete-edge-button"
-import { CanvasStep, StepNode, StepNodeData } from "@/components/workflow/step-node"
+import {
+  CanvasStep,
+  isConditionStep,
+  StepNode,
+  StepNodeData,
+} from "@/components/workflow/step-node"
+import {
+  ConditionBranch,
+  parseConditionBranch,
+  validateNewConnection,
+} from "@/lib/workflow/condition"
 import { WorkflowConnection } from "@/lib/workflow/types"
 import {
   Background,
@@ -12,6 +22,7 @@ import {
   Edge,
   Node,
   OnConnect,
+  OnConnectEnd,
   OnEdgesChange,
   OnNodeDrag,
   OnNodesChange,
@@ -23,10 +34,12 @@ import {
   useReactFlow,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
-import { TimerIcon } from "lucide-react"
+import { GitBranchIcon, TimerIcon } from "lucide-react"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 
 const DELAY_DRAG_MIME = "application/workflow-delay"
+const CONDITION_DRAG_MIME = "application/workflow-condition"
 
 const nodeTypes = { stepNode: StepNode }
 const edgeTypes = { deleteEdge: DeleteEdgeButton }
@@ -49,6 +62,7 @@ interface WorkflowCanvasProps {
     preview: EndpointDragPayload
   }) => Promise<void>
   onCreateDelayStep: (position: { x: number; y: number }) => Promise<void>
+  onCreateConditionStep: (position: { x: number; y: number }) => Promise<void>
   onMoveStep: (
     stepId: string,
     position: { x: number; y: number }
@@ -56,6 +70,7 @@ interface WorkflowCanvasProps {
   onCreateConnection: (input: {
     sourceStepId: string
     targetStepId: string
+    branch?: ConditionBranch | null
   }) => Promise<WorkflowConnection>
   onDeleteConnection: (connectionId: string) => Promise<void>
   onEditStep: (step: CanvasStep) => void
@@ -87,8 +102,12 @@ function makeEdges(
     id: connection.id,
     source: connection.sourceStepId,
     target: connection.targetStepId,
+    sourceHandle: connection.branch ?? undefined,
     type: "deleteEdge",
-    data: { onDelete: () => onDelete(connection.id) },
+    data: {
+      onDelete: () => onDelete(connection.id),
+      branch: connection.branch,
+    },
   }))
 }
 
@@ -98,6 +117,7 @@ function CanvasInner({
   connections,
   onCreateStep,
   onCreateDelayStep,
+  onCreateConditionStep,
   onMoveStep,
   onCreateConnection,
   onDeleteConnection,
@@ -111,6 +131,7 @@ function CanvasInner({
     connections,
     onCreateStep,
     onCreateDelayStep,
+    onCreateConditionStep,
     onMoveStep,
     onCreateConnection,
     onDeleteConnection,
@@ -125,6 +146,7 @@ function CanvasInner({
       connections,
       onCreateStep,
       onCreateDelayStep,
+      onCreateConditionStep,
       onMoveStep,
       onCreateConnection,
       onDeleteConnection,
@@ -179,6 +201,42 @@ function CanvasInner({
     setEdges(makeEdges(connections, handleEdgeDelete))
   }, [connections, handleEdgeDelete])
 
+  const isValidConnection = useCallback((connection: Edge | Connection) => {
+    if (!connection.source || !connection.target) return false
+
+    const { steps: currentSteps, connections: currentConnections } =
+      propsRef.current
+
+    return validateNewConnection(
+      {
+        sourceStepId: connection.source,
+        targetStepId: connection.target,
+        sourceHandle: connection.sourceHandle,
+      },
+      currentSteps,
+      currentConnections
+    ).allowed
+  }, [])
+
+  const onConnectEnd: OnConnectEnd = useCallback((_event, connectionState) => {
+    if (connectionState.isValid) return
+    if (!connectionState.fromNode?.id || !connectionState.toNode?.id) return
+
+    const validation = validateNewConnection(
+      {
+        sourceStepId: connectionState.fromNode.id,
+        targetStepId: connectionState.toNode.id,
+        sourceHandle: connectionState.fromHandle?.id,
+      },
+      propsRef.current.steps,
+      propsRef.current.connections
+    )
+
+    if (!validation.allowed && validation.reason) {
+      toast.error(validation.reason)
+    }
+  }, [])
+
   const onNodesChange: OnNodesChange = useCallback((changes) => {
     setNodes((current) => applyNodeChanges(changes, current))
   }, [])
@@ -198,9 +256,25 @@ function CanvasInner({
     async (connection: Connection) => {
       if (!connection.source || !connection.target) return
 
+      const sourceStep = propsRef.current.steps.find(
+        (step) => step.id === connection.source
+      )
+      const branch =
+        sourceStep && isConditionStep(sourceStep)
+          ? parseConditionBranch(connection.sourceHandle)
+          : null
+
+      if (sourceStep && isConditionStep(sourceStep) && branch == null) {
+        toast.error(
+          "Connect from the true (green) or false (red) output on the condition step."
+        )
+        return
+      }
+
       const created = await propsRef.current.onCreateConnection({
         sourceStepId: connection.source,
         targetStepId: connection.target,
+        branch: branch ?? undefined,
       })
 
       setEdges((current) =>
@@ -208,8 +282,12 @@ function CanvasInner({
           {
             ...connection,
             id: created.id,
+            sourceHandle: created.branch ?? connection.sourceHandle,
             type: "deleteEdge",
-            data: { onDelete: () => handleEdgeDelete(created.id) },
+            data: {
+              onDelete: () => handleEdgeDelete(created.id),
+              branch: created.branch,
+            },
           },
           current
         )
@@ -228,6 +306,12 @@ function CanvasInner({
       const flowPosition = {
         x: Number(position.x.toFixed(2)),
         y: Number(position.y.toFixed(2)),
+      }
+
+      const conditionRaw = event.dataTransfer.getData(CONDITION_DRAG_MIME)
+      if (conditionRaw) {
+        await propsRef.current.onCreateConditionStep(flowPosition)
+        return
       }
 
       const delayRaw = event.dataTransfer.getData(DELAY_DRAG_MIME)
@@ -255,6 +339,11 @@ function CanvasInner({
     event.dataTransfer.effectAllowed = "copy"
   }, [])
 
+  const handleConditionDragStart = useCallback((event: React.DragEvent) => {
+    event.dataTransfer.setData(CONDITION_DRAG_MIME, "condition")
+    event.dataTransfer.effectAllowed = "copy"
+  }, [])
+
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault()
     event.dataTransfer.dropEffect = "copy"
@@ -262,7 +351,7 @@ function CanvasInner({
 
   return (
     <div className="relative h-full min-h-0 w-full flex-1 overflow-hidden bg-[#f8f9fb]">
-      <div className="pointer-events-none absolute top-4 right-4 z-10">
+      <div className="pointer-events-none absolute top-4 right-4 z-10 flex gap-2">
         <button
           type="button"
           draggable
@@ -272,6 +361,16 @@ function CanvasInner({
           title="Drag to add a delay step"
         >
           <TimerIcon className="size-5" />
+        </button>
+        <button
+          type="button"
+          draggable
+          onDragStart={handleConditionDragStart}
+          className="pointer-events-auto flex size-10 cursor-grab items-center justify-center rounded-lg border border-emerald-200 bg-white text-emerald-700 shadow-sm transition-colors hover:bg-emerald-50 active:cursor-grabbing"
+          aria-label="Drag condition step onto canvas"
+          title="Drag to add a condition step"
+        >
+          <GitBranchIcon className="size-5" />
         </button>
       </div>
 
@@ -285,6 +384,8 @@ function CanvasInner({
         onEdgesChange={onEdgesChange}
         onNodeDragStop={onNodeDragStop}
         onConnect={onConnect}
+        onConnectEnd={onConnectEnd}
+        isValidConnection={isValidConnection}
         onDrop={onDrop}
         onDragOver={onDragOver}
         fitView

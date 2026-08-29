@@ -3,6 +3,7 @@ import {
   CreateWorkflowConnectionInput,
   CreateWorkflowStepInput,
   CreateWorkflowInput,
+  UpdateConditionWorkflowStepInput,
   UpdateDelayWorkflowStepInput,
   UpdateWorkflowInput,
   UpdateWorkflowStepInput,
@@ -199,11 +200,19 @@ export const createWorkflowStep = async (
           ...(input.name ? { name: input.name } : {}),
           ...(input.description ? { description: input.description } : {}),
         }
-      : {
-          type: "http",
-          endpointId: input.endpointId,
-          position: input.position,
-        }
+      : input.type === "condition"
+        ? {
+            type: "condition",
+            expression: input.expression,
+            position: input.position,
+            ...(input.name ? { name: input.name } : {}),
+            ...(input.description ? { description: input.description } : {}),
+          }
+        : {
+            type: "http",
+            endpointId: input.endpointId,
+            position: input.position,
+          }
 
   const response = await fetch(`/api/workflows/${workflowId}/steps`, {
     method: "POST",
@@ -242,6 +251,34 @@ export const updateDelayWorkflowStep = async (
   if (!response.ok) {
     throw new Error(
       await readWorkflowErrorMessage(response, "Failed to update delay step")
+    )
+  }
+
+  return response.json()
+}
+
+export const updateConditionWorkflowStep = async (
+  workflowId: string,
+  stepId: string,
+  input: UpdateConditionWorkflowStepInput
+): Promise<unknown> => {
+  const response = await fetch(
+    `/api/workflows/${workflowId}/steps/${stepId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "condition",
+        name: input.name,
+        description: input.description ?? "",
+        expression: input.expression,
+      }),
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      await readWorkflowErrorMessage(response, "Failed to update condition step")
     )
   }
 
@@ -350,6 +387,50 @@ export const getWorkflowStep = async (
   return response.json()
 }
 
+function parseWorkflowConnection(payload: unknown): WorkflowConnection {
+  const record = asRecord(payload)
+  const nested = asRecord(record?.data)
+  const source = nested ?? record
+  if (!source) {
+    throw new Error("Invalid workflow connection response")
+  }
+
+  const id =
+    typeof source.id === "string"
+      ? source.id
+      : typeof source.connectionId === "string"
+        ? source.connectionId
+        : typeof source.connection_id === "string"
+          ? source.connection_id
+          : null
+  const sourceStepId =
+    typeof source.sourceStepId === "string"
+      ? source.sourceStepId
+      : typeof source.source_step_id === "string"
+        ? source.source_step_id
+        : null
+  const targetStepId =
+    typeof source.targetStepId === "string"
+      ? source.targetStepId
+      : typeof source.target_step_id === "string"
+        ? source.target_step_id
+        : null
+
+  if (!id || !sourceStepId || !targetStepId) {
+    throw new Error("Invalid workflow connection response")
+  }
+
+  const branchRaw = source.branch
+  const branch =
+    branchRaw === "true" || branchRaw === "false"
+      ? branchRaw
+      : branchRaw === null
+        ? null
+        : null
+
+  return { id, sourceStepId, targetStepId, branch }
+}
+
 export const createWorkflowConnection = async (
   workflowId: string,
   input: CreateWorkflowConnectionInput
@@ -361,10 +442,16 @@ export const createWorkflowConnection = async (
   })
 
   if (!response.ok) {
-    throw new Error("Failed to create workflow connection")
+    throw new Error(
+      await readWorkflowErrorMessage(
+        response,
+        "Failed to create workflow connection"
+      )
+    )
   }
 
-  return response.json()
+  const payload: unknown = await response.json()
+  return parseWorkflowConnection(payload)
 }
 
 export const getWorkflowConnections = async (

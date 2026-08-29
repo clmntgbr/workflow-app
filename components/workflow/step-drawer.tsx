@@ -17,7 +17,7 @@ import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { CanvasStep, isDelayStep } from "@/components/workflow/step-node"
+import { CanvasStep, isNonHttpStep } from "@/components/workflow/step-node"
 import { StepAssertionsSection } from "@/components/workflow/step-assertions-section"
 import { StepVariablesSection } from "@/components/workflow/step-variables-section"
 import { VariableAutocompleteField } from "@/components/workflow/variable-autocomplete-field"
@@ -291,7 +291,7 @@ export function StepDrawer({
   }
 
   const onSubmit = async (data: StepFormValues) => {
-    if (!step || isDelayStep(step)) return
+    if (!step || isNonHttpStep(step)) return
 
     setIsSaving(true)
     try {
@@ -302,7 +302,7 @@ export function StepDrawer({
     }
   }
 
-  if (!step || isDelayStep(step)) {
+  if (!step || isNonHttpStep(step)) {
     return null
   }
 

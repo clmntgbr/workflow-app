@@ -54,6 +54,12 @@ function StepRunCountdown({ resumeAt }: { resumeAt: string | null }) {
 
 function StepRunRow({ stepRun }: { stepRun: WorkflowRunStepRunDetail }) {
   const duration = GetRunDuration(stepRun.startedAt, stepRun.finishedAt)
+  const branchLabel =
+    stepRun.matchedBranch === true
+      ? "Took true branch"
+      : stepRun.matchedBranch === false
+        ? "Took false branch"
+        : null
 
   return (
     <li className="rounded-lg border border-slate-200 bg-white px-4 py-3">
@@ -64,6 +70,11 @@ function StepRunRow({ stepRun }: { stepRun: WorkflowRunStepRunDetail }) {
           </p>
           {stepRun.url ? (
             <p className="truncate text-xs text-slate-500">{stepRun.url}</p>
+          ) : null}
+          {branchLabel ? (
+            <p className="mt-1 text-xs font-medium text-emerald-700">
+              {branchLabel}
+            </p>
           ) : null}
         </div>
         <StatusBadge status={stepRun.status} />

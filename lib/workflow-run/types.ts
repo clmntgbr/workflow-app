@@ -197,6 +197,7 @@ export interface WorkflowRunStepRunDetail {
   status: StepRunStatus
   attempt: number
   resumeAt: string | null
+  matchedBranch: boolean | null
   responseSnapshot: StepRunResponseSnapshot | null
   assertionsResult?: StepRunAssertionResult[]
   insights?: WorkflowRunInsight[]

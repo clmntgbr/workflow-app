@@ -64,7 +64,9 @@ export interface UpdateWorkflowInput {
   notifyOnCancel: boolean
 }
 
-export type StepType = "http" | "delay"
+export type StepType = "http" | "delay" | "condition"
+
+export type ConditionBranch = "true" | "false"
 
 export type CreateWorkflowStepInput =
   | {
@@ -72,6 +74,7 @@ export type CreateWorkflowStepInput =
       endpointId: string
       position: { x: number; y: number }
       delayDurationSeconds?: null
+      expression?: null
     }
   | {
       type: "delay"
@@ -80,6 +83,16 @@ export type CreateWorkflowStepInput =
       position: { x: number; y: number }
       name?: string
       description?: string
+      expression?: null
+    }
+  | {
+      type: "condition"
+      endpointId?: null
+      expression: string
+      position: { x: number; y: number }
+      name?: string
+      description?: string
+      delayDurationSeconds?: null
     }
 
 export interface UpdateWorkflowStepInput {
@@ -102,15 +115,23 @@ export interface UpdateDelayWorkflowStepInput {
   delayDurationSeconds: number
 }
 
+export interface UpdateConditionWorkflowStepInput {
+  name: string
+  description?: string
+  expression: string
+}
+
 export interface WorkflowConnection {
   id: string
   sourceStepId: string
   targetStepId: string
+  branch: ConditionBranch | null
 }
 
 export interface CreateWorkflowConnectionInput {
   sourceStepId: string
   targetStepId: string
+  branch?: ConditionBranch | null
 }
 
 export interface WorkflowState {

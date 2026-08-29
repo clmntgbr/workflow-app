@@ -2,6 +2,7 @@ import { CreateWorkflowStepInput, StepType } from "./types"
 
 export function parseStepType(value: unknown): StepType {
   if (value === "delay") return "delay"
+  if (value === "condition") return "condition"
   if (value === "http") return "http"
   return "http"
 }
@@ -19,6 +20,7 @@ export function isValidStepEndpointId(value: unknown): boolean {
 export function inferStepType(record: Record<string, unknown>): StepType {
   const explicit = record.type
   if (explicit === "delay") return "delay"
+  if (explicit === "condition") return "condition"
   if (explicit === "http") return "http"
 
   const endpointIdRaw = record.endpointId ?? record.endpoint_id
@@ -29,7 +31,11 @@ export function inferStepType(record: Record<string, unknown>): StepType {
     typeof delaySecondsRaw === "number" && Number.isFinite(delaySecondsRaw)
       ? delaySecondsRaw
       : 0
+  const expressionRaw = record.expression
+  const hasExpression =
+    typeof expressionRaw === "string" && expressionRaw.trim().length > 0
 
+  if (!hasEndpoint && hasExpression) return "condition"
   if (!hasEndpoint && delaySeconds > 0) return "delay"
   return "http"
 }
@@ -49,14 +55,24 @@ export function validateCreateStepInput(
     return null
   }
 
-  if (input.endpointId) {
-    return "endpointId must be null for delay steps"
+  if (type === "delay") {
+    if (input.endpointId) {
+      return "endpointId must be null for delay steps"
+    }
+    if (
+      input.delayDurationSeconds == null ||
+      input.delayDurationSeconds <= 0
+    ) {
+      return "delayDurationSeconds is required for delay steps"
+    }
+    return null
   }
-  if (
-    input.delayDurationSeconds == null ||
-    input.delayDurationSeconds <= 0
-  ) {
-    return "delayDurationSeconds is required for delay steps"
+
+  if (input.endpointId) {
+    return "endpointId must be null for condition steps"
+  }
+  if (!input.expression?.trim()) {
+    return "expression is required for condition steps"
   }
   return null
 }
@@ -64,6 +80,13 @@ export function validateCreateStepInput(
 export function validateDelayDurationSeconds(seconds: number): string | null {
   if (!Number.isFinite(seconds) || seconds <= 0) {
     return "Duration must be greater than 0"
+  }
+  return null
+}
+
+export function validateConditionExpression(expression: string): string | null {
+  if (!expression.trim()) {
+    return "Expression is required"
   }
   return null
 }

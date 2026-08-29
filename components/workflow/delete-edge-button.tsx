@@ -6,11 +6,14 @@ import {
   getSmoothStepPath,
   type EdgeProps,
 } from "@xyflow/react"
-import { Trash2Icon, TrashIcon, XIcon } from "lucide-react"
+import { ConditionBranch } from "@/lib/workflow/condition"
+import { Trash2Icon } from "lucide-react"
 import { Button } from "../ui/button"
 
 export type DeleteEdgeData = {
   onDelete: () => void
+  branch?: ConditionBranch | null
+  highlighted?: boolean
 }
 
 export function DeleteEdgeButton({
@@ -25,6 +28,11 @@ export function DeleteEdgeButton({
   markerEnd,
   data,
 }: EdgeProps) {
+  const edgeData = data as DeleteEdgeData | undefined
+  const onDelete = edgeData?.onDelete
+  const branch = edgeData?.branch
+  const highlighted = edgeData?.highlighted ?? false
+
   const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
@@ -34,11 +42,25 @@ export function DeleteEdgeButton({
     targetPosition,
   })
 
-  const onDelete = (data as DeleteEdgeData | undefined)?.onDelete
+  const isTrueBranch = branch === "true"
+  const isFalseBranch = branch === "false"
+  const edgeStyle = {
+    ...style,
+    stroke: isTrueBranch
+      ? "#10b981"
+      : isFalseBranch
+        ? "#ef4444"
+        : style?.stroke,
+    strokeWidth: highlighted
+      ? 3
+      : isTrueBranch || isFalseBranch
+        ? 2.5
+        : style?.strokeWidth,
+  }
 
   return (
     <>
-      <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={style} />
+      <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={edgeStyle} />
       <EdgeLabelRenderer>
         <Button
           variant="destructive"
