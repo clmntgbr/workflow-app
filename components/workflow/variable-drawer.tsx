@@ -282,8 +282,7 @@ export function VariableDrawer({
                   ) : (
                     <>
                       Extract a value from this step&apos;s response body with a
-                      JSONPath (e.g.{" "}
-                      <span className="font-mono">$.token</span>).
+                      JSONPath (e.g. <span className="">$.token</span>).
                     </>
                   )}
                 </p>
@@ -342,7 +341,7 @@ export function VariableDrawer({
                       onChange={(value) =>
                         setForm((current) => ({ ...current, value }))
                       }
-                      textareaClassName="min-h-24 font-mono"
+                      textareaClassName="min-h-24 "
                     />
                   </Field>
                 ) : (

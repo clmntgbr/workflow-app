@@ -195,7 +195,7 @@ export function ConditionExpressionField({
           <div className="flex flex-wrap items-center gap-2 py-1">
             <Badge
               variant="secondary"
-              className="max-w-full font-mono font-bold text-green-700"
+              className="max-w-full font-bold text-green-700"
             >
               {displayVariable}
             </Badge>
@@ -203,13 +203,13 @@ export function ConditionExpressionField({
               {getOperatorLabel(operator)}
             </Badge>
             {needsExpected && displayExpected ? (
-              <Badge variant="secondary" className="max-w-full font-mono">
+              <Badge variant="secondary" className="max-w-full">
                 {displayExpected}
               </Badge>
             ) : null}
           </div>
         ) : (
-          <p className="py-1 font-mono text-xs text-muted-foreground">—</p>
+          <p className="py-1 text-xs text-muted-foreground">—</p>
         )}
         {error ? <p className="text-xs text-destructive">{error}</p> : null}
         {!error ? (

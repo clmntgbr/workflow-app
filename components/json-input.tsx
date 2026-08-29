@@ -592,7 +592,7 @@ export default function JsonInput({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-slate-700 bg-slate-900 font-mono text-sm shadow-none",
+        "overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-sm shadow-none",
         className
       )}
     >
@@ -655,7 +655,7 @@ export default function JsonInput({
             <pre
               ref={highlightedRef}
               aria-hidden
-              className="pointer-events-none absolute inset-0 overflow-auto rounded border border-slate-700 bg-slate-950/70 px-4 py-3 font-mono text-sm leading-6 wrap-break-word whitespace-pre-wrap text-slate-300"
+              className="pointer-events-none absolute inset-0 overflow-auto rounded border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm leading-6 wrap-break-word whitespace-pre-wrap text-slate-300"
               dangerouslySetInnerHTML={{
                 __html: highlightJsonText(editorText) || " ",
               }}
@@ -669,7 +669,7 @@ export default function JsonInput({
               spellCheck={false}
               placeholder='{"key":"value"}'
               className={cn(
-                "relative h-full w-full resize-y overflow-auto rounded border border-transparent bg-transparent px-4 py-3 font-mono text-sm leading-6 text-transparent caret-slate-100 outline-none placeholder:text-slate-500",
+                "relative h-full w-full resize-y overflow-auto rounded border border-transparent bg-transparent px-4 py-3 text-sm leading-6 text-transparent caret-slate-100 outline-none placeholder:text-slate-500",
                 editorClassName ?? "min-h-40"
               )}
             />
@@ -689,7 +689,7 @@ export default function JsonInput({
                       onClick={() => insertVariable(variable)}
                       className="w-full cursor-pointer rounded px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-700"
                     >
-                      <div className="font-mono font-medium text-green-400">
+                      <div className="font-medium text-green-400">
                         {variable.key}
                       </div>
                       <div className="text-xs text-slate-300">

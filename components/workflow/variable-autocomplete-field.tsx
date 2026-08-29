@@ -132,7 +132,7 @@ export function VariableAutocompleteField({
 
   const textMetricsClassName = cn(
     "text-sm md:text-xs/relaxed",
-    className?.includes("font-mono") && "font-mono",
+    className?.includes("") && "",
     className?.includes("text-xs") && "text-xs leading-relaxed"
   )
 
