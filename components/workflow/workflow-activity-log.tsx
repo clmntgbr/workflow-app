@@ -55,6 +55,8 @@ function getScrollHeight(element: HTMLElement): number {
 
 interface WorkflowActivityLogProps {
   workflowId: string
+  /** Fill parent height; scroll happens inside the terminal panel. */
+  fillHeight?: boolean
   scrollContainerRef?: React.RefObject<HTMLElement | null>
 }
 
@@ -62,21 +64,27 @@ function ActivityLogShell({
   children,
   className,
   scrollRef,
+  fillHeight = false,
   useExternalScroll = false,
 }: {
   children: React.ReactNode
   className?: string
   scrollRef?: React.RefObject<HTMLDivElement | null>
+  fillHeight?: boolean
   useExternalScroll?: boolean
 }) {
   return (
     <div
       className={cn(
         "overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-sm shadow-none",
+        fillHeight && "flex h-full min-h-0 flex-col",
+        !fillHeight &&
+          useExternalScroll &&
+          "flex min-h-full flex-col",
         className
       )}
     >
-      <div className="flex items-center border-b border-slate-700 bg-slate-800 px-4 py-2.5">
+      <div className="flex shrink-0 items-center border-b border-slate-700 bg-slate-800 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <div className="size-3 rounded-full bg-rose-500" />
           <div className="size-3 rounded-full bg-amber-500" />
@@ -84,20 +92,20 @@ function ActivityLogShell({
         </div>
       </div>
       <div
-        ref={useExternalScroll ? undefined : scrollRef}
+        ref={fillHeight || !useExternalScroll ? scrollRef : undefined}
         className={cn(
-          useExternalScroll
-            ? undefined
-            : "min-h-[min(70vh,720px)] overflow-auto"
+          fillHeight && "min-h-0 flex-1 overflow-auto",
+          !fillHeight &&
+            useExternalScroll &&
+            "min-h-0 flex-1",
+          !fillHeight &&
+            !useExternalScroll &&
+            "min-h-[min(70vh,720px)] overflow-auto"
         )}
-        style={
-          useExternalScroll
-            ? undefined
-            : {
-                scrollbarWidth: "thin",
-                scrollbarColor: "#334155 transparent",
-              }
-        }
+        style={{
+          scrollbarWidth: "thin",
+          scrollbarColor: "#334155 transparent",
+        }}
       >
         {children}
       </div>
@@ -107,21 +115,26 @@ function ActivityLogShell({
 
 export function WorkflowActivityLog({
   workflowId,
+  fillHeight = false,
   scrollContainerRef: externalScrollContainerRef,
 }: WorkflowActivityLogProps) {
   const requestIdRef = useRef(0)
   const loadingMoreRef = useRef(false)
   const hasScrolledRef = useRef(false)
   const innerScrollContainerRef = useRef<HTMLDivElement>(null)
-  const useExternalScroll = Boolean(externalScrollContainerRef)
+  const useExternalScroll =
+    !fillHeight && Boolean(externalScrollContainerRef)
 
   const getScrollContainer = useCallback((): HTMLElement | null => {
+    if (fillHeight) {
+      return innerScrollContainerRef.current
+    }
     return (
       externalScrollContainerRef?.current ??
       innerScrollContainerRef.current ??
       null
     )
-  }, [externalScrollContainerRef])
+  }, [externalScrollContainerRef, fillHeight])
 
   const [entries, setEntries] = useState<WorkflowActivityEntry[]>([])
   const [page, setPage] = useState(1)
@@ -260,10 +273,22 @@ export function WorkflowActivityLog({
     return () => scrollParent.removeEventListener("scroll", onScroll)
   }, [getScrollContainer, isLoading, loadNextPage, page, totalPages])
 
+  const rootClassName = fillHeight
+    ? "h-full min-h-0"
+    : useExternalScroll
+      ? "min-h-full"
+      : "pb-7"
+
+  const shellProps = {
+    fillHeight,
+    useExternalScroll,
+    scrollRef: innerScrollContainerRef,
+  }
+
   if (isLoading && entries.length === 0) {
     return (
-      <div className="pb-7">
-        <ActivityLogShell useExternalScroll={useExternalScroll}>
+      <div className={rootClassName}>
+        <ActivityLogShell {...shellProps}>
           <div className="space-y-2 px-6 py-3">
             {Array.from({ length: 8 }).map((_, index) => (
               <Skeleton
@@ -279,8 +304,8 @@ export function WorkflowActivityLog({
 
   if (hasError) {
     return (
-      <div className="pb-7">
-        <ActivityLogShell useExternalScroll={useExternalScroll}>
+      <div className={rootClassName}>
+        <ActivityLogShell {...shellProps}>
           <p className="px-4 py-8 text-center text-sm text-slate-400">
             Failed to load activity logs.
           </p>
@@ -291,9 +316,9 @@ export function WorkflowActivityLog({
 
   if (entries.length === 0) {
     return (
-      <div className="pb-7">
-        <ActivityLogShell useExternalScroll={useExternalScroll}>
-          <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
+      <div className={rootClassName}>
+        <ActivityLogShell {...shellProps}>
+          <div className="flex min-h-full flex-col items-center justify-center px-4 py-16 text-center">
             <ScrollTextIcon className="mb-3 size-8 text-slate-600" />
             <p className="text-sm text-slate-300">No activity yet</p>
             <p className="mt-1 text-xs text-slate-500">
@@ -306,11 +331,8 @@ export function WorkflowActivityLog({
   }
 
   return (
-    <div className="pb-7">
-      <ActivityLogShell
-        scrollRef={innerScrollContainerRef}
-        useExternalScroll={useExternalScroll}
-      >
+    <div className={rootClassName}>
+      <ActivityLogShell {...shellProps}>
         <ul>
           {entries.map((item) => (
             <li

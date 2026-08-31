@@ -25,6 +25,9 @@ import {
   WorkflowVariable,
   WorkflowVariableKind,
 } from "@/lib/workflow/variable/types"
+import { useQuota } from "@/lib/quota/context"
+import { useOptionalSubscription } from "@/lib/subscription/context"
+import { cn } from "@/lib/utils"
 import { Braces, ChevronDownIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 import { Badge } from "../ui/badge"
@@ -52,6 +55,31 @@ function formatVariableBadge(variable: WorkflowVariable): string {
   return variable.path ?? "extracted"
 }
 
+function VariableQuotaBadge({ used, max }: { used: number; max: number }) {
+  const safeUsed = Math.max(0, used)
+  const safeMax = Math.max(0, max)
+  const pct = safeMax > 0 ? Math.min(100, (safeUsed / safeMax) * 100) : 0
+  const isCritical = safeUsed >= safeMax || pct >= 95
+  const isWarning = !isCritical && pct >= 80
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold tabular-nums",
+        isCritical &&
+          "border-destructive/30 bg-destructive/10 text-destructive",
+        isWarning &&
+          "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+        !isWarning &&
+          !isCritical &&
+          "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+      )}
+    >
+      {safeUsed}/{safeMax}
+    </span>
+  )
+}
+
 export function WorkflowVariablesDrawer({
   workflowId,
   variables,
@@ -68,6 +96,14 @@ export function WorkflowVariablesDrawer({
   const [createKind, setCreateKind] =
     useState<WorkflowVariableKind>("extracted")
   const [stepSearch, setStepSearch] = useState("")
+
+  const { quota } = useQuota()
+  const subscriptionContext = useOptionalSubscription()
+  const maxVariables =
+    quota?.limits?.maxVariablesPerWorkflow ??
+    subscriptionContext?.subscription?.plan?.quota?.maxVariablesPerWorkflow ??
+    0
+  const isAtVariableLimit = maxVariables > 0 && variables.length >= maxVariables
 
   const httpSteps = steps.filter((step) => !isNonHttpStep(step))
 
@@ -141,11 +177,17 @@ export function WorkflowVariablesDrawer({
             <div className="shrink-0 border-b px-6 py-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 space-y-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Braces className="size-4 text-muted-foreground" />
                     <h2 className="text-base font-semibold">
                       Workflow Variables
                     </h2>
+                    {maxVariables > 0 ? (
+                      <VariableQuotaBadge
+                        used={variables.length}
+                        max={maxVariables}
+                      />
+                    ) : null}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Manage workflow variables
@@ -160,7 +202,8 @@ export function WorkflowVariablesDrawer({
                   <DropdownMenuTrigger asChild>
                     <Button
                       type="button"
-                      className="h-9 justify-between gap-2 bg-emerald-600 px-3 text-white hover:bg-emerald-700"
+                      disabled={isAtVariableLimit}
+                      className="h-9 justify-between gap-2 bg-emerald-600 px-3 text-white hover:bg-emerald-700 disabled:opacity-60"
                     >
                       <span className="flex min-w-0 items-center gap-2">
                         <PlusIcon className="size-4" />
