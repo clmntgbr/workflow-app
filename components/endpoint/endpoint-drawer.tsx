@@ -31,7 +31,15 @@ import {
   recordToKeyValuePairs,
   splitUrlAndQuery,
 } from "@/lib/endpoint/utils"
+import { useQuota } from "@/lib/quota/context"
+import { useOptionalSubscription } from "@/lib/subscription/context"
 import { cn } from "@/lib/utils"
+import {
+  clampStepTimeoutSeconds,
+  defaultStepTimeoutSeconds,
+  MIN_STEP_TIMEOUT_SECONDS,
+  resolveMaxStepTimeoutSeconds,
+} from "@/lib/workflow/step-timeout"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -65,8 +73,16 @@ const emptyFormValues: EndpointFormValues = {
   retryDelay: 10,
 }
 
-function getEndpointFormValues(endpoint?: Endpoint | null): EndpointFormValues {
-  if (!endpoint) return emptyFormValues
+function getEndpointFormValues(
+  endpoint?: Endpoint | null,
+  maxStepTimeoutSeconds?: number | null
+): EndpointFormValues {
+  if (!endpoint) {
+    return {
+      ...emptyFormValues,
+      timeout: defaultStepTimeoutSeconds(maxStepTimeoutSeconds),
+    }
+  }
 
   return {
     name: endpoint.name,
@@ -76,7 +92,10 @@ function getEndpointFormValues(endpoint?: Endpoint | null): EndpointFormValues {
     body: JSON.stringify(endpoint.body ?? {}, null, 2),
     headers: recordToKeyValuePairs(endpoint.headers),
     query: recordToKeyValuePairs(endpoint.query),
-    timeout: millisecondsToSeconds(endpoint.timeout),
+    timeout: clampStepTimeoutSeconds(
+      millisecondsToSeconds(endpoint.timeout),
+      maxStepTimeoutSeconds
+    ),
     retryOnFailure: endpoint.retryOnFailure,
     retryCount: endpoint.retryCount,
     retryDelay: millisecondsToSeconds(endpoint.retryDelay),
@@ -179,6 +198,12 @@ export function EndpointDrawer({
     removeEndpoint,
     setEditingEndpointId,
   } = useEndpoint()
+  const { quota } = useQuota()
+  const subscriptionContext = useOptionalSubscription()
+  const maxStepTimeoutSeconds = resolveMaxStepTimeoutSeconds(
+    quota?.limits?.maxStepTimeoutSeconds ??
+      subscriptionContext?.subscription?.plan?.quota?.maxStepTimeoutSeconds
+  )
   const isCreate = !endpoint
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
@@ -212,13 +237,13 @@ export function EndpointDrawer({
     if (!endpoint) {
       setEditingEndpointId(null)
       setDetailedEndpoint(null)
-      reset(emptyFormValues)
+      reset(getEndpointFormValues(null, maxStepTimeoutSeconds))
       return
     }
 
     setEditingEndpointId(endpoint.id)
     setDetailedEndpoint(endpoint)
-    reset(getEndpointFormValues(endpoint))
+    reset(getEndpointFormValues(endpoint, maxStepTimeoutSeconds))
 
     let cancelled = false
 
@@ -226,7 +251,7 @@ export function EndpointDrawer({
       .then((full) => {
         if (cancelled) return
         setDetailedEndpoint(full)
-        reset(getEndpointFormValues(full))
+        reset(getEndpointFormValues(full, maxStepTimeoutSeconds))
       })
       .catch(() => {})
 
@@ -235,24 +260,33 @@ export function EndpointDrawer({
     }
     // Intentionally keyed on endpoint.id so a list refetch does not reset the form.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, endpoint?.id, reset, setEditingEndpointId])
+  }, [isOpen, endpoint?.id, reset, setEditingEndpointId, maxStepTimeoutSeconds])
 
   const onClose = () => {
-    reset(getEndpointFormValues(detailedEndpoint ?? endpoint))
+    reset(
+      getEndpointFormValues(detailedEndpoint ?? endpoint, maxStepTimeoutSeconds)
+    )
     onOpenChange(false)
   }
 
   const onSubmit = async (data: EndpointFormValues) => {
     setIsSaving(true)
     try {
+      const timeout = clampStepTimeoutSeconds(
+        data.timeout,
+        maxStepTimeoutSeconds
+      )
       if (isCreate) {
-        const created = await createEndpoint(toCreateEndpointPayload(data))
+        const created = await createEndpoint(
+          toCreateEndpointPayload({ ...data, timeout })
+        )
         onSaved?.(created)
       } else if (endpoint && data.status) {
         const updated = await updateEndpoint(
           endpoint.id,
           toUpdateEndpointPayload({
             ...data,
+            timeout,
             status: data.status,
           })
         )
@@ -490,10 +524,18 @@ export function EndpointDrawer({
                             label="Timeout (s)"
                             hasError={!!errors.timeout}
                             errorMessage={errors.timeout?.message}
-                            description="Minimum 30 seconds"
+                            description={`Between ${MIN_STEP_TIMEOUT_SECONDS} and ${maxStepTimeoutSeconds} seconds`}
                             value={String(field.value ?? 0)}
                             onChange={(value) =>
                               field.onChange(Number.parseInt(value || "0", 10))
+                            }
+                            onBlur={() =>
+                              field.onChange(
+                                clampStepTimeoutSeconds(
+                                  field.value,
+                                  maxStepTimeoutSeconds
+                                )
+                              )
                             }
                           />
                         )}

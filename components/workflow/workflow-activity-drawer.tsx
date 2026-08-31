@@ -21,7 +21,7 @@ export function WorkflowActivityDrawer({
 }: WorkflowActivityDrawerProps) {
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right">
-      <DrawerContent className="flex h-full w-[40vw]! max-w-[40vw]! flex-col">
+      <DrawerContent className="flex h-full w-[60vw]! max-w-[60vw]! flex-col">
         <DrawerHeader className="sr-only">
           <DrawerTitle className="hidden">Activity</DrawerTitle>
         </DrawerHeader>

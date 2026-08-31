@@ -13,13 +13,7 @@ import {
 } from "@/components/ui/navigation-menu"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from "@clerk/nextjs"
+import { UserButton } from "@clerk/nextjs"
 import Link from "next/link"
 
 const components: { title: string; href: string; description: string }[] = [
@@ -64,73 +58,56 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b border-gray-200 bg-white px-4">
       <div className="z-10 flex min-w-0 items-center gap-3">
-        <SignedIn>
-          <SidebarTrigger />
-          <ProjectSwitcher />
-        </SignedIn>
+        <SidebarTrigger />
+        <ProjectSwitcher />
       </div>
 
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <SignedIn>
-          <div className="pointer-events-auto">
-            <NavigationMenu>
-              <NavigationMenuList>
-                <NavigationMenuItem>
-                  <Link href="/" className={navigationMenuTriggerStyle()}>
-                    Home
-                  </Link>
-                </NavigationMenuItem>
-                <NavigationMenuItem className="hidden md:flex">
-                  <NavigationMenuTrigger>Components</NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid w-[400px] gap-2 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                      {components.map((component) => (
-                        <ListItem
-                          key={component.title}
-                          title={component.title}
-                          href={component.href}
-                        >
-                          {component.description}
-                        </ListItem>
-                      ))}
-                    </ul>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-                <NavigationMenuItem>
-                  <Link
-                    href="/pricing"
-                    className={navigationMenuTriggerStyle()}
-                  >
-                    Pricing
-                  </Link>
-                </NavigationMenuItem>
-                <NavigationMenuItem>
-                  <button
-                    type="button"
-                    className={cn(navigationMenuTriggerStyle())}
-                    onClick={() => openSubscriptionDrawer()}
-                  >
-                    Subscription
-                  </button>
-                </NavigationMenuItem>
-              </NavigationMenuList>
-            </NavigationMenu>
-          </div>
-        </SignedIn>
+        <div className="pointer-events-auto">
+          <NavigationMenu>
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <Link href="/" className={navigationMenuTriggerStyle()}>
+                  Home
+                </Link>
+              </NavigationMenuItem>
+              <NavigationMenuItem className="hidden md:flex">
+                <NavigationMenuTrigger>Components</NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <ul className="grid w-[400px] gap-2 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                    {components.map((component) => (
+                      <ListItem
+                        key={component.title}
+                        title={component.title}
+                        href={component.href}
+                      >
+                        {component.description}
+                      </ListItem>
+                    ))}
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <Link href="/pricing" className={navigationMenuTriggerStyle()}>
+                  Pricing
+                </Link>
+              </NavigationMenuItem>
+              <NavigationMenuItem>
+                <button
+                  type="button"
+                  className={cn(navigationMenuTriggerStyle())}
+                  onClick={() => openSubscriptionDrawer()}
+                >
+                  Subscription
+                </button>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
+        </div>
       </div>
 
       <div className="z-10 flex items-center gap-2">
-        <SignedOut>
-          <SignInButton />
-          <SignUpButton>
-            <button className="h-10 cursor-pointer rounded-full bg-purple-700 px-4 text-sm font-medium text-white sm:h-12 sm:px-5 sm:text-base">
-              Sign Up
-            </button>
-          </SignUpButton>
-        </SignedOut>
-        <SignedIn>
-          <UserButton />
-        </SignedIn>
+        <UserButton />
       </div>
     </header>
   )

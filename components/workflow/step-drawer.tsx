@@ -17,8 +17,8 @@ import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { CanvasStep, isNonHttpStep } from "@/components/workflow/step-node"
 import { StepAssertionsSection } from "@/components/workflow/step-assertions-section"
+import { CanvasStep, isNonHttpStep } from "@/components/workflow/step-node"
 import { StepVariablesSection } from "@/components/workflow/step-variables-section"
 import { VariableAutocompleteField } from "@/components/workflow/variable-autocomplete-field"
 import { useEndpoint } from "@/lib/endpoint/context"
@@ -28,15 +28,22 @@ import {
   recordToKeyValuePairs,
   splitUrlAndQuery,
 } from "@/lib/endpoint/utils"
+import { useQuota } from "@/lib/quota/context"
+import { useOptionalSubscription } from "@/lib/subscription/context"
 import { cn } from "@/lib/utils"
+import { listStepAssertions } from "@/lib/workflow/assertion/api"
+import { Assertion } from "@/lib/workflow/assertion/types"
 import {
   stepFormSchema,
   StepFormValues,
   toUpdateWorkflowStepPayload,
 } from "@/lib/workflow/step-schema"
+import {
+  clampStepTimeoutSeconds,
+  MIN_STEP_TIMEOUT_SECONDS,
+  resolveMaxStepTimeoutSeconds,
+} from "@/lib/workflow/step-timeout"
 import { UpdateWorkflowStepInput } from "@/lib/workflow/types"
-import { listStepAssertions } from "@/lib/workflow/assertion/api"
-import { Assertion } from "@/lib/workflow/assertion/types"
 import { listAvailableVariables } from "@/lib/workflow/variable/api"
 import { WorkflowVariable } from "@/lib/workflow/variable/types"
 import { subscribeWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
@@ -199,6 +206,12 @@ export function StepDrawer({
   onRequestDeleteVariable,
 }: StepDrawerProps) {
   const { endpoints } = useEndpoint()
+  const { quota } = useQuota()
+  const subscriptionContext = useOptionalSubscription()
+  const maxStepTimeoutSeconds = resolveMaxStepTimeoutSeconds(
+    quota?.limits?.maxStepTimeoutSeconds ??
+      subscriptionContext?.subscription?.plan?.quota?.maxStepTimeoutSeconds
+  )
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [displayStep, setDisplayStep] = useState<CanvasStep | null>(step)
@@ -231,8 +244,14 @@ export function StepDrawer({
 
   useEffect(() => {
     if (!isOpen || !step || isNonHttpStep(step)) return
-    reset(getStepFormValues(step))
-  }, [isOpen, step, reset])
+    reset({
+      ...getStepFormValues(step),
+      timeout: clampStepTimeoutSeconds(
+        millisecondsToSeconds(step.timeout),
+        maxStepTimeoutSeconds
+      ),
+    })
+  }, [isOpen, step, reset, maxStepTimeoutSeconds])
 
   useEffect(() => {
     if (!isOpen) return
@@ -304,7 +323,12 @@ export function StepDrawer({
 
     setIsSaving(true)
     try {
-      await onSave(toUpdateWorkflowStepPayload(data))
+      await onSave(
+        toUpdateWorkflowStepPayload({
+          ...data,
+          timeout: clampStepTimeoutSeconds(data.timeout, maxStepTimeoutSeconds),
+        })
+      )
       onClose()
     } finally {
       setIsSaving(false)
@@ -558,10 +582,18 @@ export function StepDrawer({
                             label="Timeout (s)"
                             hasError={!!errors.timeout}
                             errorMessage={errors.timeout?.message}
-                            description="Minimum 30 seconds"
+                            description={`Between ${MIN_STEP_TIMEOUT_SECONDS} and ${maxStepTimeoutSeconds} seconds`}
                             value={String(field.value ?? 0)}
                             onChange={(value) =>
                               field.onChange(Number.parseInt(value || "0", 10))
+                            }
+                            onBlur={() =>
+                              field.onChange(
+                                clampStepTimeoutSeconds(
+                                  field.value,
+                                  maxStepTimeoutSeconds
+                                )
+                              )
                             }
                           />
                         )}

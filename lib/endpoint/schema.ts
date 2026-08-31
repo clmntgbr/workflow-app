@@ -1,3 +1,7 @@
+import {
+  MAX_STEP_TIMEOUT_SECONDS,
+  MIN_STEP_TIMEOUT_SECONDS,
+} from "@/lib/workflow/step-timeout"
 import * as z from "zod"
 import { OPENAPI_MAX_FILE_BYTES } from "./openapi"
 import {
@@ -37,8 +41,14 @@ const endpointBaseSchema = z.object({
   timeout: z
     .number()
     .int()
-    .min(30, "Timeout must be at least 30 seconds")
-    .max(300, "Timeout must be at most 300 seconds"),
+    .min(
+      MIN_STEP_TIMEOUT_SECONDS,
+      `Timeout must be at least ${MIN_STEP_TIMEOUT_SECONDS} seconds`
+    )
+    .max(
+      MAX_STEP_TIMEOUT_SECONDS,
+      `Timeout must be at most ${MAX_STEP_TIMEOUT_SECONDS} seconds`
+    ),
   retryOnFailure: z.boolean(),
   retryCount: z.number().int().min(0).max(10),
   retryDelay: z

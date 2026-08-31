@@ -3,6 +3,7 @@ import {
   keyValuePairsToRecord,
   secondsToMilliseconds,
 } from "@/lib/endpoint/utils"
+import { MIN_STEP_TIMEOUT_SECONDS, MAX_STEP_TIMEOUT_SECONDS } from "@/lib/workflow/step-timeout"
 import { UpdateWorkflowStepInput } from "@/lib/workflow/types"
 import * as z from "zod"
 
@@ -46,8 +47,14 @@ export const stepFormSchema = z.object({
   timeout: z
     .number()
     .int()
-    .min(30, "Timeout must be at least 30 seconds")
-    .max(300, "Timeout must be at most 300 seconds"),
+    .min(
+      MIN_STEP_TIMEOUT_SECONDS,
+      `Timeout must be at least ${MIN_STEP_TIMEOUT_SECONDS} seconds`
+    )
+    .max(
+      MAX_STEP_TIMEOUT_SECONDS,
+      `Timeout must be at most ${MAX_STEP_TIMEOUT_SECONDS} seconds`
+    ),
   retryOnFailure: z.boolean(),
   retryCount: z.number().int().min(0).max(10),
   retryDelay: z

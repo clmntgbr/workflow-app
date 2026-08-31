@@ -25,7 +25,15 @@ import {
   importEndpointSchema,
   toImportEndpointsPayload,
 } from "@/lib/endpoint/schema"
+import { useQuota } from "@/lib/quota/context"
+import { useOptionalSubscription } from "@/lib/subscription/context"
 import { cn } from "@/lib/utils"
+import {
+  clampStepTimeoutSeconds,
+  defaultStepTimeoutSeconds,
+  MIN_STEP_TIMEOUT_SECONDS,
+  resolveMaxStepTimeoutSeconds,
+} from "@/lib/workflow/step-timeout"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, UploadIcon } from "lucide-react"
 import { useState } from "react"
@@ -58,6 +66,12 @@ export function EndpointImportDrawer({
   const [isFileValid, setIsFileValid] = useState<boolean | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [wasOpen, setWasOpen] = useState(false)
+  const { quota } = useQuota()
+  const subscriptionContext = useOptionalSubscription()
+  const maxStepTimeoutSeconds = resolveMaxStepTimeoutSeconds(
+    quota?.limits?.maxStepTimeoutSeconds ??
+      subscriptionContext?.subscription?.plan?.quota?.maxStepTimeoutSeconds
+  )
 
   const {
     handleSubmit,
@@ -67,7 +81,10 @@ export function EndpointImportDrawer({
     formState: { errors },
   } = useForm<ImportEndpointFormValues>({
     resolver: zodResolver(importEndpointSchema),
-    defaultValues: emptyFormValues,
+    defaultValues: {
+      ...emptyFormValues,
+      timeout: defaultStepTimeoutSeconds(maxStepTimeoutSeconds),
+    },
   })
 
   const retryOnFailure = useWatch({
@@ -77,7 +94,10 @@ export function EndpointImportDrawer({
 
   if (isOpen && !wasOpen) {
     setWasOpen(true)
-    reset(emptyFormValues)
+    reset({
+      ...emptyFormValues,
+      timeout: defaultStepTimeoutSeconds(maxStepTimeoutSeconds),
+    })
     setIsFileValid(null)
     setFileInputKey((key) => key + 1)
     setIsSaving(false)
@@ -86,7 +106,10 @@ export function EndpointImportDrawer({
   }
 
   const onClose = () => {
-    reset(emptyFormValues)
+    reset({
+      ...emptyFormValues,
+      timeout: defaultStepTimeoutSeconds(maxStepTimeoutSeconds),
+    })
     setIsFileValid(null)
     setFileInputKey((key) => key + 1)
     onOpenChange(false)
@@ -126,7 +149,13 @@ export function EndpointImportDrawer({
     setIsSaving(true)
 
     try {
-      await importEndpoints(data.file, toImportEndpointsPayload(data))
+      await importEndpoints(
+        data.file,
+        toImportEndpointsPayload({
+          ...data,
+          timeout: clampStepTimeoutSeconds(data.timeout, maxStepTimeoutSeconds),
+        })
+      )
       onClose()
     } catch (error) {
       toast.error(
@@ -356,10 +385,18 @@ export function EndpointImportDrawer({
                           label="Timeout (s)"
                           hasError={!!errors.timeout}
                           errorMessage={errors.timeout?.message}
-                          description="Minimum 30 seconds"
+                          description={`Between ${MIN_STEP_TIMEOUT_SECONDS} and ${maxStepTimeoutSeconds} seconds`}
                           value={String(field.value ?? 0)}
                           onChange={(value) =>
                             field.onChange(Number.parseInt(value || "0", 10))
+                          }
+                          onBlur={() =>
+                            field.onChange(
+                              clampStepTimeoutSeconds(
+                                field.value,
+                                maxStepTimeoutSeconds
+                              )
+                            )
                           }
                         />
                       )}
@@ -438,25 +475,25 @@ export function EndpointImportDrawer({
 
             <div className="shrink-0 border-t bg-background px-6 py-4">
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full sm:w-auto"
-                    onClick={onClose}
-                    disabled={isSaving}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="w-full sm:w-auto"
-                    disabled={isSaving}
-                  >
-                    Import
-                    {isSaving ? (
-                      <Loader2Icon className="ml-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                  </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={onClose}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="w-full sm:w-auto"
+                  disabled={isSaving}
+                >
+                  Import
+                  {isSaving ? (
+                    <Loader2Icon className="ml-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                </Button>
               </div>
             </div>
           </form>
