@@ -19,7 +19,7 @@ import {
   TimerIcon,
   Trash2,
 } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 export type CanvasStep = {
   id: string
@@ -161,14 +161,21 @@ function StepNodeActions({
   step,
   onEdit,
   onDelete,
+  onBeforeDelete,
   isDelay,
 }: {
   step: CanvasStep
   onEdit: (step: CanvasStep) => void
   onDelete: (stepId: string) => Promise<void>
+  onBeforeDelete?: () => void
   isDelay: boolean
 }) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+
+  const handleConfirmDelete = async () => {
+    onBeforeDelete?.()
+    await onDelete(step.id)
+  }
 
   return (
     <>
@@ -210,7 +217,7 @@ function StepNodeActions({
         onOpenChange={setIsDeleteOpen}
         title="Delete step"
         description="This action cannot be undone. The step and all its connections will be permanently removed from the workflow."
-        onConfirm={() => onDelete(step.id)}
+        onConfirm={handleConfirmDelete}
         onDeleted={() => undefined}
         errorMessage="Failed to delete step. Please try again."
       />
@@ -222,6 +229,19 @@ export function StepNode({ data }: NodeProps) {
   const { step, onEdit, onDelete } = data as unknown as StepNodeData
   const delayStep = isDelayStep(step)
   const conditionStep = isConditionStep(step)
+  const ignoreEditRef = useRef(false)
+
+  const handleNodeClick = () => {
+    if (ignoreEditRef.current) return
+    onEdit(step)
+  }
+
+  const handleBeforeDelete = () => {
+    ignoreEditRef.current = true
+    window.setTimeout(() => {
+      ignoreEditRef.current = false
+    }, 400)
+  }
 
   return (
     <>
@@ -238,7 +258,7 @@ export function StepNode({ data }: NodeProps) {
           conditionStep && "w-60 border-emerald-200/80 px-3 py-2",
           !delayStep && !conditionStep && "w-80 px-3 py-2"
         )}
-        onClick={() => onEdit(step)}
+        onClick={handleNodeClick}
       >
         {delayStep ? (
           <DelayStepNodeContent step={step} />
@@ -257,6 +277,7 @@ export function StepNode({ data }: NodeProps) {
           step={step}
           onEdit={onEdit}
           onDelete={onDelete}
+          onBeforeDelete={handleBeforeDelete}
           isDelay={delayStep}
         />
       </div>

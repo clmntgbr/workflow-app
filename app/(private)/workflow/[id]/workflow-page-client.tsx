@@ -1070,6 +1070,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const handleDeleteStep = async (stepId: string) => {
     const previousSteps = steps
     const previousConnections = connections
+    const deletedStep = steps.find((step) => step.id === stepId)
     const wasEditing = selectedStep?.id === stepId
     const wasEditingCondition = selectedConditionStep?.id === stepId
     const wasEditingDelay = selectedDelayStep?.id === stepId
@@ -1086,11 +1087,11 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       setIsStepDrawerOpen(false)
       setSelectedStep(null)
     }
-    if (wasEditingCondition) {
+    if (wasEditingCondition || deletedStep?.type === "condition") {
       setIsConditionDrawerOpen(false)
       setSelectedConditionStep(null)
     }
-    if (wasEditingDelay) {
+    if (wasEditingDelay || deletedStep?.type === "delay") {
       setIsDelayModalOpen(false)
       setSelectedDelayStep(null)
     }
