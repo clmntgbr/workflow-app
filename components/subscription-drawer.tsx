@@ -25,6 +25,7 @@ import {
   ArrowUpRight,
   Building2,
   CalendarClock,
+  CheckCircle2,
   CreditCard,
   GitBranch,
   Globe,
@@ -340,6 +341,22 @@ function SubscriptionContent({
               limits?.maxVariablesPerWorkflow ??
                 planQuota.maxVariablesPerWorkflow
             )}
+          />
+          <DetailRow
+            icon={CheckCircle2}
+            label="Assertions per workflow"
+            value={formatCount(
+              limits?.maxAssertionsPerWorkflow ??
+                planQuota.maxAssertionsPerWorkflow
+            )}
+          />
+          <DetailRow
+            icon={CalendarClock}
+            label="Min schedule interval"
+            value={`${
+              limits?.minScheduleIntervalMinutes ??
+              planQuota.minScheduleIntervalMinutes
+            } min`}
           />
           <DetailRow
             icon={History}

@@ -7,6 +7,7 @@ export interface Quota {
   maxStepsPerWorkflow: number
   maxEndpoints: number
   maxVariablesPerWorkflow: number
+  maxAssertionsPerWorkflow: number
   maxWorkflowRunsPerMonth: number
   maxConcurrentRuns: number
   minScheduleIntervalMinutes: number

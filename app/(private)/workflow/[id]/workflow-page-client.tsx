@@ -12,9 +12,8 @@ import {
   isConditionStep,
   isDelayStep,
 } from "@/components/workflow/step-node"
-import { SwitchProjectDialog } from "@/components/workflow/switch-project-dialog"
 import { VariableUsageDrawer } from "@/components/workflow/variable-usage-drawer"
-import { WorkflowActivityLog } from "@/components/workflow/workflow-activity-log"
+import { WorkflowActivityDrawer } from "@/components/workflow/workflow-activity-drawer"
 import { WorkflowAnalytics } from "@/components/workflow/workflow-analytics"
 import {
   EndpointDragPayload,
@@ -53,7 +52,6 @@ import {
   updateStepPosition,
   updateWorkflowStep,
   WorkflowNotFoundError,
-  WorkflowWrongProjectError,
 } from "@/lib/workflow/api"
 import { subscribeWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
 import { subscribeWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
@@ -358,27 +356,22 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const Tabs = [
     { label: "Overview", key: "overview", Icon: LayersIcon },
     { label: "Analytics", key: "analytics", Icon: HistoryIcon },
-    { label: "Activity", key: "activity", Icon: ScrollTextIcon },
   ] as const
 
   type Tab = (typeof Tabs)[number]["key"]
   const [tab, setTab] = useState<Tab>("overview")
 
   const router = useRouter()
-  const { activeProject, activateProject, projects } = useProject()
+  const { activeProject } = useProject()
   const { endpoints } = useEndpoint()
 
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isNotFound, setIsNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [wrongProject, setWrongProject] = useState<{
-    projectId: string
-    projectName: string
-  } | null>(null)
-  const [isSwitchProjectOpen, setIsSwitchProjectOpen] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isVariablesDrawerOpen, setIsVariablesDrawerOpen] = useState(false)
+  const [isActivityDrawerOpen, setIsActivityDrawerOpen] = useState(false)
   const [selectedStep, setSelectedStep] = useState<CanvasStep | null>(null)
   const [isStepDrawerOpen, setIsStepDrawerOpen] = useState(false)
   const [selectedDelayStep, setSelectedDelayStep] = useState<CanvasStep | null>(
@@ -461,8 +454,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     const load = async () => {
       setIsLoading(true)
       setIsNotFound(false)
-      setWrongProject(null)
-      setIsSwitchProjectOpen(false)
       setError(null)
 
       try {
@@ -470,17 +461,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         if (!cancelled) setWorkflow(next)
       } catch (err) {
         if (cancelled) return
-
-        if (err instanceof WorkflowWrongProjectError) {
-          setWrongProject({
-            projectId: err.projectId,
-            projectName: err.projectName,
-          })
-          setIsSwitchProjectOpen(true)
-          setWorkflow(null)
-          setIsLoading(false)
-          return
-        }
 
         if (err instanceof WorkflowNotFoundError) {
           setIsNotFound(true)
@@ -647,50 +627,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         <Skeleton className="h-4 w-96" />
         <Skeleton className="h-40 w-full" />
       </div>
-    )
-  }
-
-  if (wrongProject) {
-    const knownProject = projects.find(
-      (project) => project.id === wrongProject.projectId
-    )
-
-    return (
-      <>
-        <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-6 text-center">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">Wrong project</h1>
-            <p className="max-w-md text-sm text-muted-foreground">
-              This workflow belongs to{" "}
-              <span className="font-medium text-foreground">
-                {knownProject?.name ?? wrongProject.projectName}
-              </span>
-              . Switch project to open it.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button variant="outline" asChild>
-              <Link href="/">
-                <ArrowLeftIcon className="size-4" />
-                Back to workflows
-              </Link>
-            </Button>
-            <Button onClick={() => setIsSwitchProjectOpen(true)}>
-              Switch project
-            </Button>
-          </div>
-        </div>
-        <SwitchProjectDialog
-          open={isSwitchProjectOpen}
-          onOpenChange={setIsSwitchProjectOpen}
-          projectName={knownProject?.name ?? wrongProject.projectName}
-          onConfirm={async () => {
-            await activateProject(wrongProject.projectId)
-            setWrongProject(null)
-            setIsSwitchProjectOpen(false)
-          }}
-        />
-      </>
     )
   }
 
@@ -1163,6 +1099,26 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
               </div>
             )
           })}
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsActivityDrawerOpen(true)}
+              aria-label="Activity"
+              title="Activity"
+              className={
+                "flex h-8 cursor-pointer items-center gap-1.5 rounded-full transition-all duration-200" +
+                (isActivityDrawerOpen
+                  ? "shadow-crisp border border-accent/35 bg-gray-100 px-3.5 font-medium"
+                  : "bg-white px-3 text-muted-foreground hover:bg-white hover:text-foreground")
+              }
+            >
+              <ScrollTextIcon className="size-3.75 shrink-0" />
+              {isActivityDrawerOpen && (
+                <span className="text-[13px]">Activity</span>
+              )}
+            </Button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -1276,19 +1232,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         </div>
       </div>
 
-      <div
-        className={cn(
-          "min-h-0 flex-1 overflow-auto bg-[#f8f9fb]",
-          tab !== "activity" && "hidden"
-        )}
-      >
-        <div className="container mx-auto px-4">
-          <div className="mx-auto flex flex-col gap-6 py-6">
-            <WorkflowActivityLog workflowId={workflowId} />
-          </div>
-        </div>
-      </div>
-
       <DelayStepModal
         open={isDelayModalOpen}
         onOpenChange={(open) => {
@@ -1348,6 +1291,12 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           setVariableToDelete(variable)
           setIsDeleteVariableOpen(true)
         }}
+      />
+
+      <WorkflowActivityDrawer
+        workflowId={workflowId}
+        isOpen={isActivityDrawerOpen}
+        onOpenChange={setIsActivityDrawerOpen}
       />
 
       <DeleteConfirmDialog

@@ -15,6 +15,7 @@ export interface QuotaCounter {
 export interface QuotaLimits {
   maxStepsPerWorkflow: number
   maxVariablesPerWorkflow: number
+  maxAssertionsPerWorkflow: number
   minScheduleIntervalMinutes: number
   runHistoryRetentionDays: number
   maxStepTimeoutSeconds: number

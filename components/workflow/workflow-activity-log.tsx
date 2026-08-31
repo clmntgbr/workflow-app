@@ -33,19 +33,6 @@ function prependNewEntries(
   return [...newOnes, ...current]
 }
 
-function getScrollParent(element: HTMLElement | null): HTMLElement {
-  if (!element) return document.documentElement
-
-  let parent = element.parentElement
-  while (parent) {
-    const { overflowY } = getComputedStyle(parent)
-    if (overflowY === "auto" || overflowY === "scroll") return parent
-    parent = parent.parentElement
-  }
-
-  return document.documentElement
-}
-
 function getScrollTop(element: HTMLElement): number {
   return element === document.documentElement
     ? window.scrollY
@@ -68,16 +55,19 @@ function getScrollHeight(element: HTMLElement): number {
 
 interface WorkflowActivityLogProps {
   workflowId: string
+  scrollContainerRef?: React.RefObject<HTMLElement | null>
 }
 
 function ActivityLogShell({
   children,
   className,
   scrollRef,
+  useExternalScroll = false,
 }: {
   children: React.ReactNode
   className?: string
   scrollRef?: React.RefObject<HTMLDivElement | null>
+  useExternalScroll?: boolean
 }) {
   return (
     <div
@@ -94,12 +84,20 @@ function ActivityLogShell({
         </div>
       </div>
       <div
-        ref={scrollRef}
-        className="min-h-[min(70vh,720px)] overflow-auto"
-        style={{
-          scrollbarWidth: "thin",
-          scrollbarColor: "#334155 transparent",
-        }}
+        ref={useExternalScroll ? undefined : scrollRef}
+        className={cn(
+          useExternalScroll
+            ? undefined
+            : "min-h-[min(70vh,720px)] overflow-auto"
+        )}
+        style={
+          useExternalScroll
+            ? undefined
+            : {
+                scrollbarWidth: "thin",
+                scrollbarColor: "#334155 transparent",
+              }
+        }
       >
         {children}
       </div>
@@ -107,11 +105,23 @@ function ActivityLogShell({
   )
 }
 
-export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
+export function WorkflowActivityLog({
+  workflowId,
+  scrollContainerRef: externalScrollContainerRef,
+}: WorkflowActivityLogProps) {
   const requestIdRef = useRef(0)
   const loadingMoreRef = useRef(false)
-  const bottomSentinelRef = useRef<HTMLDivElement>(null)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const hasScrolledRef = useRef(false)
+  const innerScrollContainerRef = useRef<HTMLDivElement>(null)
+  const useExternalScroll = Boolean(externalScrollContainerRef)
+
+  const getScrollContainer = useCallback((): HTMLElement | null => {
+    return (
+      externalScrollContainerRef?.current ??
+      innerScrollContainerRef.current ??
+      null
+    )
+  }, [externalScrollContainerRef])
 
   const [entries, setEntries] = useState<WorkflowActivityEntry[]>([])
   const [page, setPage] = useState(1)
@@ -138,23 +148,26 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
         if (requestId !== requestIdRef.current) return
 
         if (options?.silent) {
-          const scrollParent =
-            scrollContainerRef.current ??
-            getScrollParent(bottomSentinelRef.current)
-          const previousScrollHeight = getScrollHeight(scrollParent)
-          const previousScrollTop = getScrollTop(scrollParent)
+          const scrollParent = getScrollContainer()
+          if (!scrollParent) {
+            setEntries((current) => prependNewEntries(current, result.members))
+          } else {
+            const previousScrollHeight = getScrollHeight(scrollParent)
+            const previousScrollTop = getScrollTop(scrollParent)
 
-          setEntries((current) => prependNewEntries(current, result.members))
+            setEntries((current) => prependNewEntries(current, result.members))
 
-          requestAnimationFrame(() => {
-            const nextScrollHeight = getScrollHeight(scrollParent)
-            setScrollTop(
-              scrollParent,
-              previousScrollTop + (nextScrollHeight - previousScrollHeight)
-            )
-          })
+            requestAnimationFrame(() => {
+              const nextScrollHeight = getScrollHeight(scrollParent)
+              setScrollTop(
+                scrollParent,
+                previousScrollTop + (nextScrollHeight - previousScrollHeight)
+              )
+            })
+          }
         } else {
           setEntries(result.members)
+          hasScrolledRef.current = false
         }
 
         setPage(result.page)
@@ -173,11 +186,57 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
         }
       }
     },
-    [workflowId]
+    [workflowId, getScrollContainer]
   )
+
+  const pageRef = useRef(page)
+  const totalPagesRef = useRef(totalPages)
+  pageRef.current = page
+  totalPagesRef.current = totalPages
+
+  const loadNextPage = useCallback(() => {
+    if (loadingMoreRef.current) return
+    if (pageRef.current >= totalPagesRef.current) return
+
+    const scrollParent = getScrollContainer()
+    if (!scrollParent || !hasScrolledRef.current) return
+
+    const { scrollTop, scrollHeight, clientHeight } = scrollParent
+    if (scrollTop + clientHeight < scrollHeight - 80) return
+
+    const nextPage = pageRef.current + 1
+    const requestId = ++requestIdRef.current
+    loadingMoreRef.current = true
+    setIsLoadingMore(true)
+
+    void listWorkflowActivity(workflowId, {
+      page: nextPage,
+      limit: PAGE_LIMIT,
+    })
+      .then((result) => {
+        if (requestId !== requestIdRef.current) return
+
+        setEntries((current) => mergeOlderEntries(current, result.members))
+        setPage(result.page)
+        setTotalPages(result.totalPages)
+      })
+      .catch(() => {
+        // keep current list
+      })
+      .finally(() => {
+        if (requestId === requestIdRef.current) {
+          loadingMoreRef.current = false
+          setIsLoadingMore(false)
+        }
+      })
+  }, [workflowId, getScrollContainer])
 
   useEffect(() => {
     void load()
+
+    return () => {
+      requestIdRef.current += 1
+    }
   }, [load])
 
   useEffect(() => {
@@ -187,61 +246,24 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
   }, [workflowId, load])
 
   useEffect(() => {
-    if (page >= totalPages || totalPages === 0) return
+    if (isLoading || totalPages === 0 || page >= totalPages) return
 
-    const sentinel = bottomSentinelRef.current
-    if (!sentinel) return
+    const scrollParent = getScrollContainer()
+    if (!scrollParent) return
 
-    const scrollParent = scrollContainerRef.current ?? getScrollParent(sentinel)
+    const onScroll = () => {
+      hasScrolledRef.current = true
+      loadNextPage()
+    }
 
-    const observer = new IntersectionObserver(
-      (observerEntries) => {
-        const entry = observerEntries[0]
-        if (!entry?.isIntersecting) return
-        if (loadingMoreRef.current) return
-        if (page >= totalPages) return
-
-        const nextPage = page + 1
-        const requestId = ++requestIdRef.current
-        loadingMoreRef.current = true
-        setIsLoadingMore(true)
-
-        void listWorkflowActivity(workflowId, {
-          page: nextPage,
-          limit: PAGE_LIMIT,
-        })
-          .then((result) => {
-            if (requestId !== requestIdRef.current) return
-
-            setEntries((current) => mergeOlderEntries(current, result.members))
-            setPage(result.page)
-            setTotalPages(result.totalPages)
-          })
-          .catch(() => {
-            // keep current list
-          })
-          .finally(() => {
-            if (requestId === requestIdRef.current) {
-              loadingMoreRef.current = false
-              setIsLoadingMore(false)
-            }
-          })
-      },
-      {
-        root: scrollParent === document.documentElement ? null : scrollParent,
-        rootMargin: "80px",
-        threshold: 0,
-      }
-    )
-
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [workflowId, page, totalPages])
+    scrollParent.addEventListener("scroll", onScroll, { passive: true })
+    return () => scrollParent.removeEventListener("scroll", onScroll)
+  }, [getScrollContainer, isLoading, loadNextPage, page, totalPages])
 
   if (isLoading && entries.length === 0) {
     return (
       <div className="pb-7">
-        <ActivityLogShell>
+        <ActivityLogShell useExternalScroll={useExternalScroll}>
           <div className="space-y-2 px-6 py-3">
             {Array.from({ length: 8 }).map((_, index) => (
               <Skeleton
@@ -258,7 +280,7 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
   if (hasError) {
     return (
       <div className="pb-7">
-        <ActivityLogShell>
+        <ActivityLogShell useExternalScroll={useExternalScroll}>
           <p className="px-4 py-8 text-center text-sm text-slate-400">
             Failed to load activity logs.
           </p>
@@ -270,7 +292,7 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
   if (entries.length === 0) {
     return (
       <div className="pb-7">
-        <ActivityLogShell>
+        <ActivityLogShell useExternalScroll={useExternalScroll}>
           <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
             <ScrollTextIcon className="mb-3 size-8 text-slate-600" />
             <p className="text-sm text-slate-300">No activity yet</p>
@@ -285,7 +307,10 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
 
   return (
     <div className="pb-7">
-      <ActivityLogShell scrollRef={scrollContainerRef}>
+      <ActivityLogShell
+        scrollRef={innerScrollContainerRef}
+        useExternalScroll={useExternalScroll}
+      >
         <ul>
           {entries.map((item) => (
             <li
@@ -321,8 +346,6 @@ export function WorkflowActivityLog({ workflowId }: WorkflowActivityLogProps) {
             Loading older events…
           </div>
         ) : null}
-
-        <div ref={bottomSentinelRef} className="h-px shrink-0" aria-hidden />
       </ActivityLogShell>
     </div>
   )

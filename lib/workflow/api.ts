@@ -85,16 +85,11 @@ export class WorkflowNotFoundError extends Error {
   }
 }
 
-export class WorkflowWrongProjectError extends Error {
-  projectId: string
-  projectName: string
-
-  constructor(projectId: string, projectName: string) {
-    super("Workflow belongs to another project")
-    this.name = "WorkflowWrongProjectError"
-    this.projectId = projectId
-    this.projectName = projectName
-  }
+function readWorkflowErrorCode(payload: unknown): string | undefined {
+  const record = asRecord(payload)
+  const nested = asRecord(record?.data)
+  const code = nested?.code ?? record?.code
+  return typeof code === "string" ? code : undefined
 }
 
 export const getWorkflow = async (id: string): Promise<Workflow> => {
@@ -106,28 +101,14 @@ export const getWorkflow = async (id: string): Promise<Workflow> => {
     throw new WorkflowNotFoundError()
   }
 
-  if (response.status === 409) {
-    const data = (await response.json().catch(() => null)) as {
-      code?: string
-      projectId?: string
-      projectName?: string
-    } | null
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null)
+    const code = readWorkflowErrorCode(payload)
 
-    const isWrongProject =
-      data?.code === "WRONG_PROJECT" || data?.code === "WRONG_ORGANIZATION"
-
-    if (
-      isWrongProject &&
-      typeof data.projectId === "string" &&
-      typeof data.projectName === "string"
-    ) {
-      throw new WorkflowWrongProjectError(data.projectId, data.projectName)
+    if (code === "WRONG_PROJECT" || code === "WRONG_ORGANIZATION") {
+      throw new WorkflowNotFoundError()
     }
 
-    throw new Error("Failed to get workflow")
-  }
-
-  if (!response.ok) {
     throw new Error("Failed to get workflow")
   }
 

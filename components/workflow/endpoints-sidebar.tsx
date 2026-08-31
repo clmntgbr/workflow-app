@@ -20,6 +20,8 @@ import { EndpointDragPayload } from "@/components/workflow/workflow-canvas"
 import { listEndpoints } from "@/lib/endpoint/api"
 import { subscribeEndpointsRefetch } from "@/lib/endpoint/endpoint-realtime"
 import { Endpoint, EndpointMethod } from "@/lib/endpoint/types"
+import { useQuota } from "@/lib/quota/context"
+import { useOptionalSubscription } from "@/lib/subscription/context"
 import { cn } from "@/lib/utils"
 import { PlusIcon, Loader2Icon, SearchIcon, UploadIcon } from "lucide-react"
 import { useEffect, useRef, useState, type DragEvent } from "react"
@@ -66,6 +68,13 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [selectedEndpoint, setSelectedEndpoint] = useState<Endpoint | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
+
+  const { quota } = useQuota()
+  const subscriptionContext = useOptionalSubscription()
+  const allowsOpenApiImport =
+    quota?.limits?.allowsOpenApiImport ??
+    subscriptionContext?.subscription?.plan?.quota?.allowsOpenApiImport ??
+    false
 
   const handleSelectEndpoint = (endpoint: Endpoint) => {
     onSelectEndpoint?.(endpoint)
@@ -207,16 +216,18 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-8"
-              onClick={() => setIsImportOpen(true)}
-            >
-              <UploadIcon className="size-3.5" />
-              Import
-            </Button>
+            {allowsOpenApiImport ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8"
+                onClick={() => setIsImportOpen(true)}
+              >
+                <UploadIcon className="size-3.5" />
+                Import
+              </Button>
+            ) : null}
 
             <Button
               type="button"
@@ -337,10 +348,12 @@ export function EndpointsSidebar({ onSelectEndpoint }: EndpointsSidebarProps) {
           if (!open) setSelectedEndpoint(null)
         }}
       />
-      <EndpointImportDrawer
-        isOpen={isImportOpen}
-        onOpenChange={setIsImportOpen}
-      />
+      {allowsOpenApiImport ? (
+        <EndpointImportDrawer
+          isOpen={isImportOpen}
+          onOpenChange={setIsImportOpen}
+        />
+      ) : null}
     </Sidebar>
   )
 }
