@@ -17,6 +17,8 @@ import { Field } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { HeaderAutocompleteField } from "@/components/workflow/header-autocomplete-field"
+import { HeaderValueWithVariablesField } from "@/components/workflow/header-value-with-variables-field"
 import { StepAssertionsSection } from "@/components/workflow/step-assertions-section"
 import { CanvasStep, isNonHttpStep } from "@/components/workflow/step-node"
 import { StepVariablesSection } from "@/components/workflow/step-variables-section"
@@ -109,12 +111,14 @@ function KeyValueEditor({
   pairs,
   onChange,
   variables = [],
+  enableHeaderSuggestions = false,
 }: {
   label: string
   description: string
   pairs: KeyValuePair[]
   onChange: (pairs: KeyValuePair[]) => void
   variables?: WorkflowVariable[]
+  enableHeaderSuggestions?: boolean
 }) {
   const updatePair = (
     index: number,
@@ -145,20 +149,41 @@ function KeyValueEditor({
       <div className="space-y-2">
         {pairs.map((pair, index) => (
           <div key={`${label}-${index}`} className="flex items-center gap-2">
-            <Input
-              value={pair.key}
-              placeholder="Key"
-              onChange={(event) => updatePair(index, "key", event.target.value)}
-              className="h-9 min-w-0 flex-1"
-            />
-            <VariableAutocompleteField
-              value={pair.value}
-              onChange={(value) => updatePair(index, "value", value)}
-              variables={variables}
-              placeholder="Value"
-              className="h-9"
-              wrapperClassName="min-w-0 flex-1"
-            />
+            {enableHeaderSuggestions ? (
+              <HeaderAutocompleteField
+                value={pair.key}
+                onChange={(value) => updatePair(index, "key", value)}
+                placeholder="Key"
+                className="h-9"
+                wrapperClassName="min-w-0 flex-1"
+              />
+            ) : (
+              <Input
+                value={pair.key}
+                placeholder="Key"
+                onChange={(event) => updatePair(index, "key", event.target.value)}
+                className="h-9 min-w-0 flex-1"
+              />
+            )}
+            {enableHeaderSuggestions ? (
+              <HeaderValueWithVariablesField
+                value={pair.value}
+                onChange={(value) => updatePair(index, "value", value)}
+                variables={variables}
+                placeholder="Value"
+                className="h-9"
+                wrapperClassName="min-w-0 flex-1"
+              />
+            ) : (
+              <VariableAutocompleteField
+                value={pair.value}
+                onChange={(value) => updatePair(index, "value", value)}
+                variables={variables}
+                placeholder="Value"
+                className="h-9"
+                wrapperClassName="min-w-0 flex-1"
+              />
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -433,6 +458,8 @@ export function StepDrawer({
                                   options={[...HTTP_METHODS]}
                                   groupLabel="HTTP method"
                                   placeholder="Method"
+                                  modal={false}
+                                  contentClassName="z-[100]"
                                 />
                                 {errors.method?.message ? (
                                   <p className="text-xs text-destructive">
@@ -507,6 +534,7 @@ export function StepDrawer({
                           pairs={field.value ?? []}
                           onChange={field.onChange}
                           variables={availableVariables}
+                          enableHeaderSuggestions
                         />
                       )}
                     />

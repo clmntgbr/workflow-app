@@ -326,6 +326,7 @@ export function EndpointImportDrawer({
                         description="Optional HTTP headers"
                         pairs={field.value ?? []}
                         onChange={field.onChange}
+                        enableHeaderSuggestions
                       />
                     )}
                   />
