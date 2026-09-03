@@ -34,6 +34,13 @@ function highlightVariablesHtml(text: string): string {
   )
 }
 
+function highlightVariables(text: string): string {
+  return text.replace(
+    /\{\{([a-zA-Z0-9_-]+)\}\}/g,
+    '<span class="text-green-600 dark:text-green-600 font-bold">{{$1}}</span>'
+  )
+}
+
 export function HeaderValueWithVariablesField({
   value,
   onChange,
@@ -98,7 +105,7 @@ export function HeaderValueWithVariablesField({
         search: search || undefined,
         limit: 50,
       })
-      setHeaderSuggestions(response.items)
+      setHeaderSuggestions(response.members)
     } catch (error) {
       console.error("Failed to fetch header value suggestions:", error)
       setHeaderSuggestions([])
@@ -324,9 +331,12 @@ export function HeaderValueWithVariablesField({
                   <FileText className="size-3.5 shrink-0" />
                 </span>
                 <span className="min-w-0 flex-1 text-left">
-                  <span className="block truncate font-bold">
-                    {suggestion.value}
-                  </span>
+                  <span
+                    className="block truncate font-bold"
+                    dangerouslySetInnerHTML={{
+                      __html: highlightVariables(suggestion.value),
+                    }}
+                  />
                   <span className="block truncate text-muted-foreground">
                     {suggestion.count} {suggestion.count === 1 ? "use" : "uses"}
                   </span>

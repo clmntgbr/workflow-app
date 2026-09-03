@@ -52,15 +52,7 @@ export async function suggestHeaders(
     )
   }
 
-  const result = await response.json()
-
-  // Handle API response structure: { success: true, data: {...} }
-  if (result.success && result.data) {
-    return result.data
-  }
-
-  // Fallback if structure is different
-  return result
+  return response.json()
 }
 
 export async function suggestHeaderValues(
@@ -79,13 +71,5 @@ export async function suggestHeaderValues(
     )
   }
 
-  const result = await response.json()
-
-  // Handle API response structure: { success: true, data: {...} }
-  if (result.success && result.data) {
-    return result.data
-  }
-
-  // Fallback if structure is different
-  return result
+  return response.json()
 }

@@ -1,5 +1,6 @@
 export interface HeaderSuggestion {
   key: string
+  value: string
   count: number
 }
 
@@ -10,13 +11,15 @@ export interface HeaderSuggestQuery {
 }
 
 export interface HeaderSuggestResponse {
-  items: HeaderSuggestion[]
+  members: HeaderSuggestion[]
   page: number
   limit: number
   total: number
+  totalPages: number
 }
 
 export interface HeaderValueSuggestion {
+  key: string
   value: string
   count: number
 }
@@ -28,8 +31,9 @@ export interface HeaderValueSuggestQuery {
 }
 
 export interface HeaderValueSuggestResponse {
-  items: HeaderValueSuggestion[]
+  members: HeaderValueSuggestion[]
   page: number
   limit: number
   total: number
+  totalPages: number
 }

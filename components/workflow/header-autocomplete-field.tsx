@@ -7,6 +7,13 @@ import { HeaderSuggestion } from "@/lib/header/types"
 import { Hash } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
+function highlightVariables(text: string): string {
+  return text.replace(
+    /\{\{([a-zA-Z0-9_-]+)\}\}/g,
+    '<span class="text-green-600 dark:text-green-600 font-bold">{{$1}}</span>'
+  )
+}
+
 interface HeaderAutocompleteFieldProps {
   value: string
   onChange: (value: string) => void
@@ -46,7 +53,7 @@ export function HeaderAutocompleteField({
         search: search || undefined,
         limit: 50,
       })
-      setSuggestions(response.items)
+      setSuggestions(response.members)
     } catch (error) {
       console.error("Failed to fetch header suggestions:", error)
       setSuggestions([])
@@ -165,7 +172,13 @@ export function HeaderAutocompleteField({
                   <span className="block truncate font-bold">
                     {suggestion.key}
                   </span>
-                  <span className="block truncate text-muted-foreground">
+                  <span
+                    className="block truncate text-muted-foreground"
+                    dangerouslySetInnerHTML={{
+                      __html: highlightVariables(suggestion.value),
+                    }}
+                  />
+                  <span className="block truncate text-xs text-muted-foreground">
                     {suggestion.count} {suggestion.count === 1 ? "use" : "uses"}
                   </span>
                 </span>
