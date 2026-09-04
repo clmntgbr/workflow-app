@@ -9,6 +9,7 @@ import {
 
 export interface ProjectContextType extends ProjectState {
   fetchProjects: () => Promise<void>
+  fetchMoreProjects: () => Promise<void>
   createProject: (input: CreateProjectInput) => Promise<void>
   updateProject: (id: string, input: UpdateProjectInput) => Promise<void>
   activateProject: (id: string) => Promise<void>

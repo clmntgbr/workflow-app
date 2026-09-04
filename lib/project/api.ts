@@ -1,4 +1,21 @@
+import { Paginate, PaginateQuery } from "@/lib/paginate"
 import { CreateProjectInput, Project, UpdateProjectInput } from "./types"
+
+export const PROJECTS_PAGE_LIMIT = 20
+
+function buildQueryString(query?: PaginateQuery): string {
+  if (!query) return ""
+
+  const params = new URLSearchParams()
+  if (query.page != null) params.set("page", String(query.page))
+  if (query.limit != null) params.set("limit", String(query.limit))
+  if (query.sortBy) params.set("sortBy", query.sortBy)
+  if (query.orderBy) params.set("orderBy", query.orderBy)
+  if (query.search) params.set("search", query.search)
+
+  const serialized = params.toString()
+  return serialized ? `?${serialized}` : ""
+}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
@@ -21,8 +38,44 @@ async function readProjectErrorMessage(
   return fallback
 }
 
-export const listProjects = async (): Promise<Project[]> => {
-  const response = await fetch("/api/projects", {
+function parseProjectList(payload: unknown): Paginate<Project> {
+  if (Array.isArray(payload)) {
+    return {
+      members: payload as Project[],
+      page: 1,
+      limit: payload.length,
+      totalPages: 1,
+      total: payload.length,
+    }
+  }
+
+  const record = asRecord(payload)
+  const nested = asRecord(record?.data)
+  const source =
+    nested && Array.isArray(nested.members) ? nested : record
+
+  const members = Array.isArray(source?.members)
+    ? (source.members as Project[])
+    : []
+
+  const pickNumber = (key: string, fallback: number) => {
+    const value = source?.[key]
+    return typeof value === "number" && Number.isFinite(value) ? value : fallback
+  }
+
+  return {
+    members,
+    page: pickNumber("page", 1),
+    limit: pickNumber("limit", PROJECTS_PAGE_LIMIT),
+    totalPages: pickNumber("totalPages", 0),
+    total: pickNumber("total", members.length),
+  }
+}
+
+export const listProjects = async (
+  query?: PaginateQuery
+): Promise<Paginate<Project>> => {
+  const response = await fetch(`/api/projects${buildQueryString(query)}`, {
     method: "GET",
   })
 
@@ -30,7 +83,7 @@ export const listProjects = async (): Promise<Project[]> => {
     throw new Error("Failed to list projects")
   }
 
-  return response.json()
+  return parseProjectList(await response.json())
 }
 
 export const createProject = async (

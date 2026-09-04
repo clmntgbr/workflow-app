@@ -1,11 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useReducer } from "react"
+import { useUser } from "@/lib/user/context"
+import { useCallback, useEffect, useReducer, useRef } from "react"
 import {
   activateProject as activateProjectRequest,
   createProject as createProjectRequest,
   deleteProject as deleteProjectRequest,
+  getProject,
   listProjects,
+  PROJECTS_PAGE_LIMIT,
   removeProjectMember,
   updateProject as updateProjectRequest,
 } from "./api"
@@ -20,17 +23,30 @@ import {
 const initialState: ProjectState = {
   projects: [],
   activeProject: null,
-  isLoading: false,
+  page: 1,
+  totalPages: 0,
+  total: 0,
+  isLoading: true,
+  isLoadingMore: false,
   error: null,
 }
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(projectReducer, initialState)
+  const { user } = useUser()
+  const stateRef = useRef(state)
+  const loadingMoreRef = useRef(false)
+
+  stateRef.current = state
 
   const fetchProjects = useCallback(async () => {
     try {
+      loadingMoreRef.current = false
       dispatch({ type: "GET_PROJECTS_LOADING", payload: true })
-      const projects = await listProjects()
+      const projects = await listProjects({
+        page: 1,
+        limit: PROJECTS_PAGE_LIMIT,
+      })
       dispatch({ type: "GET_PROJECTS", payload: projects })
     } catch {
       dispatch({
@@ -39,6 +55,28 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       })
     } finally {
       dispatch({ type: "GET_PROJECTS_LOADING", payload: false })
+    }
+  }, [])
+
+  const fetchMoreProjects = useCallback(async () => {
+    const current = stateRef.current
+    if (loadingMoreRef.current || current.isLoading) return
+    if (current.page >= current.totalPages) return
+
+    const nextPage = current.page + 1
+    loadingMoreRef.current = true
+    dispatch({ type: "GET_PROJECTS_LOADING_MORE", payload: true })
+
+    try {
+      const projects = await listProjects({
+        page: nextPage,
+        limit: PROJECTS_PAGE_LIMIT,
+      })
+      dispatch({ type: "APPEND_PROJECTS", payload: projects })
+    } catch {
+      dispatch({ type: "GET_PROJECTS_LOADING_MORE", payload: false })
+    } finally {
+      loadingMoreRef.current = false
     }
   }, [])
 
@@ -54,26 +92,45 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     []
   )
 
-  const activateProject = useCallback(
-    async (id: string) => {
-      const previousProjects = state.projects
-      const next = state.projects.find((project) => project.id === id)
-      if (!next || next.id === state.activeProject?.id) return
+  const activateProject = useCallback(async (id: string) => {
+    const current = stateRef.current
+    if (id === current.activeProject?.id) return
 
-      dispatch({ type: "SET_ACTIVE_PROJECT", payload: next })
+    const next =
+      current.projects.find((project) => project.id === id) ??
+      (current.activeProject?.id === id
+        ? current.activeProject
+        : await getProject(id))
 
-      try {
-        await activateProjectRequest(id)
-      } catch (error) {
-        dispatch({
-          type: "GET_PROJECTS",
-          payload: previousProjects,
-        })
-        throw error
+    if (!next) return
+
+    const previousProjects = current.projects
+    const previousActive = current.activeProject
+    const previousPage = current.page
+    const previousTotalPages = current.totalPages
+    const previousTotal = current.total
+
+    dispatch({ type: "SET_ACTIVE_PROJECT", payload: next })
+
+    try {
+      await activateProjectRequest(id)
+    } catch (error) {
+      dispatch({
+        type: "GET_PROJECTS",
+        payload: {
+          members: previousProjects,
+          page: previousPage,
+          limit: PROJECTS_PAGE_LIMIT,
+          totalPages: previousTotalPages,
+          total: previousTotal,
+        },
+      })
+      if (previousActive) {
+        dispatch({ type: "SET_ACTIVE_PROJECT", payload: previousActive })
       }
-    },
-    [state.activeProject?.id, state.projects]
-  )
+      throw error
+    }
+  }, [])
 
   const deleteProject = useCallback(async (id: string) => {
     await deleteProjectRequest(id)
@@ -90,11 +147,45 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     fetchProjects()
   }, [fetchProjects])
 
+  useEffect(() => {
+    if (state.isLoading) return
+
+    const id = user?.activeProjectId
+    if (!id || state.activeProject?.id === id) return
+
+    const listed = state.projects.find((project) => project.id === id)
+    if (listed) {
+      dispatch({ type: "SET_ACTIVE_PROJECT", payload: listed })
+      return
+    }
+
+    let cancelled = false
+    void getProject(id)
+      .then((project) => {
+        if (!cancelled) {
+          dispatch({ type: "SET_ACTIVE_PROJECT", payload: project })
+        }
+      })
+      .catch(() => {
+        // Active project may not be on the current page.
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    state.activeProject?.id,
+    state.isLoading,
+    state.projects,
+    user?.activeProjectId,
+  ])
+
   return (
     <ProjectContext.Provider
       value={{
         ...state,
         fetchProjects,
+        fetchMoreProjects,
         createProject,
         updateProject,
         activateProject,

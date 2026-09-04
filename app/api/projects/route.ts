@@ -1,16 +1,21 @@
 import { createAuthHeaders } from "@/lib/create-auth-headers"
 import { requireAuth } from "@/lib/require-auth"
 import { proxyBackendError } from "@/lib/proxy-backend-error"
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuth()
     if ("error" in auth) return auth.error
 
-    const response = await fetch(`${BACKEND_API_URL}/api/projects`, {
+    const query = request.nextUrl.searchParams.toString()
+    const url = query
+      ? `${BACKEND_API_URL}/api/projects?${query}`
+      : `${BACKEND_API_URL}/api/projects`
+
+    const response = await fetch(url, {
       method: "GET",
       headers: createAuthHeaders(auth.token),
     })
