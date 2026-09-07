@@ -39,6 +39,7 @@ export function QuotaMeter({
   const pct = available ? Math.min(100, (safeUsed / safeMax) * 100) : 0
   const isWarning = pct >= 80
   const isCritical = pct >= 95
+  const isReached = available && safeUsed >= safeMax
   const filled = available ? Math.round((pct / 100) * SEGMENTS) : 0
 
   return (
@@ -114,7 +115,7 @@ export function QuotaMeter({
       >
         {!available
           ? lockedHint
-          : isCritical
+          : isReached
             ? "Quota reached the limit"
             : `${formatCount(left)} ${unit} left · ${Math.round(pct)}% used`}
       </p>
