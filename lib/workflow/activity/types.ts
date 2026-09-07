@@ -143,6 +143,16 @@ export function normalizeWorkflowActivityEntry(
   }
 }
 
+const ACTIVITY_ACTION_LABELS: Record<string, string> = {
+  "workflow.schedule_cleared": "Schedule cleared",
+  "workflow.activated": "Activated",
+  "workflow.deactivated": "Deactivated",
+}
+
+export function formatActivityAction(action: string): string {
+  return ACTIVITY_ACTION_LABELS[action] ?? action
+}
+
 export function formatActivityTime(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return "—"

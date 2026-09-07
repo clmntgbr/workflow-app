@@ -197,7 +197,7 @@ export function WorkflowVariablesDrawer({
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {filterIncompleteSecrets
-                      ? "Secret values were not transferred with the import. Fill them in before activating this workflow."
+                      ? "Secret values were not transferred with the import. Fill them in before running this workflow."
                       : "Manage workflow variables"}
                   </p>
                 </div>

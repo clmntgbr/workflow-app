@@ -21,7 +21,7 @@ import {
 } from "react-hook-form"
 
 const SCHEDULE_TYPES: { value: ScheduleType; label: string }[] = [
-  { value: "none", label: "Manual only" },
+  { value: "none", label: "None" },
   { value: "recurring", label: "Recurring" },
   { value: "once", label: "Once" },
 ]

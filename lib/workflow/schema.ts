@@ -318,14 +318,13 @@ export function toCreateWorkflowPayload(
 
 export function toUpdateWorkflowPayload(
   values: WorkflowFormValues,
-  current: { status: string; concurrency: number }
+  current: { concurrency: number }
 ): UpdateWorkflowInput {
   const schedule = toSchedulePayload(values)
 
   return {
     name: values.name,
     description: values.description ?? "",
-    status: current.status,
     scheduleType: schedule.scheduleType,
     scheduleIntervalValue: schedule.scheduleIntervalValue,
     scheduleIntervalUnit: schedule.scheduleIntervalUnit,
@@ -336,5 +335,58 @@ export function toUpdateWorkflowPayload(
     notifyOnSuccess: values.notifyOnSuccess,
     notifyOnFailure: values.notifyOnFailure,
     notifyOnCancel: values.notifyOnCancel,
+  }
+}
+
+export type WorkflowScheduleResume = {
+  scheduleType: "recurring" | "once"
+  scheduleIntervalValue: number
+  scheduleIntervalUnit: ScheduleUnit | ""
+  scheduleAt: string | null
+  scheduleTimezone: string
+}
+
+export function getWorkflowScheduleResume(
+  workflow: Workflow
+): WorkflowScheduleResume | null {
+  if (workflow.scheduleType !== "recurring" && workflow.scheduleType !== "once") {
+    return null
+  }
+
+  return {
+    scheduleType: workflow.scheduleType,
+    scheduleIntervalValue: workflow.scheduleIntervalValue || 1,
+    scheduleIntervalUnit:
+      workflow.scheduleType === "recurring"
+        ? ((workflow.scheduleIntervalUnit as ScheduleUnit) || "hour")
+        : "",
+    scheduleAt: workflow.scheduleAt,
+    scheduleTimezone: workflow.scheduleTimezone || "UTC",
+  }
+}
+
+export function toUpdateWorkflowPayloadFromWorkflow(
+  workflow: Workflow,
+  schedule: {
+    scheduleType: ScheduleType
+    scheduleIntervalValue: number
+    scheduleIntervalUnit: ScheduleUnit | ""
+    scheduleAt: string | null
+    scheduleTimezone?: string
+  }
+): UpdateWorkflowInput {
+  return {
+    name: workflow.name,
+    description: workflow.description ?? "",
+    scheduleType: schedule.scheduleType,
+    scheduleIntervalValue: schedule.scheduleIntervalValue,
+    scheduleIntervalUnit: schedule.scheduleIntervalUnit,
+    scheduleAt: schedule.scheduleAt,
+    scheduleTimezone: schedule.scheduleTimezone || workflow.scheduleTimezone || "UTC",
+    concurrency: workflow.concurrency,
+    notificationsEnabled: workflow.notificationsEnabled,
+    notifyOnSuccess: workflow.notifyOnSuccess,
+    notifyOnFailure: workflow.notifyOnFailure,
+    notifyOnCancel: workflow.notifyOnCancel,
   }
 }

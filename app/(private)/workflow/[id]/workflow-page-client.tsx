@@ -36,10 +36,8 @@ import {
 import { subscribeWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
 import { parseRunStatus, WorkflowRun } from "@/lib/workflow-run/types"
 import {
-  activateWorkflow,
   createWorkflowConnection,
   createWorkflowStep,
-  deactivateWorkflow,
   deleteWorkflowConnection,
   deleteWorkflowStep,
   downloadWorkflowExport,
@@ -52,23 +50,30 @@ import {
   updateConditionWorkflowStep,
   updateDelayWorkflowStep,
   updateStepPosition,
+  updateWorkflow,
   updateWorkflowStep,
   WorkflowNotFoundError,
 } from "@/lib/workflow/api"
-import { subscribeWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
-import { subscribeWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
 import {
   DEFAULT_CONDITION_EXPRESSION,
   parseConditionBranch,
 } from "@/lib/workflow/condition"
+import { subscribeWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
 import { DEFAULT_DELAY_DURATION_SECONDS } from "@/lib/workflow/delay"
+import {
+  getWorkflowScheduleResume,
+  toUpdateWorkflowPayloadFromWorkflow,
+  WorkflowScheduleResume,
+} from "@/lib/workflow/schema"
+import { subscribeWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
 import { inferStepType } from "@/lib/workflow/step-validation"
 import {
+  ConditionBranch,
   UpdateWorkflowStepInput,
   Workflow,
   WorkflowConnection,
-  ConditionBranch,
 } from "@/lib/workflow/types"
+import { isWorkflowDeleted, isWorkflowPaused } from "@/lib/workflow/utils"
 import {
   deleteWorkflowVariable,
   listWorkflowVariables,
@@ -96,7 +101,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 interface WorkflowPageClientProps {
@@ -223,9 +228,7 @@ function mapItemToCanvasStep(
 
   const descriptionValue = record.description
   const description =
-    typeof descriptionValue === "string"
-      ? descriptionValue
-      : null
+    typeof descriptionValue === "string" ? descriptionValue : null
 
   if (stepType === "delay") {
     return {
@@ -234,7 +237,8 @@ function mapItemToCanvasStep(
       ...(indexRaw ? { index: indexRaw } : {}),
       name: stepName ?? "Delay",
       description,
-      delayDurationSeconds: delayDurationSeconds > 0 ? delayDurationSeconds : null,
+      delayDurationSeconds:
+        delayDurationSeconds > 0 ? delayDurationSeconds : null,
       expression: null,
       method: "",
       path: "",
@@ -361,7 +365,8 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [isUsageDrawerOpen, setIsUsageDrawerOpen] = useState(false)
   const [usageSteps, setUsageSteps] = useState<VariableUsageStep[]>([])
   const [activeTab, setActiveTab] = useState<WorkflowPageTab>("canvas")
-  const [isTogglingStatus, setIsTogglingStatus] = useState(false)
+  const [isTogglingSchedule, setIsTogglingSchedule] = useState(false)
+  const resumeScheduleRef = useRef<WorkflowScheduleResume | null>(null)
   const [activeRun, setActiveRun] = useState<WorkflowRun | null>(null)
   const [isRunActionLoading, setIsRunActionLoading] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -509,7 +514,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     if (params.get("imported") !== "1") return
 
     toast.success(
-      "Workflow imported successfully. It is inactive by default — activate it once you have verified it."
+      "Workflow imported successfully. It is active — review it and fill in any secret variables before running it."
     )
     window.history.replaceState({}, "", `/workflow/${workflowId}`)
   }, [workflowId])
@@ -533,8 +538,20 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     })
   }, [workflowId, refreshActiveRun])
 
+  useEffect(() => {
+    if (!workflow) return
+    const resume = getWorkflowScheduleResume(workflow)
+    if (resume) resumeScheduleRef.current = resume
+  }, [workflow])
+
   const handleStartRun = async () => {
-    if (isRunActionLoading || activeRun) return
+    if (
+      isRunActionLoading ||
+      activeRun ||
+      isWorkflowDeleted(workflow?.status ?? "")
+    ) {
+      return
+    }
 
     setIsRunActionLoading(true)
     try {
@@ -598,26 +615,57 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     }
   }
 
-  const handleStatusToggle = async (nextActive: boolean) => {
-    if (!workflow || isTogglingStatus) return
+  const handleScheduleToggle = async () => {
+    if (!workflow || isTogglingSchedule || isWorkflowDeleted(workflow.status)) {
+      return
+    }
 
+    const paused = isWorkflowPaused(workflow)
     const previous = workflow
-    setIsTogglingStatus(true)
+    const resume = resumeScheduleRef.current
+
+    if (paused && !resume) {
+      setIsDrawerOpen(true)
+      return
+    }
+
+    const nextSchedule = paused
+      ? resume!
+      : {
+          scheduleType: "none" as const,
+          scheduleIntervalValue: 0,
+          scheduleIntervalUnit: "" as const,
+          scheduleAt: null,
+          scheduleTimezone: workflow.scheduleTimezone || "UTC",
+        }
+
+    if (!paused) {
+      const snapshot = getWorkflowScheduleResume(workflow)
+      if (snapshot) resumeScheduleRef.current = snapshot
+    }
+
+    setIsTogglingSchedule(true)
     setWorkflow({
       ...workflow,
-      status: nextActive ? "active" : "inactive",
-      ...(nextActive ? {} : { nextRunAt: null }),
+      scheduleType: nextSchedule.scheduleType,
+      scheduleIntervalValue: nextSchedule.scheduleIntervalValue,
+      scheduleIntervalUnit: nextSchedule.scheduleIntervalUnit,
+      scheduleAt: nextSchedule.scheduleAt,
+      nextRunAt: paused ? workflow.nextRunAt : null,
     })
 
     try {
-      const updated = nextActive
-        ? await activateWorkflow(workflowId)
-        : await deactivateWorkflow(workflowId)
-      setWorkflow(updated)
+      await updateWorkflow(
+        workflowId,
+        toUpdateWorkflowPayloadFromWorkflow(workflow, nextSchedule)
+      )
     } catch {
       setWorkflow(previous)
+      toast.error(
+        paused ? "Failed to resume schedule" : "Failed to pause schedule"
+      )
     } finally {
-      setIsTogglingStatus(false)
+      setIsTogglingSchedule(false)
     }
   }
 
@@ -874,7 +922,10 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     description: string
     expression: string
   }) => {
-    if (!selectedConditionStep || selectedConditionStep.id.startsWith("temp-")) {
+    if (
+      !selectedConditionStep ||
+      selectedConditionStep.id.startsWith("temp-")
+    ) {
       throw new Error("Condition step is not ready to save")
     }
 
@@ -1124,7 +1175,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {workflow.status === "active" ? (
+          {!isWorkflowDeleted(workflow.status) ? (
             <Button
               type="button"
               size="lg"
@@ -1148,31 +1199,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
               {activeRun ? "Stop" : "Start"}
             </Button>
           ) : null}
-          <Button
-            size="lg"
-            onClick={() => handleStatusToggle(workflow.status !== "active")}
-            className={cn(
-              "group cursor-pointer gap-2.5 px-3.5 transition-all duration-300 ease-out active:translate-y-0 active:scale-[0.98]",
-              workflow.status === "active"
-                ? "border-green-700/25 bg-green-700/10 text-green-700 hover:border-green-700/45 hover:bg-green-700/20"
-                : "border-red-700/25 bg-red-700/10 text-red-700 hover:border-red-700/45 hover:bg-red-700/20"
-            )}
-          >
-            <span className="relative flex size-2">
-              {workflow.status === "active" && (
-                <span className="absolute inset-0 animate-ping rounded-full bg-green-500 opacity-60" />
-              )}
-              <span
-                className={cn(
-                  "relative size-2 rounded-full transition-colors duration-300",
-                  workflow.status === "active" ? "bg-green-500" : "bg-red-500"
-                )}
-              />
-            </span>
-            <span className="text-xs font-medium">
-              {workflow.status === "active" ? "Active" : "Inactive"}
-            </span>
-          </Button>
           <Button
             variant="outline"
             size="icon-lg"
@@ -1215,7 +1241,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
             <p>
               This workflow contains {incompleteSecretCount} secret variable
               {incompleteSecretCount === 1 ? "" : "s"}. Their values were not
-              transferred — fill them in before activating this workflow.
+              transferred — fill them in before running this workflow.
             </p>
             <Button
               type="button"

@@ -1,6 +1,6 @@
 import { initPaginate, Paginate } from "@/lib/paginate"
 
-export type WorkflowStatus = "active" | "inactive" | "deleted" | "canceled"
+export type WorkflowStatus = "active" | "deleted"
 
 export type ScheduleType = "none" | "recurring" | "once"
 
@@ -51,7 +51,6 @@ export interface CreateWorkflowInput {
 export interface UpdateWorkflowInput {
   name: string
   description?: string
-  status: string
   scheduleType: ScheduleType
   scheduleIntervalValue: number
   scheduleIntervalUnit: ScheduleUnit | ""

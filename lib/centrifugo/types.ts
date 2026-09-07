@@ -41,6 +41,9 @@ export interface UserStreamEvent {
   stepRunId?: string
   name?: string
   status?: string
+  scheduleType?: string
+  /** On `workflow.updated`: `schedule_cleared` after pause, a once run, or monthly run quota. */
+  updateReason?: string
 }
 
 const RESOURCES = new Set<string>([

@@ -198,7 +198,7 @@ export function WorkflowImportDrawer({
                   <h2 className="font-semibold">Workflow export</h2>
                   <p className="text-sm text-muted-foreground">
                     Upload a workflow export JSON file. The imported workflow is
-                    created inactive so you can review it first.
+                    created active; its schedule comes from the file.
                   </p>
                 </div>
                 <div className="md:col-span-2">

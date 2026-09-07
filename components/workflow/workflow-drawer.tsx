@@ -110,7 +110,6 @@ export function WorkflowDrawer({
         const updated = await updateWorkflow(
           activeWorkflow.id,
           toUpdateWorkflowPayload(data, {
-            status: activeWorkflow.status,
             concurrency: activeWorkflow.concurrency,
           })
         )

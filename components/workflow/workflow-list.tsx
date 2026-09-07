@@ -9,6 +9,10 @@ import { useQuota } from "@/lib/quota/context"
 import { useOptionalSubscription } from "@/lib/subscription/context"
 import { useWorkflow } from "@/lib/workflow/context"
 import { Workflow } from "@/lib/workflow/types"
+import {
+  getWorkflowDisplayLabel,
+  getWorkflowDisplayStatus,
+} from "@/lib/workflow/utils"
 import { PlusIcon, SettingsIcon, UploadIcon } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
@@ -106,7 +110,7 @@ export function WorkflowList() {
                   </p>
                 </div>
                 <span className="shrink-0 rounded-md border px-2 py-0.5 text-xs capitalize text-muted-foreground">
-                  {workflow.status}
+                  {getWorkflowDisplayLabel(getWorkflowDisplayStatus(workflow))}
                 </span>
               </Link>
               <div className="flex items-center border-s px-2">

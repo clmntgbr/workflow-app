@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { subscribeWorkflowActivityRefetch } from "@/lib/workflow/activity/activity-realtime"
 import { listWorkflowActivity } from "@/lib/workflow/activity/api"
 import {
+  formatActivityAction,
   formatActivityTime,
   getActivityLevelClassDark,
   WorkflowActivityEntry,
@@ -352,7 +353,7 @@ export function WorkflowActivityLog({
                   {item.level}
                 </span>
                 <span className="w-56 shrink-0 truncate text-slate-400">
-                  {item.action}
+                  {formatActivityAction(item.action)}
                 </span>
                 <span className="min-w-0 flex-1 wrap-break-word text-slate-100">
                   {item.message}
