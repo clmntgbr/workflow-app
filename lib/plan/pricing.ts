@@ -124,6 +124,7 @@ export function getQuotaFeatures(quota: Quota): string[] {
     `Request body up to ${formatKb(quota.maxRequestBodySizeKb)}`,
     `Response body up to ${formatKb(quota.maxResponseBodySizeKb)}`,
     quota.allowsOpenApiImport ? "OpenAPI import" : "Manual endpoints only",
+    quota.allowsWorkflowImport ? "Workflow import" : "No workflow import",
     quota.allowsInsights ? "Workflow insights" : "Basic analytics",
     quota.allowsDataExport ? "Data export" : "No data export",
   ]

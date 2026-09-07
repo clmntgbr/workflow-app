@@ -10,10 +10,12 @@ import {
 import { Field } from "@/components/ui/field"
 import { Separator } from "@/components/ui/separator"
 import { WorkflowFormFields } from "@/components/workflow/workflow-form-fields"
+import { openSubscriptionDrawer } from "@/components/subscription-drawer-host"
 import { cn } from "@/lib/utils"
 import {
   importWorkflow,
   readWorkflowExportFile,
+  WorkflowImportError,
   workflowImportErrorMessage,
 } from "@/lib/workflow/api"
 import {
@@ -143,6 +145,9 @@ export function WorkflowImportDrawer({
     } catch (err) {
       const message = workflowImportErrorMessage(err)
       toast.error(message)
+      if (err instanceof WorkflowImportError && err.kind === "not_allowed") {
+        openSubscriptionDrawer()
+      }
     } finally {
       setIsSaving(false)
     }

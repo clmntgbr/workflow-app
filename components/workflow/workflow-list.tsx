@@ -5,6 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
 import { WorkflowImportDrawer } from "@/components/workflow/workflow-import-drawer"
 import { useProject } from "@/lib/project/context"
+import { useQuota } from "@/lib/quota/context"
+import { useOptionalSubscription } from "@/lib/subscription/context"
 import { useWorkflow } from "@/lib/workflow/context"
 import { Workflow } from "@/lib/workflow/types"
 import { PlusIcon, SettingsIcon, UploadIcon } from "lucide-react"
@@ -14,6 +16,12 @@ import { useState } from "react"
 export function WorkflowList() {
   const { activeProject } = useProject()
   const { workflows, isLoading } = useWorkflow()
+  const { quota } = useQuota()
+  const subscriptionContext = useOptionalSubscription()
+  const allowsWorkflowImport =
+    quota?.limits?.allowsWorkflowImport ??
+    subscriptionContext?.subscription?.plan?.quota?.allowsWorkflowImport ??
+    false
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(
     null
   )
@@ -56,14 +64,16 @@ export function WorkflowList() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setIsImportOpen(true)}
-          >
-            <UploadIcon className="size-4" />
-            Import workflow
-          </Button>
+          {allowsWorkflowImport ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsImportOpen(true)}
+            >
+              <UploadIcon className="size-4" />
+              Import workflow
+            </Button>
+          ) : null}
           <Button onClick={openCreate}>
             <PlusIcon className="size-4" />
             New workflow
@@ -115,10 +125,12 @@ export function WorkflowList() {
         </ul>
       )}
 
-      <WorkflowImportDrawer
-        isOpen={isImportOpen}
-        onOpenChange={setIsImportOpen}
-      />
+      {allowsWorkflowImport ? (
+        <WorkflowImportDrawer
+          isOpen={isImportOpen}
+          onOpenChange={setIsImportOpen}
+        />
+      ) : null}
       <WorkflowDrawer
         workflow={drawerMode === "edit" ? selectedWorkflow : null}
         isOpen={isDrawerOpen}

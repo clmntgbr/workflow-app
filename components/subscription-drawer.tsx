@@ -419,6 +419,15 @@ function SubscriptionContent({
           />
           <DetailRow
             icon={Sparkles}
+            label="Workflow import"
+            value={
+              (limits?.allowsWorkflowImport ?? planQuota.allowsWorkflowImport)
+                ? "Yes"
+                : "No"
+            }
+          />
+          <DetailRow
+            icon={Sparkles}
             label="Insights"
             value={
               (limits?.allowsInsights ?? planQuota.allowsInsights)

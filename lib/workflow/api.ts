@@ -109,7 +109,12 @@ export class WorkflowNotFoundError extends Error {
 }
 
 export class WorkflowImportError extends Error {
-  readonly kind: "invalid_json" | "unsupported_version" | "invalid_ref" | "quota"
+  readonly kind:
+    | "invalid_json"
+    | "unsupported_version"
+    | "invalid_ref"
+    | "quota"
+    | "not_allowed"
   readonly status?: number
   readonly code?: string
 
@@ -255,6 +260,8 @@ const UNSUPPORTED_VERSION_MESSAGE =
   "This file was exported with a newer version of FlowForge and cannot be imported here."
 const INVALID_REF_MESSAGE =
   "The file appears corrupted — some internal references are invalid."
+const WORKFLOW_IMPORT_NOT_ALLOWED_MESSAGE =
+  "Workflow import is not included in your plan."
 
 function isUnsupportedExportVersion(code?: string): boolean {
   return (
@@ -271,6 +278,17 @@ function isInvalidExportRef(code?: string): boolean {
     code === "INVALID_EXPORT_REF" ||
     code === "INVALID_INTERNAL_REF" ||
     code === "CORRUPTED_EXPORT"
+  )
+}
+
+function isWorkflowImportNotAllowed(code?: string): boolean {
+  if (!code) return false
+  const normalized = code.toUpperCase().replace(/[.-]/g, "_")
+  return (
+    normalized.includes("ALLOWS_WORKFLOW_IMPORT") ||
+    normalized.includes("WORKFLOW_IMPORT_NOT_ALLOWED") ||
+    normalized.includes("WORKFLOW_IMPORT_DISABLED") ||
+    normalized.includes("FEATURE_WORKFLOW_IMPORT")
   )
 }
 
@@ -304,6 +322,14 @@ export const importWorkflow = async (payload: unknown): Promise<Workflow> => {
         status: response.status,
         code,
       })
+    }
+
+    if (isWorkflowImportNotAllowed(code) || response.status === 403) {
+      throw new WorkflowImportError(
+        "not_allowed",
+        message ?? WORKFLOW_IMPORT_NOT_ALLOWED_MESSAGE,
+        { status: response.status, code }
+      )
     }
 
     if (response.status === 409) {

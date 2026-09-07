@@ -17,6 +17,7 @@ export interface Quota {
   maxRequestBodySizeKb: number
   maxResponseBodySizeKb: number
   allowsOpenApiImport: boolean
+  allowsWorkflowImport: boolean
   allowsInsights: boolean
   allowsDataExport: boolean
   executorPriority: number
