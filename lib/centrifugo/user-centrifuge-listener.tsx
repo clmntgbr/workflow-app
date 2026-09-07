@@ -6,22 +6,22 @@ import { useProject } from "@/lib/project/context"
 import { useQuota } from "@/lib/quota/context"
 import { useSubscription } from "@/lib/subscription/context"
 import { useUser } from "@/lib/user/context"
-import { useWorkflow } from "@/lib/workflow/context"
+import { notifyRunExportUpdate } from "@/lib/workflow-run/export-realtime"
+import { notifyWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
 import { notifyWorkflowActivityRefetch } from "@/lib/workflow/activity/activity-realtime"
 import { notifyWorkflowConnectionsRefetch } from "@/lib/workflow/connection-realtime"
+import { useWorkflow } from "@/lib/workflow/context"
 import { notifyWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
 import { notifyWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
 import { notifyWorkflowDetailRefetch } from "@/lib/workflow/workflow-realtime"
-import { notifyWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
-import { notifyRunExportUpdate } from "@/lib/workflow-run/export-realtime"
 import { useCallback, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import {
   eventTypeEquals,
   getEventResource,
+  isRunExportTerminalEvent,
   isUserLifecycleEvent,
   isUserStreamEvent,
-  isRunExportTerminalEvent,
   shouldRefetchAllEndpoints,
   shouldRefetchConnections,
   shouldRefetchProjects,
@@ -30,8 +30,8 @@ import {
   shouldRefetchSteps,
   shouldRefetchStepsFromRunEvents,
   shouldRefetchVariables,
-  shouldRefetchWorkflowDetail,
   shouldRefetchWorkflowActivity,
+  shouldRefetchWorkflowDetail,
   shouldRefetchWorkflowRuns,
   shouldRefetchWorkflows,
 } from "./types"
@@ -43,11 +43,7 @@ export function UserCentrifugeListener() {
   const { user, fetchUser } = useUser()
   const { fetchProjects } = useProject()
   const { fetchWorkflows } = useWorkflow()
-  const {
-    fetchEndpoints,
-    fetchEndpoint,
-    editingEndpointId,
-  } = useEndpoint()
+  const { fetchEndpoints, fetchEndpoint, editingEndpointId } = useEndpoint()
   const { fetchSubscription, markPaymentSucceeded } = useSubscription()
   const { fetchQuota } = useQuota()
 
@@ -63,12 +59,12 @@ export function UserCentrifugeListener() {
   const orgDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   )
-  const workflowDebounceRef = useRef<
-    ReturnType<typeof setTimeout> | undefined
-  >(undefined)
-  const endpointDebounceRef = useRef<
-    ReturnType<typeof setTimeout> | undefined
-  >(undefined)
+  const workflowDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  )
+  const endpointDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  )
   const stepDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   )
@@ -212,31 +208,36 @@ export function UserCentrifugeListener() {
     }, REFRESH_DEBOUNCE_MS)
   }, [])
 
-  const debouncedRefreshWorkflowActivity = useCallback((workflowId?: string) => {
-    if (workflowId) {
-      pendingWorkflowActivityWorkflowIdsRef.current.add(workflowId)
-    } else {
-      pendingWorkflowActivityWorkflowIdsRef.current.clear()
-      pendingWorkflowActivityWorkflowIdsRef.current.add("*")
-    }
-
-    if (workflowActivityDebounceRef.current) {
-      clearTimeout(workflowActivityDebounceRef.current)
-    }
-    workflowActivityDebounceRef.current = setTimeout(() => {
-      const workflowIds = Array.from(pendingWorkflowActivityWorkflowIdsRef.current)
-      pendingWorkflowActivityWorkflowIdsRef.current.clear()
-
-      if (workflowIds.includes("*")) {
-        notifyWorkflowActivityRefetch()
-        return
+  const debouncedRefreshWorkflowActivity = useCallback(
+    (workflowId?: string) => {
+      if (workflowId) {
+        pendingWorkflowActivityWorkflowIdsRef.current.add(workflowId)
+      } else {
+        pendingWorkflowActivityWorkflowIdsRef.current.clear()
+        pendingWorkflowActivityWorkflowIdsRef.current.add("*")
       }
 
-      for (const id of workflowIds) {
-        notifyWorkflowActivityRefetch(id)
+      if (workflowActivityDebounceRef.current) {
+        clearTimeout(workflowActivityDebounceRef.current)
       }
-    }, REFRESH_DEBOUNCE_MS)
-  }, [])
+      workflowActivityDebounceRef.current = setTimeout(() => {
+        const workflowIds = Array.from(
+          pendingWorkflowActivityWorkflowIdsRef.current
+        )
+        pendingWorkflowActivityWorkflowIdsRef.current.clear()
+
+        if (workflowIds.includes("*")) {
+          notifyWorkflowActivityRefetch()
+          return
+        }
+
+        for (const id of workflowIds) {
+          notifyWorkflowActivityRefetch(id)
+        }
+      }, REFRESH_DEBOUNCE_MS)
+    },
+    []
+  )
 
   const debouncedRefreshVariables = useCallback((workflowId?: string) => {
     if (workflowId) {
@@ -319,7 +320,9 @@ export function UserCentrifugeListener() {
       if (isRunExportTerminalEvent(data)) {
         notifyRunExportUpdate(data)
         if (eventTypeEquals(data, "runExport.ready")) {
-          toast.success("Export ready — check your inbox.")
+          toast("Your export is ready", {
+            description: "Check your inbox for the Excel file.",
+          })
         } else {
           toast.error(data.error?.trim() || "Export failed")
         }
@@ -344,10 +347,7 @@ export function UserCentrifugeListener() {
 
       if (shouldRefetchSingleEndpoint(data)) {
         const endpointId = data.endpointId
-        if (
-          endpointId &&
-          editingEndpointIdRef.current === endpointId
-        ) {
+        if (endpointId && editingEndpointIdRef.current === endpointId) {
           void fetchEndpointRef.current(endpointId)
         } else {
           debouncedRefreshEndpoints()

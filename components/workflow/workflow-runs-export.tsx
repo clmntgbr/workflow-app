@@ -14,6 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { eventTypeEquals } from "@/lib/centrifugo/types"
 import { useQuota } from "@/lib/quota/context"
 import { useOptionalSubscription } from "@/lib/subscription/context"
 import {
@@ -21,7 +22,6 @@ import {
   WorkflowRunsExportError,
 } from "@/lib/workflow-run/api"
 import { subscribeRunExportUpdate } from "@/lib/workflow-run/export-realtime"
-import { eventTypeEquals } from "@/lib/centrifugo/types"
 import { useClerk } from "@clerk/nextjs"
 import { FileSpreadsheetIcon, Loader2Icon } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -143,9 +143,10 @@ export function WorkflowRunsExport({ workflowId }: WorkflowRunsExportProps) {
         controller.signal
       )
       pendingJobIdRef.current = job.id
-      toast.success(
-        "Export started. You'll receive an email with the Excel file."
-      )
+      toast("Your export has started", {
+        description:
+          "You'll receive an email with the Excel file when it's ready.",
+      })
     } catch (error) {
       pendingJobIdRef.current = null
       setIsExporting(false)
@@ -153,10 +154,7 @@ export function WorkflowRunsExport({ workflowId }: WorkflowRunsExportProps) {
       if (isAbortError(error)) return
 
       if (error instanceof WorkflowRunsExportError) {
-        if (
-          error.kind === "invalid_range" ||
-          error.kind === "invalid_body"
-        ) {
+        if (error.kind === "invalid_range" || error.kind === "invalid_body") {
           setRangeError(error.message)
           setOpen(true)
         }
@@ -175,7 +173,9 @@ export function WorkflowRunsExport({ workflowId }: WorkflowRunsExportProps) {
       }
 
       toast.error(
-        error instanceof Error ? error.message : "Failed to export workflow runs"
+        error instanceof Error
+          ? error.message
+          : "Failed to export workflow runs"
       )
     } finally {
       if (abortRef.current === controller) {
@@ -191,9 +191,7 @@ export function WorkflowRunsExport({ workflowId }: WorkflowRunsExportProps) {
       size="lg"
       disabled={isExporting || !allowsDataExport}
       aria-label="Export runs"
-      className={
-        allowsDataExport ? undefined : "pointer-events-none"
-      }
+      className={allowsDataExport ? undefined : "pointer-events-none"}
     >
       {isExporting ? (
         <Loader2Icon className="size-3.5 animate-spin" />
