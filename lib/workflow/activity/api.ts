@@ -51,7 +51,7 @@ function normalizePaginatedPayload(
   return {
     members,
     page: pickNumber(["page"], 1),
-    limit: pickNumber(["limit"], 20),
+    limit: pickNumber(["limit"], 200),
     totalPages: pickNumber(["totalPages", "total_pages"], 0),
     total: pickNumber(["total"], members.length),
   }

@@ -13,7 +13,7 @@ import {
 import { Loader2Icon, ScrollTextIcon } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
-const PAGE_LIMIT = 20
+const PAGE_LIMIT = 200
 
 function mergeOlderEntries(
   current: WorkflowActivityEntry[],
@@ -79,9 +79,7 @@ function ActivityLogShell({
       className={cn(
         "overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-sm shadow-none",
         fillHeight && "flex h-full min-h-0 flex-col",
-        !fillHeight &&
-          useExternalScroll &&
-          "flex min-h-full flex-col",
+        !fillHeight && useExternalScroll && "flex min-h-full flex-col",
         className
       )}
     >
@@ -96,9 +94,7 @@ function ActivityLogShell({
         ref={fillHeight || !useExternalScroll ? scrollRef : undefined}
         className={cn(
           fillHeight && "min-h-0 flex-1 overflow-auto",
-          !fillHeight &&
-            useExternalScroll &&
-            "min-h-0 flex-1",
+          !fillHeight && useExternalScroll && "min-h-0 flex-1",
           !fillHeight &&
             !useExternalScroll &&
             "min-h-[min(70vh,720px)] overflow-auto"
@@ -123,8 +119,7 @@ export function WorkflowActivityLog({
   const loadingMoreRef = useRef(false)
   const hasScrolledRef = useRef(false)
   const innerScrollContainerRef = useRef<HTMLDivElement>(null)
-  const useExternalScroll =
-    !fillHeight && Boolean(externalScrollContainerRef)
+  const useExternalScroll = !fillHeight && Boolean(externalScrollContainerRef)
 
   const getScrollContainer = useCallback((): HTMLElement | null => {
     if (fillHeight) {
@@ -346,7 +341,7 @@ export function WorkflowActivityLog({
                 </span>
                 <span
                   className={cn(
-                    "w-12 shrink-0 uppercase",
+                    "w-20 shrink-0 uppercase",
                     getActivityLevelClassDark(item.level)
                   )}
                 >
