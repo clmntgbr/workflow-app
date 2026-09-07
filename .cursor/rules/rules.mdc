@@ -48,6 +48,8 @@ Handle new events in `lib/centrifugo/types.ts` + `user-centrifuge-listener.tsx`.
 | `stepRun.succeeded/failed` | workflow activity logs (workflow page subscribers) |
 | `variable.created/updated/deleted` | `GET .../workflows/:id/variables` (page subscribers) + available vars if step drawer open + workflow activity logs |
 | `assertion.created/updated/deleted` | workflow activity logs (workflow page subscribers) |
+| `runExport.ready` | toast “Export ready — check your inbox.” (no refetch; `subscribeRunExportUpdate` stops the header button loading) |
+| `runExport.failed` | toast `error` (no refetch; same subscriber) |
 
 Steps/connections: use `subscribeWorkflowStepsRefetch` / `subscribeWorkflowConnectionsRefetch` on the workflow page — scoped by `workflowId` from the event.
 
@@ -58,6 +60,8 @@ Workflow runs: use `subscribeWorkflowRunsRefetch` on the workflow page (keep the
 Activity logs: use `subscribeWorkflowActivityRefetch` on the workflow page — scoped by `workflowId` when present; `stepRun.succeeded/failed` may omit `workflowId` and notify all open workflow-page subscribers.
 
 Variables: use `subscribeWorkflowVariablesRefetch` on the workflow page — scoped by `workflowId` from the event.
+
+Run export: use `subscribeRunExportUpdate` on the workflow header button — match `runExportId` (and `workflowId` when present). Do **not** poll `GET .../runs/export/:jobId`.
 
 ## Do not
 

@@ -53,6 +53,10 @@ function toDatetimeLocal(date: Date | undefined, time: string): string {
   return `${datePart}T${timePart}`
 }
 
+function toStartOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
 interface DateTimePickerProps {
   id?: string
   value?: string
@@ -62,6 +66,10 @@ interface DateTimePickerProps {
   description?: string
   label?: string
   required?: boolean
+  disabled?: boolean
+  minDate?: Date
+  maxDate?: Date
+  className?: string
 }
 
 export function DateTimePicker({
@@ -73,6 +81,10 @@ export function DateTimePicker({
   description,
   label = "Run at",
   required = false,
+  disabled = false,
+  minDate,
+  maxDate,
+  className,
 }: DateTimePickerProps) {
   const [open, setOpen] = useState(false)
   const { date, time } = parseDatetimeLocal(value)
@@ -91,7 +103,7 @@ export function DateTimePicker({
   }
 
   return (
-    <div className="space-y-2">
+    <div className={cn("space-y-2", className)}>
       {label ? (
         <FieldLabel htmlFor={`${id}-date`}>
           {label}
@@ -103,12 +115,19 @@ export function DateTimePicker({
           <FieldLabel htmlFor={`${id}-date`} className="sr-only">
             Date
           </FieldLabel>
-          <Popover open={open} onOpenChange={setOpen}>
+          <Popover
+            open={open}
+            onOpenChange={(nextOpen) => {
+              if (disabled) return
+              setOpen(nextOpen)
+            }}
+          >
             <PopoverTrigger asChild>
               <Button
                 type="button"
                 variant="outline"
                 id={`${id}-date`}
+                disabled={disabled}
                 className={cn(
                   "h-9 w-full justify-between px-3 text-sm font-normal",
                   hasError &&
@@ -125,6 +144,17 @@ export function DateTimePicker({
                 selected={date}
                 captionLayout="dropdown"
                 defaultMonth={date}
+                startMonth={minDate}
+                endMonth={maxDate}
+                disabled={(day) => {
+                  if (minDate && toStartOfDay(day) < toStartOfDay(minDate)) {
+                    return true
+                  }
+                  if (maxDate && toStartOfDay(day) > toStartOfDay(maxDate)) {
+                    return true
+                  }
+                  return false
+                }}
                 onSelect={handleDateSelect}
               />
             </PopoverContent>
@@ -139,6 +169,7 @@ export function DateTimePicker({
             id={`${id}-time`}
             step="1"
             value={time}
+            disabled={disabled}
             onChange={(event) => handleTimeChange(event.target.value)}
             className={cn(
               "h-9 appearance-none bg-background px-3 text-sm [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none",

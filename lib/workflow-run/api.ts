@@ -1,5 +1,13 @@
 import { Paginate, PaginateQuery } from "@/lib/paginate"
-import { WorkflowRun, WorkflowRunAnalytics, WorkflowRunDetail } from "./types"
+import {
+  WORKFLOW_RUNS_EXPORT_STATUSES,
+  WorkflowRun,
+  WorkflowRunAnalytics,
+  WorkflowRunDetail,
+  WorkflowRunsExportInput,
+  WorkflowRunsExportJob,
+  WorkflowRunsExportStatus,
+} from "./types"
 
 function buildQueryString(query?: PaginateQuery): string {
   if (!query) return ""
@@ -187,4 +195,159 @@ export const getWorkflowRun = async (
   }
 
   return response.json()
+}
+
+export type WorkflowRunsExportErrorKind =
+  | "unauthorized"
+  | "forbidden"
+  | "invalid_range"
+  | "invalid_body"
+  | "not_found"
+  | "failed"
+  | "generic"
+
+export class WorkflowRunsExportError extends Error {
+  readonly kind: WorkflowRunsExportErrorKind
+  readonly status?: number
+
+  constructor(
+    kind: WorkflowRunsExportErrorKind,
+    message: string,
+    status?: number
+  ) {
+    super(message)
+    this.name = "WorkflowRunsExportError"
+    this.kind = kind
+    this.status = status
+  }
+}
+
+function unwrapPayload(payload: unknown): unknown {
+  const record = asRecord(payload)
+  if (record?.success === true && record.data !== undefined) return record.data
+  return payload
+}
+
+function isWorkflowRunsExportStatus(
+  value: unknown
+): value is WorkflowRunsExportStatus {
+  return (
+    typeof value === "string" &&
+    (WORKFLOW_RUNS_EXPORT_STATUSES as readonly string[]).includes(value)
+  )
+}
+
+function parseWorkflowRunsExportJob(payload: unknown): WorkflowRunsExportJob {
+  const record = asRecord(unwrapPayload(payload))
+  if (!record || typeof record.id !== "string") {
+    throw new WorkflowRunsExportError(
+      "generic",
+      "Invalid export response"
+    )
+  }
+
+  if (!isWorkflowRunsExportStatus(record.status)) {
+    throw new WorkflowRunsExportError(
+      "generic",
+      "Invalid export response"
+    )
+  }
+
+  return {
+    id: record.id,
+    status: record.status,
+    from: typeof record.from === "string" ? record.from : null,
+    to: typeof record.to === "string" ? record.to : null,
+    error: typeof record.error === "string" ? record.error : null,
+    createdAt: typeof record.createdAt === "string" ? record.createdAt : "",
+    updatedAt: typeof record.updatedAt === "string" ? record.updatedAt : "",
+  }
+}
+
+function mapWorkflowRunsExportHttpError(
+  status: number,
+  message?: string
+): WorkflowRunsExportError {
+  const fallbackMessage = message?.trim()
+  const normalized = (fallbackMessage ?? "").toLowerCase()
+
+  if (status === 401) {
+    return new WorkflowRunsExportError(
+      "unauthorized",
+      fallbackMessage || "Unauthorized",
+      status
+    )
+  }
+
+  if (status === 403) {
+    return new WorkflowRunsExportError(
+      "forbidden",
+      fallbackMessage || "data export is not available on your current plan",
+      status
+    )
+  }
+
+  if (status === 404) {
+    return new WorkflowRunsExportError(
+      "not_found",
+      fallbackMessage || "Workflow / export not found",
+      status
+    )
+  }
+
+  if (status === 400) {
+    if (normalized.includes("invalid export date range")) {
+      return new WorkflowRunsExportError(
+        "invalid_range",
+        fallbackMessage || "invalid export date range",
+        status
+      )
+    }
+
+    return new WorkflowRunsExportError(
+      "invalid_body",
+      fallbackMessage || "Invalid request body",
+      status
+    )
+  }
+
+  return new WorkflowRunsExportError(
+    "generic",
+    fallbackMessage || "Failed to export workflow runs",
+    status
+  )
+}
+
+async function throwWorkflowRunsExportError(
+  response: Response,
+  fallback: string
+): Promise<never> {
+  const message = await readWorkflowRunErrorMessage(response, fallback)
+  throw mapWorkflowRunsExportHttpError(response.status, message)
+}
+
+export const startWorkflowRunsExport = async (
+  workflowId: string,
+  input?: WorkflowRunsExportInput,
+  signal?: AbortSignal
+): Promise<WorkflowRunsExportJob> => {
+  const body: WorkflowRunsExportInput = {}
+  if (input?.from) body.from = input.from
+  if (input?.to) body.to = input.to
+
+  const response = await fetch(`/api/workflows/${workflowId}/runs/export`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  })
+
+  if (!response.ok) {
+    await throwWorkflowRunsExportError(
+      response,
+      "Failed to start workflow runs export"
+    )
+  }
+
+  return parseWorkflowRunsExportJob(await response.json())
 }

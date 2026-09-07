@@ -7,6 +7,7 @@ export type RealtimeResource =
   | "connection"
   | "workflowRun"
   | "stepRun"
+  | "runExport"
   | "variable"
   | "assertion"
   | "subscription"
@@ -26,6 +27,7 @@ export type RealtimeVerb =
   | "succeeded"
   | "failed"
   | "cancelled"
+  | "ready"
 
 export type RealtimeEventType = `${RealtimeResource}.${RealtimeVerb}`
 
@@ -37,11 +39,13 @@ export interface UserStreamEvent {
   endpointId?: string
   workflowId?: string
   workflowRunId?: string
+  runExportId?: string
   stepId?: string
   stepRunId?: string
   name?: string
   status?: string
   scheduleType?: string
+  error?: string
   /** On `workflow.updated`: `schedule_cleared` after pause, a once run, or monthly run quota. */
   updateReason?: string
 }
@@ -55,6 +59,7 @@ const RESOURCES = new Set<string>([
   "connection",
   "workflowRun",
   "stepRun",
+  "runExport",
   "variable",
   "assertion",
   "subscription",
@@ -75,6 +80,7 @@ const VERBS = new Set<string>([
   "succeeded",
   "failed",
   "cancelled",
+  "ready",
 ])
 
 /** Strips optional schema version suffix (`workflow.updated.v1` → `workflow.updated`). */
@@ -229,6 +235,13 @@ export function shouldRefetchVariables(event: UserStreamEvent): boolean {
   return (
     eventTypeEquals(event, "variable.created") ||
     eventTypeEquals(event, "variable.updated")
+  )
+}
+
+export function isRunExportTerminalEvent(event: UserStreamEvent): boolean {
+  return (
+    eventTypeEquals(event, "runExport.ready") ||
+    eventTypeEquals(event, "runExport.failed")
   )
 }
 

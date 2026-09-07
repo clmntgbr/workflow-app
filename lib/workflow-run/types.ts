@@ -263,6 +263,31 @@ export interface WorkflowRunAnalytics {
   lastRunAt: string | null
 }
 
+export const WORKFLOW_RUNS_EXPORT_STATUSES = [
+  "pending",
+  "processing",
+  "ready",
+  "failed",
+] as const
+
+export type WorkflowRunsExportStatus =
+  (typeof WORKFLOW_RUNS_EXPORT_STATUSES)[number]
+
+export interface WorkflowRunsExportInput {
+  from?: string
+  to?: string
+}
+
+export interface WorkflowRunsExportJob {
+  id: string
+  status: WorkflowRunsExportStatus
+  from: string | null
+  to: string | null
+  error: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export const initialWorkflowRunState: WorkflowRunState = {
   workflowRuns: initPaginate<WorkflowRun>(),
   isLoading: false,

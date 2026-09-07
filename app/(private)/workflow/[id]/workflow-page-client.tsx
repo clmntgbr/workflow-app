@@ -21,6 +21,7 @@ import {
 } from "@/components/workflow/workflow-canvas"
 import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
 import { WorkflowNotFoundView } from "@/components/workflow/workflow-not-found-view"
+import { WorkflowRunsExport } from "@/components/workflow/workflow-runs-export"
 import { WorkflowRunsPanel } from "@/components/workflow/workflow-runs-panel"
 import { WorkflowVariablesDrawer } from "@/components/workflow/workflow-variables-drawer"
 import { useEndpoint } from "@/lib/endpoint/context"
@@ -1199,6 +1200,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
               {activeRun ? "Stop" : "Start"}
             </Button>
           ) : null}
+          <WorkflowRunsExport workflowId={workflowId} />
           <Button
             variant="outline"
             size="icon-lg"

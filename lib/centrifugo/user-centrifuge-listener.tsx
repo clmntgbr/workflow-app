@@ -13,12 +13,15 @@ import { notifyWorkflowStepsRefetch } from "@/lib/workflow/step-realtime"
 import { notifyWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
 import { notifyWorkflowDetailRefetch } from "@/lib/workflow/workflow-realtime"
 import { notifyWorkflowRunsRefetch } from "@/lib/workflow-run/run-realtime"
+import { notifyRunExportUpdate } from "@/lib/workflow-run/export-realtime"
 import { useCallback, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import {
+  eventTypeEquals,
   getEventResource,
   isUserLifecycleEvent,
   isUserStreamEvent,
+  isRunExportTerminalEvent,
   shouldRefetchAllEndpoints,
   shouldRefetchConnections,
   shouldRefetchProjects,
@@ -304,6 +307,7 @@ export function UserCentrifugeListener() {
         type: data.type,
         workflowId: data.workflowId,
         workflowRunId: data.workflowRunId,
+        runExportId: data.runExportId,
         stepId: data.stepId,
         stepRunId: data.stepRunId,
         endpointId: data.endpointId,
@@ -311,6 +315,15 @@ export function UserCentrifugeListener() {
         userId: data.userId,
         payload: data,
       })
+
+      if (isRunExportTerminalEvent(data)) {
+        notifyRunExportUpdate(data)
+        if (eventTypeEquals(data, "runExport.ready")) {
+          toast.success("Export ready — check your inbox.")
+        } else {
+          toast.error(data.error?.trim() || "Export failed")
+        }
+      }
 
       if (shouldRefetchProjects(data)) {
         debouncedRefreshProjects()
