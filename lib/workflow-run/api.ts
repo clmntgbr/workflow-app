@@ -194,7 +194,16 @@ export const getWorkflowRun = async (
     throw new Error("Failed to get workflow run")
   }
 
-  return response.json()
+  const payload = unwrapPayload(await response.json())
+  const record = asRecord(payload)
+  if (!record) {
+    throw new Error("Failed to get workflow run")
+  }
+
+  return {
+    ...(payload as WorkflowRunDetail),
+    stepRuns: Array.isArray(record.stepRuns) ? record.stepRuns : [],
+  } as WorkflowRunDetail
 }
 
 export type WorkflowRunsExportErrorKind =
