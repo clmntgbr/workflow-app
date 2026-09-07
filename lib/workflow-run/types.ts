@@ -220,6 +220,8 @@ export interface WorkflowRun {
   error: string | null
   createdAt: string
   updatedAt: string
+  /** Elapsed execution time in milliseconds. */
+  duration: number
   stepRuns?: StepRun[]
 }
 
@@ -232,6 +234,8 @@ export interface WorkflowRunDetail {
   finishedAt: string | null
   error: string | null
   createdAt: string
+  /** Elapsed execution time in milliseconds. */
+  duration: number
   workflow: WorkflowRunWorkflow
   stepRuns: WorkflowRunStepRunDetail[]
 }

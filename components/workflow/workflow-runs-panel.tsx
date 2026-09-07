@@ -167,7 +167,7 @@ export function WorkflowRunsPanel({ workflowId }: WorkflowRunsPanelProps) {
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-none">
           <ul className="divide-y divide-slate-100">
             {runs.map((run) => {
-              const duration = GetRunDuration(run.startedAt, run.finishedAt)
+              const duration = GetRunDuration(run.duration)
               const summary = GetStepSummary(run.stepRuns ?? [])
               const steps = run.stepRuns
               const total = steps?.length ?? 0

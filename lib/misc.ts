@@ -113,13 +113,11 @@ export function GetStatusStyle(status: RunStatus) {
   return StatusStyles[status] ?? StatusStyles.pending
 }
 
-export function GetRunDuration(
-  started: string | null,
-  ended: string | null
-): string {
-  if (!started || !ended) return ""
-  const ms = new Date(ended).getTime() - new Date(started).getTime()
-  if (ms < 1000) return `${ms}ms`
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
-  return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`
+export function GetRunDuration(durationMs: number | null | undefined): string {
+  if (durationMs == null || !Number.isFinite(durationMs) || durationMs < 0) {
+    return ""
+  }
+  if (durationMs < 1000) return `${Math.round(durationMs)}ms`
+  if (durationMs < 60_000) return `${(durationMs / 1000).toFixed(1)}s`
+  return `${Math.floor(durationMs / 60_000)}m ${Math.floor((durationMs % 60_000) / 1000)}s`
 }

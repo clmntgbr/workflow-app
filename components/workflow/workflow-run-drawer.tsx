@@ -1,21 +1,27 @@
 "use client"
 
-import { StatusBadge } from "@/components/status-badge"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
-import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { GetRunDuration } from "@/lib/misc"
+import { cn } from "@/lib/utils"
 import { getWorkflowRun } from "@/lib/workflow-run/api"
 import {
+  RunStatus,
   WorkflowRun,
   WorkflowRunDetail,
   WorkflowRunStepRunDetail,
 } from "@/lib/workflow-run/types"
-import { formatCountdown } from "@/lib/workflow/delay"
 import { useEffect, useState } from "react"
 
 interface WorkflowRunDrawerProps {
@@ -25,70 +31,167 @@ interface WorkflowRunDrawerProps {
   onOpenChange: (open: boolean) => void
 }
 
-function StepRunCountdown({ resumeAt }: { resumeAt: string | null }) {
-  const [label, setLabel] = useState<string | null>(
-    resumeAt ? formatCountdown(resumeAt) : null
-  )
+function formatTime(iso: string | null | undefined): string {
+  if (!iso) return "—"
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return "—"
 
-  useEffect(() => {
-    if (!resumeAt) {
-      setLabel(null)
-      return
-    }
-
-    const tick = () => {
-      setLabel(formatCountdown(resumeAt))
-    }
-
-    tick()
-    const intervalId = window.setInterval(tick, 1000)
-    return () => window.clearInterval(intervalId)
-  }, [resumeAt])
-
-  if (!label) return null
-
-  return (
-    <p className="text-xs text-violet-600">{label}</p>
-  )
+  return date.toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  })
 }
 
-function StepRunRow({ stepRun }: { stepRun: WorkflowRunStepRunDetail }) {
-  const duration = GetRunDuration(stepRun.startedAt, stepRun.finishedAt)
-  const branchLabel =
-    stepRun.matchedBranch === true
-      ? "Took true branch"
-      : stepRun.matchedBranch === false
-        ? "Took false branch"
-        : null
+function formatDuration(ms: number): string {
+  const safe = Math.max(0, ms)
+  if (safe < 1000) return `${Math.round(safe)}ms`
+  if (safe < 60_000) return `${(safe / 1000).toFixed(1)}s`
+  return `${Math.floor(safe / 60_000)}m ${Math.floor((safe % 60_000) / 1000)}s`
+}
+
+function parseTime(iso: string | null | undefined): number | null {
+  if (!iso) return null
+  const time = new Date(iso).getTime()
+  return Number.isNaN(time) ? null : time
+}
+
+const BAR_COLOR: Record<RunStatus, string> = {
+  success: "bg-emerald-500",
+  failed: "bg-rose-500",
+  running: "bg-sky-500",
+  waiting: "bg-violet-500",
+  pending: "bg-amber-500",
+  cancelled: "bg-gray-500",
+  skipped: "bg-slate-400/40",
+}
+
+function earliestIso(
+  values: Array<string | null | undefined>
+): string | null {
+  let earliest: string | null = null
+  let earliestTime = Number.POSITIVE_INFINITY
+  for (const value of values) {
+    const time = parseTime(value)
+    if (time == null || time >= earliestTime) continue
+    earliestTime = time
+    earliest = value ?? null
+  }
+  return earliest
+}
+
+function latestIso(values: Array<string | null | undefined>): string | null {
+  let latest: string | null = null
+  let latestTime = Number.NEGATIVE_INFINITY
+  for (const value of values) {
+    const time = parseTime(value)
+    if (time == null || time <= latestTime) continue
+    latestTime = time
+    latest = value ?? null
+  }
+  return latest
+}
+
+function stepElapsedMs(stepRun: WorkflowRunStepRunDetail): number {
+  const start = parseTime(stepRun.startedAt)
+  const end = parseTime(stepRun.finishedAt)
+  if (start == null || end == null) return 0
+  return Math.max(0, end - start)
+}
+
+function RunTimeline({
+  run,
+  stepRuns,
+}: {
+  run: WorkflowRun | WorkflowRunDetail
+  stepRuns: WorkflowRunStepRunDetail[]
+}) {
+  const firstStepAt = earliestIso(stepRuns.map((stepRun) => stepRun.startedAt))
+  const lastStepAt = latestIso(
+    stepRuns.map((stepRun) => stepRun.finishedAt ?? stepRun.startedAt)
+  )
+  const packedTotal = Math.max(
+    run.duration,
+    stepRuns.reduce((sum, stepRun) => sum + stepElapsedMs(stepRun), 0),
+    1
+  )
+  const packedSteps = stepRuns.map((stepRun, index, items) => {
+    const skipped = !stepRun.startedAt
+    const elapsed = skipped ? 0 : stepElapsedMs(stepRun)
+    const offset = items
+      .slice(0, index)
+      .reduce((sum, item) => sum + (item.startedAt ? stepElapsedMs(item) : 0), 0)
+    return { stepRun, skipped, elapsed, offset }
+  })
 
   return (
-    <li className="rounded-lg border border-slate-200 bg-white px-4 py-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-slate-900">
-            {stepRun.name}
-          </p>
-          {stepRun.url ? (
-            <p className="truncate text-xs text-slate-500">{stepRun.url}</p>
-          ) : null}
-          {branchLabel ? (
-            <p className="mt-1 text-xs font-medium text-emerald-700">
-              {branchLabel}
-            </p>
-          ) : null}
+    <Card>
+      <CardContent className="p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">Timeline</h2>
+          <span className="font-mono text-xs text-muted-foreground">
+            {firstStepAt && lastStepAt
+              ? `${formatTime(firstStepAt)} → ${formatTime(lastStepAt)} · `
+              : null}
+            {GetRunDuration(run.duration)}
+          </span>
         </div>
-        <StatusBadge status={stepRun.status} />
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-        {duration ? <span>{duration}</span> : null}
-        {stepRun.status === "waiting" ? (
-          <StepRunCountdown resumeAt={stepRun.resumeAt} />
-        ) : null}
-        {stepRun.error ? (
-          <span className="text-rose-600">{stepRun.error}</span>
-        ) : null}
-      </div>
-    </li>
+        <TooltipProvider delayDuration={100}>
+          <div className="space-y-1.5">
+            {packedSteps.map(({ stepRun, skipped, elapsed, offset }) => {
+              if (skipped) {
+                return (
+                  <div key={stepRun.id} className="flex items-center gap-3">
+                    <span className="w-40 truncate text-xs text-muted-foreground">
+                      {stepRun.name}
+                    </span>
+                    <div className="relative h-5 flex-1 rounded bg-secondary/50">
+                      <div className="absolute inset-y-0 left-0 flex w-full items-center px-2">
+                        <span className="font-mono text-[10px] text-muted-foreground/60">
+                          skipped
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+
+              const left = (offset / packedTotal) * 100
+              const width = Math.max(
+                (elapsed / packedTotal) * 100,
+                elapsed > 0 ? 0.8 : 0
+              )
+
+              return (
+                <div key={stepRun.id} className="flex items-center gap-3">
+                  <span className="w-40 truncate text-xs text-muted-foreground">
+                    {stepRun.name}
+                  </span>
+                  <div className="relative h-5 flex-1 rounded bg-secondary/50">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={cn(
+                            "absolute inset-y-0 rounded-sm",
+                            BAR_COLOR[stepRun.status]
+                          )}
+                          style={{ left: `${left}%`, width: `${width}%` }}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="font-mono text-xs">
+                          {stepRun.name} — {formatDuration(elapsed)}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </TooltipProvider>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -99,36 +202,22 @@ export function WorkflowRunDrawer({
   onOpenChange,
 }: WorkflowRunDrawerProps) {
   const [detailedRun, setDetailedRun] = useState<WorkflowRunDetail | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const activeRunId = isOpen && run ? run.id : null
 
   useEffect(() => {
-    if (!activeRunId) {
-      setDetailedRun(null)
-      setError(null)
-      setIsLoading(false)
-      return
-    }
+    if (!activeRunId) return
 
     let cancelled = false
 
     const load = async () => {
-      setIsLoading(true)
-      setError(null)
-      setDetailedRun(null)
-
       try {
         const full = await getWorkflowRun(workflowId, activeRunId)
         if (cancelled) return
         setDetailedRun(full)
       } catch {
         if (cancelled) return
-        setError("Failed to load workflow run")
         setDetailedRun(null)
-      } finally {
-        if (!cancelled) setIsLoading(false)
       }
     }
 
@@ -139,11 +228,14 @@ export function WorkflowRunDrawer({
     }
   }, [activeRunId, workflowId])
 
-  const sortedStepRuns = detailedRun
-    ? [...detailedRun.stepRuns].sort(
+  const resolvedRun =
+    detailedRun && run && detailedRun.id === run.id ? detailedRun : null
+  const sortedStepRuns = resolvedRun
+    ? [...resolvedRun.stepRuns].sort(
         (left, right) => left.executionOrder - right.executionOrder
       )
     : []
+  const timelineRun = resolvedRun ?? run
 
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right">
@@ -159,29 +251,8 @@ export function WorkflowRunDrawer({
         </DrawerHeader>
 
         <div className="min-h-0 flex-1 overflow-auto px-6 py-8">
-          {isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-72" />
-              <Skeleton className="h-40 w-full" />
-            </div>
-          ) : error ? (
-            <p className="text-sm text-muted-foreground">{error}</p>
-          ) : detailedRun ? (
-            <div className="space-y-6">
-              <div className="flex flex-wrap items-center gap-3">
-                <p className="text-sm font-medium">
-                  Run #{detailedRun.id.split("-")[0]}
-                </p>
-                <StatusBadge status={detailedRun.status} />
-              </div>
-
-              <ul className="space-y-3">
-                {sortedStepRuns.map((stepRun) => (
-                  <StepRunRow key={stepRun.id} stepRun={stepRun} />
-                ))}
-              </ul>
-            </div>
+          {timelineRun ? (
+            <RunTimeline run={timelineRun} stepRuns={sortedStepRuns} />
           ) : null}
         </div>
       </DrawerContent>
