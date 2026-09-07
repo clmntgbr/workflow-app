@@ -8,6 +8,7 @@ export interface WorkflowVariable {
   kind: WorkflowVariableKind
   path: string | null
   value?: unknown
+  isSecret?: boolean
   stepId: string | null
   workflowId: string
   lastValue?: unknown | null
@@ -62,4 +63,16 @@ export class VariableInUseError extends Error {
     this.name = "VariableInUseError"
     this.steps = steps
   }
+}
+
+export function isSecretVariable(variable: WorkflowVariable): boolean {
+  return variable.isSecret === true
+}
+
+export function isIncompleteSecretVariable(
+  variable: WorkflowVariable
+): boolean {
+  if (!isSecretVariable(variable)) return false
+  const value = variable.value
+  return value === undefined || value === null || value === ""
 }

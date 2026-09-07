@@ -24,7 +24,6 @@ import { WorkflowNotFoundView } from "@/components/workflow/workflow-not-found-v
 import { WorkflowRunsPanel } from "@/components/workflow/workflow-runs-panel"
 import { WorkflowVariablesDrawer } from "@/components/workflow/workflow-variables-drawer"
 import { useEndpoint } from "@/lib/endpoint/context"
-import { Endpoint } from "@/lib/endpoint/types"
 import { parseQueryRecord } from "@/lib/endpoint/utils"
 import { useProject } from "@/lib/project/context"
 import { cn } from "@/lib/utils"
@@ -43,10 +42,13 @@ import {
   deactivateWorkflow,
   deleteWorkflowConnection,
   deleteWorkflowStep,
+  downloadWorkflowExport,
+  exportWorkflow,
   getWorkflow,
   getWorkflowConnections,
   getWorkflowStep,
   getWorkflowSteps,
+  slugifyWorkflowExportName,
   updateConditionWorkflowStep,
   updateDelayWorkflowStep,
   updateStepPosition,
@@ -60,7 +62,7 @@ import {
   parseConditionBranch,
 } from "@/lib/workflow/condition"
 import { DEFAULT_DELAY_DURATION_SECONDS } from "@/lib/workflow/delay"
-import { inferStepType, isValidStepEndpointId } from "@/lib/workflow/step-validation"
+import { inferStepType } from "@/lib/workflow/step-validation"
 import {
   UpdateWorkflowStepInput,
   Workflow,
@@ -72,6 +74,7 @@ import {
   listWorkflowVariables,
 } from "@/lib/workflow/variable/api"
 import {
+  isIncompleteSecretVariable,
   VariableInUseError,
   VariableUsageStep,
   WorkflowVariable,
@@ -79,10 +82,12 @@ import {
 import { subscribeWorkflowVariablesRefetch } from "@/lib/workflow/variable/variable-realtime"
 import { subscribeWorkflowDetailRefetch } from "@/lib/workflow/workflow-realtime"
 import {
+  AlertTriangleIcon,
   ArrowLeftIcon,
   BracesIcon,
   CirclePlayIcon,
   CircleStopIcon,
+  DownloadIcon,
   HistoryIcon,
   LayersIcon,
   Loader2Icon,
@@ -191,7 +196,6 @@ function unwrapStepPayload(payload: unknown): unknown {
 
 function mapItemToCanvasStep(
   item: unknown,
-  endpointById: Map<string, Endpoint>,
   fallback?: Pick<CanvasStep, "x" | "y">
 ): CanvasStep | null {
   const record = asRecord(unwrapStepPayload(item))
@@ -199,8 +203,6 @@ function mapItemToCanvasStep(
 
   const id = pickString(record, ["id", "stepId", "step_id"])
   const stepType = inferStepType(record)
-  const endpointIdRaw = record.endpointId ?? record.endpoint_id
-  const endpointId = isValidStepEndpointId(endpointIdRaw) ? String(endpointIdRaw).trim() : null
   const delayDurationSeconds = pickNumber(
     record,
     ["delayDurationSeconds", "delay_duration_seconds"],
@@ -219,19 +221,19 @@ function mapItemToCanvasStep(
 
   if (!id || !position) return null
 
+  const descriptionValue = record.description
+  const description =
+    typeof descriptionValue === "string"
+      ? descriptionValue
+      : null
+
   if (stepType === "delay") {
     return {
       id,
       type: "delay",
       ...(indexRaw ? { index: indexRaw } : {}),
       name: stepName ?? "Delay",
-      description:
-        typeof record.description === "string"
-          ? record.description
-          : record.description === null
-            ? null
-            : null,
-      endpointId: null,
+      description,
       delayDurationSeconds: delayDurationSeconds > 0 ? delayDurationSeconds : null,
       expression: null,
       method: "",
@@ -261,13 +263,7 @@ function mapItemToCanvasStep(
       type: "condition",
       ...(indexRaw ? { index: indexRaw } : {}),
       name: stepName ?? "Condition",
-      description:
-        typeof record.description === "string"
-          ? record.description
-          : record.description === null
-            ? null
-            : null,
-      endpointId: null,
+      description,
       delayDurationSeconds: null,
       expression: expression ?? null,
       method: "",
@@ -290,55 +286,30 @@ function mapItemToCanvasStep(
     }
   }
 
-  if (!endpointId) return null
-
-  const nestedEndpoint = asRecord(record.endpoint)
-  const endpoint =
-    (nestedEndpoint?.id && typeof nestedEndpoint.id === "string"
-      ? (nestedEndpoint as unknown as Endpoint)
-      : undefined) ?? endpointById.get(endpointId)
-
-  const descriptionValue = record.description
-  const description =
-    typeof descriptionValue === "string"
-      ? descriptionValue
-      : descriptionValue === null
-        ? null
-        : (endpoint?.description ?? null)
-
   return {
     id,
     type: "http",
     ...(indexRaw ? { index: indexRaw } : {}),
-    name: stepName ?? endpoint?.name ?? endpointId,
+    name: stepName ?? "HTTP",
     description,
-    endpointId,
     delayDurationSeconds: null,
     expression: null,
-    method: method ?? endpoint?.method ?? "GET",
-    path: url ?? endpoint?.url ?? "/",
+    method: method ?? "GET",
+    path: url ?? "/",
     headers: parseStringRecord(record.headers),
     query: parseQueryRecord(record.query),
-    body: record.body ?? endpoint?.body ?? {},
-    timeout: pickNumber(
-      record,
-      ["timeout", "timeoutMs", "timeout_ms"],
-      endpoint?.timeout ?? 30000
-    ),
+    body: record.body ?? {},
+    timeout: pickNumber(record, ["timeout", "timeoutMs", "timeout_ms"], 30000),
     retryOnFailure: pickBoolean(
       record,
       ["retryOnFailure", "retry_on_failure"],
-      endpoint?.retryOnFailure ?? false
+      false
     ),
-    retryCount: pickNumber(
-      record,
-      ["retryCount", "retry_count"],
-      endpoint?.retryCount ?? 0
-    ),
+    retryCount: pickNumber(record, ["retryCount", "retry_count"], 0),
     retryDelay: pickNumber(
       record,
       ["retryDelay", "retryDelayMs", "retry_delay_ms"],
-      endpoint?.retryDelay ?? 10000
+      10000
     ),
     executionOrder: pickNumber(record, ["executionOrder", "execution_order"]),
     treeIndex: pickNumber(record, ["treeIndex", "tree_index"]),
@@ -348,7 +319,6 @@ function mapItemToCanvasStep(
     ),
     x: position.x,
     y: position.y,
-    ...(endpoint ? { endpoint } : {}),
   }
 }
 
@@ -371,6 +341,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [error, setError] = useState<string | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isVariablesDrawerOpen, setIsVariablesDrawerOpen] = useState(false)
+  const [filterIncompleteSecrets, setFilterIncompleteSecrets] = useState(false)
   const [isActivityDrawerOpen, setIsActivityDrawerOpen] = useState(false)
   const [selectedStep, setSelectedStep] = useState<CanvasStep | null>(null)
   const [isStepDrawerOpen, setIsStepDrawerOpen] = useState(false)
@@ -393,6 +364,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
   const [activeRun, setActiveRun] = useState<WorkflowRun | null>(null)
   const [isRunActionLoading, setIsRunActionLoading] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   const endpointById = new Map(
     endpoints.members.map((endpoint) => [endpoint.id, endpoint])
@@ -401,11 +373,11 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
   const loadSteps = useCallback(async () => {
     const payload = await getWorkflowSteps(workflowId)
     const nextSteps = listFromPayload(payload)
-      .map((item) => mapItemToCanvasStep(item, endpointById))
+      .map((item) => mapItemToCanvasStep(item))
       .filter((value): value is CanvasStep => value !== null)
 
     setSteps(nextSteps)
-  }, [workflowId, endpoints.members])
+  }, [workflowId])
 
   const loadConnections = useCallback(async () => {
     const payload = await getWorkflowConnections(workflowId)
@@ -532,6 +504,16 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     })
   }, [workflowId])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("imported") !== "1") return
+
+    toast.success(
+      "Workflow imported successfully. It is inactive by default — activate it once you have verified it."
+    )
+    window.history.replaceState({}, "", `/workflow/${workflowId}`)
+  }, [workflowId])
+
   const refreshActiveRun = useCallback(async () => {
     try {
       const run = await getActiveWorkflowRun(workflowId)
@@ -597,6 +579,25 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     }
   }
 
+  const handleExport = async () => {
+    if (!workflow || isExporting) return
+
+    setIsExporting(true)
+    try {
+      const payload = await exportWorkflow(workflowId)
+      downloadWorkflowExport(
+        `${slugifyWorkflowExportName(workflow.name)}-export.json`,
+        payload
+      )
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to export workflow"
+      )
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const handleStatusToggle = async (nextActive: boolean) => {
     if (!workflow || isTogglingStatus) return
 
@@ -648,6 +649,10 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     )
   }
 
+  const incompleteSecretCount = variables.filter(
+    isIncompleteSecretVariable
+  ).length
+
   const handleCreateStep = async (input: {
     endpointId: string
     position: Point
@@ -660,7 +665,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       type: "http",
       name: input.preview.name || endpoint?.name || "Step",
       description: input.preview.description ?? endpoint?.description ?? null,
-      endpointId: input.endpointId,
       delayDurationSeconds: null,
       expression: null,
       method: input.preview.method || endpoint?.method || "GET",
@@ -764,7 +768,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       type: "delay",
       name: "Delay",
       description: null,
-      endpointId: null,
       delayDurationSeconds: DEFAULT_DELAY_DURATION_SECONDS,
       expression: null,
       method: "",
@@ -790,7 +793,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         name: "Delay",
       })
 
-      const mapped = mapItemToCanvasStep(created, endpointById, optimisticStep)
+      const mapped = mapItemToCanvasStep(created, optimisticStep)
       if (mapped) {
         setSteps((current) =>
           current.map((step) => (step.id === tempId ? mapped : step))
@@ -809,7 +812,6 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
       type: "condition",
       name: "Condition",
       description: null,
-      endpointId: null,
       delayDurationSeconds: null,
       expression: DEFAULT_CONDITION_EXPRESSION,
       method: "",
@@ -835,7 +837,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         name: "Condition",
       })
 
-      const mapped = mapItemToCanvasStep(created, endpointById, optimisticStep)
+      const mapped = mapItemToCanvasStep(created, optimisticStep)
       if (mapped) {
         setSteps((current) =>
           current.map((step) => (step.id === tempId ? mapped : step))
@@ -958,7 +960,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
       void getWorkflowStep(workflowId, step.id)
         .then((payload) => {
-          const mapped = mapItemToCanvasStep(payload, endpointById, step)
+          const mapped = mapItemToCanvasStep(payload, step)
           if (mapped) setSelectedDelayStep(mapped)
         })
         .catch(() => {})
@@ -973,7 +975,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
       void getWorkflowStep(workflowId, step.id)
         .then((payload) => {
-          const mapped = mapItemToCanvasStep(payload, endpointById, step)
+          const mapped = mapItemToCanvasStep(payload, step)
           if (mapped) setSelectedConditionStep(mapped)
         })
         .catch(() => {})
@@ -987,7 +989,7 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
 
     void getWorkflowStep(workflowId, step.id)
       .then((payload) => {
-        const mapped = mapItemToCanvasStep(payload, endpointById, step)
+        const mapped = mapItemToCanvasStep(payload, step)
         if (mapped) setSelectedStep(mapped)
       })
       .catch(() => {})
@@ -1174,7 +1176,23 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           <Button
             variant="outline"
             size="icon-lg"
-            onClick={() => setIsVariablesDrawerOpen(true)}
+            onClick={() => void handleExport()}
+            disabled={isExporting}
+            aria-label="Export workflow"
+          >
+            {isExporting ? (
+              <Loader2Icon className="size-4 animate-spin" />
+            ) : (
+              <DownloadIcon className="size-4" />
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-lg"
+            onClick={() => {
+              setFilterIncompleteSecrets(false)
+              setIsVariablesDrawerOpen(true)
+            }}
             aria-label="Workflow variables"
           >
             <BracesIcon className="size-4" />
@@ -1189,6 +1207,30 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           </Button>
         </div>
       </div>
+
+      {incompleteSecretCount > 0 ? (
+        <div className="flex shrink-0 items-start gap-3 border-b border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+          <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <p>
+              This workflow contains {incompleteSecretCount} secret variable
+              {incompleteSecretCount === 1 ? "" : "s"}. Their values were not
+              transferred — fill them in before activating this workflow.
+            </p>
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto p-0 text-amber-900 dark:text-amber-200"
+              onClick={() => {
+                setFilterIncompleteSecrets(true)
+                setIsVariablesDrawerOpen(true)
+              }}
+            >
+              Open secret variables
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <div
         className={cn(
@@ -1285,7 +1327,11 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
         variables={variables}
         steps={steps}
         isOpen={isVariablesDrawerOpen}
-        onOpenChange={setIsVariablesDrawerOpen}
+        filterIncompleteSecrets={filterIncompleteSecrets}
+        onOpenChange={(open) => {
+          setIsVariablesDrawerOpen(open)
+          if (!open) setFilterIncompleteSecrets(false)
+        }}
         onVariablesChange={setVariables}
         onRequestDelete={(variable) => {
           setVariableToDelete(variable)

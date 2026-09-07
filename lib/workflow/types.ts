@@ -78,7 +78,6 @@ export type CreateWorkflowStepInput =
     }
   | {
       type: "delay"
-      endpointId?: null
       delayDurationSeconds: number
       position: { x: number; y: number }
       name?: string
@@ -87,7 +86,6 @@ export type CreateWorkflowStepInput =
     }
   | {
       type: "condition"
-      endpointId?: null
       expression: string
       position: { x: number; y: number }
       name?: string

@@ -23,7 +23,6 @@ import { StepAssertionsSection } from "@/components/workflow/step-assertions-sec
 import { CanvasStep, isNonHttpStep } from "@/components/workflow/step-node"
 import { StepVariablesSection } from "@/components/workflow/step-variables-section"
 import { VariableAutocompleteField } from "@/components/workflow/variable-autocomplete-field"
-import { useEndpoint } from "@/lib/endpoint/context"
 import {
   KeyValuePair,
   millisecondsToSeconds,
@@ -53,7 +52,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Controller, useForm, useWatch } from "react-hook-form"
-import { StepPreview } from "./step-preview"
 
 const HTTP_METHODS = [
   "GET",
@@ -68,7 +66,6 @@ const HTTP_METHODS = [
 const emptyFormValues: StepFormValues = {
   name: "",
   description: "",
-  endpointId: "",
   url: "",
   method: "GET",
   body: "{}",
@@ -92,7 +89,6 @@ function getStepFormValues(step?: CanvasStep | null): StepFormValues {
   return {
     name: step.name,
     description: step.description ?? "",
-    endpointId: step.endpointId ?? "",
     url: step.path,
     method,
     body: JSON.stringify(step.body ?? {}, null, 2),
@@ -230,7 +226,6 @@ export function StepDrawer({
   onDeleted,
   onRequestDeleteVariable,
 }: StepDrawerProps) {
-  const { endpoints } = useEndpoint()
   const { quota } = useQuota()
   const subscriptionContext = useOptionalSubscription()
   const maxStepTimeoutSeconds = resolveMaxStepTimeoutSeconds(
@@ -392,16 +387,6 @@ export function StepDrawer({
                   </div>
 
                   <div className="flex flex-col gap-6 md:col-span-2">
-                    {activeStep.endpoint ? (
-                      <div className="mb-6 flex w-full items-center gap-3 rounded-lg border border-border bg-card px-4 py-2">
-                        <StepPreview
-                          name={activeStep.endpoint.name}
-                          method={activeStep.endpoint.method}
-                          url={activeStep.endpoint.url}
-                          className="min-w-0 flex-1"
-                        />
-                      </div>
-                    ) : null}
                     <Field>
                       <Controller
                         name="name"

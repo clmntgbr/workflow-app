@@ -23,8 +23,6 @@ export function inferStepType(record: Record<string, unknown>): StepType {
   if (explicit === "condition") return "condition"
   if (explicit === "http") return "http"
 
-  const endpointIdRaw = record.endpointId ?? record.endpoint_id
-  const hasEndpoint = isValidStepEndpointId(endpointIdRaw)
   const delaySecondsRaw =
     record.delayDurationSeconds ?? record.delay_duration_seconds
   const delaySeconds =
@@ -35,8 +33,8 @@ export function inferStepType(record: Record<string, unknown>): StepType {
   const hasExpression =
     typeof expressionRaw === "string" && expressionRaw.trim().length > 0
 
-  if (!hasEndpoint && hasExpression) return "condition"
-  if (!hasEndpoint && delaySeconds > 0) return "delay"
+  if (hasExpression) return "condition"
+  if (delaySeconds > 0) return "delay"
   return "http"
 }
 
@@ -46,7 +44,7 @@ export function validateCreateStepInput(
   const type = input.type ?? "http"
 
   if (type === "http") {
-    if (!input.endpointId?.trim()) {
+    if (!("endpointId" in input) || !isValidStepEndpointId(input.endpointId)) {
       return "endpointId is required for HTTP steps"
     }
     if (input.delayDurationSeconds != null) {
@@ -56,9 +54,6 @@ export function validateCreateStepInput(
   }
 
   if (type === "delay") {
-    if (input.endpointId) {
-      return "endpointId must be null for delay steps"
-    }
     if (
       input.delayDurationSeconds == null ||
       input.delayDurationSeconds <= 0
@@ -68,9 +63,6 @@ export function validateCreateStepInput(
     return null
   }
 
-  if (input.endpointId) {
-    return "endpointId must be null for condition steps"
-  }
   if (!input.expression?.trim()) {
     return "expression is required for condition steps"
   }

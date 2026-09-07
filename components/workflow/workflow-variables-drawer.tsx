@@ -22,6 +22,7 @@ import { CanvasStep, isNonHttpStep } from "@/components/workflow/step-node"
 import { StepPreview } from "@/components/workflow/step-preview"
 import { VariableDrawer } from "@/components/workflow/variable-drawer"
 import {
+  isIncompleteSecretVariable,
   WorkflowVariable,
   WorkflowVariableKind,
 } from "@/lib/workflow/variable/types"
@@ -40,6 +41,7 @@ interface WorkflowVariablesDrawerProps {
   onOpenChange: (open: boolean) => void
   onVariablesChange: (variables: WorkflowVariable[]) => void
   onRequestDelete?: (variable: WorkflowVariable) => void
+  filterIncompleteSecrets?: boolean
 }
 
 function formatVariableBadge(variable: WorkflowVariable): string {
@@ -88,6 +90,7 @@ export function WorkflowVariablesDrawer({
   onOpenChange,
   onVariablesChange,
   onRequestDelete,
+  filterIncompleteSecrets = false,
 }: WorkflowVariablesDrawerProps) {
   const [isVariableFormOpen, setIsVariableFormOpen] = useState(false)
   const [editingVariable, setEditingVariable] =
@@ -106,6 +109,9 @@ export function WorkflowVariablesDrawer({
   const isAtVariableLimit = maxVariables > 0 && variables.length >= maxVariables
 
   const httpSteps = steps.filter((step) => !isNonHttpStep(step))
+  const visibleVariables = filterIncompleteSecrets
+    ? variables.filter(isIncompleteSecretVariable)
+    : variables
 
   const filteredSteps = (() => {
     const query = stepSearch.trim().toLowerCase()
@@ -190,7 +196,9 @@ export function WorkflowVariablesDrawer({
                     ) : null}
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Manage workflow variables
+                    {filterIncompleteSecrets
+                      ? "Secret values were not transferred with the import. Fill them in before activating this workflow."
+                      : "Manage workflow variables"}
                   </p>
                 </div>
 
@@ -279,15 +287,23 @@ export function WorkflowVariablesDrawer({
             </div>
 
             <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
-              {variables.length === 0 ? (
+              {visibleVariables.length === 0 ? (
                 <EmptyComponent
-                  title="No variables yet"
-                  description="Add a static constant or extract a value from a step response to reuse later with {{key}}."
+                  title={
+                    filterIncompleteSecrets
+                      ? "No secret variables to complete"
+                      : "No variables yet"
+                  }
+                  description={
+                    filterIncompleteSecrets
+                      ? "All secret variables already have a value."
+                      : "Add a static constant or extract a value from a step response to reuse later with {{key}}."
+                  }
                   icon={<Braces className="size-5 text-muted-foreground" />}
                 />
               ) : (
                 <ul className="space-y-2">
-                  {variables.map((variable) => (
+                  {visibleVariables.map((variable) => (
                     <li key={variable.id} className="flex items-stretch gap-2">
                       <Button
                         type="button"
@@ -307,12 +323,21 @@ export function WorkflowVariablesDrawer({
                           </span>
                         </span>
                         <span className="flex max-w-[40%] shrink-0 flex-col items-end gap-1 px-1.5 py-0.5">
-                          <Badge
-                            variant="secondary"
-                            className="max-w-full truncate"
-                          >
-                            {formatVariableBadge(variable)}
-                          </Badge>
+                          {isIncompleteSecretVariable(variable) ? (
+                            <Badge
+                              variant="destructive"
+                              className="max-w-full truncate"
+                            >
+                              Value missing
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="secondary"
+                              className="max-w-full truncate"
+                            >
+                              {formatVariableBadge(variable)}
+                            </Badge>
+                          )}
                         </span>
                       </Button>
                       <Button

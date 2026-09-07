@@ -3,10 +3,11 @@
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { WorkflowDrawer } from "@/components/workflow/workflow-drawer"
+import { WorkflowImportDrawer } from "@/components/workflow/workflow-import-drawer"
 import { useProject } from "@/lib/project/context"
 import { useWorkflow } from "@/lib/workflow/context"
 import { Workflow } from "@/lib/workflow/types"
-import { PlusIcon, SettingsIcon } from "lucide-react"
+import { PlusIcon, SettingsIcon, UploadIcon } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 
@@ -18,6 +19,7 @@ export function WorkflowList() {
   )
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("edit")
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   const openCreate = () => {
     setSelectedWorkflow(null)
@@ -53,10 +55,20 @@ export function WorkflowList() {
             Workflows for {activeProject.name}
           </p>
         </div>
-        <Button onClick={openCreate}>
-          <PlusIcon className="size-4" />
-          New workflow
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsImportOpen(true)}
+          >
+            <UploadIcon className="size-4" />
+            Import workflow
+          </Button>
+          <Button onClick={openCreate}>
+            <PlusIcon className="size-4" />
+            New workflow
+          </Button>
+        </div>
       </div>
 
       {isLoading && workflows.members.length === 0 ? (
@@ -103,6 +115,10 @@ export function WorkflowList() {
         </ul>
       )}
 
+      <WorkflowImportDrawer
+        isOpen={isImportOpen}
+        onOpenChange={setIsImportOpen}
+      />
       <WorkflowDrawer
         workflow={drawerMode === "edit" ? selectedWorkflow : null}
         isOpen={isDrawerOpen}

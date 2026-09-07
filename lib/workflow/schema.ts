@@ -1,5 +1,11 @@
 import * as z from "zod"
-import { CreateWorkflowInput, UpdateWorkflowInput } from "./types"
+import {
+  CreateWorkflowInput,
+  ScheduleType,
+  ScheduleUnit,
+  UpdateWorkflowInput,
+  Workflow,
+} from "./types"
 import { hasNotificationTarget } from "./utils"
 
 const MIN_SCHEDULE_INTERVAL_MINUTES = 1
@@ -101,6 +107,167 @@ export const workflowSchema = z
   })
 
 export type WorkflowFormValues = z.infer<typeof workflowSchema>
+
+export const emptyWorkflowFormValues: WorkflowFormValues = {
+  name: "",
+  description: "",
+  scheduleType: "none",
+  scheduleIntervalValue: 1,
+  scheduleIntervalUnit: "hour",
+  scheduleAt: "",
+  notificationsEnabled: false,
+  notifyOnSuccess: false,
+  notifyOnFailure: false,
+  notifyOnCancel: false,
+}
+
+const SCHEDULE_TYPES: ScheduleType[] = ["none", "recurring", "once"]
+const SCHEDULE_UNITS: ScheduleUnit[] = [
+  "minute",
+  "hour",
+  "day",
+  "week",
+  "month",
+  "year",
+]
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+function pickString(
+  record: Record<string, unknown>,
+  keys: string[]
+): string | null {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === "string") return value
+  }
+  return null
+}
+
+function pickNumber(
+  record: Record<string, unknown>,
+  keys: string[]
+): number | null {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === "number" && Number.isFinite(value)) return value
+  }
+  return null
+}
+
+function pickBoolean(
+  record: Record<string, unknown>,
+  keys: string[]
+): boolean | null {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === "boolean") return value
+  }
+  return null
+}
+
+export function getWorkflowFormValues(
+  workflow?: Workflow | null
+): WorkflowFormValues {
+  if (!workflow) return emptyWorkflowFormValues
+
+  const scheduleType = SCHEDULE_TYPES.includes(
+    workflow.scheduleType as ScheduleType
+  )
+    ? (workflow.scheduleType as ScheduleType)
+    : "none"
+
+  return {
+    name: workflow.name,
+    description: workflow.description ?? "",
+    scheduleType,
+    scheduleIntervalValue: workflow.scheduleIntervalValue || 1,
+    scheduleIntervalUnit: SCHEDULE_UNITS.includes(
+      workflow.scheduleIntervalUnit as ScheduleUnit
+    )
+      ? (workflow.scheduleIntervalUnit as ScheduleUnit)
+      : "hour",
+    scheduleAt: toDatetimeLocalValue(workflow.scheduleAt),
+    notificationsEnabled: workflow.notificationsEnabled ?? false,
+    notifyOnSuccess: workflow.notifyOnSuccess ?? false,
+    notifyOnFailure: workflow.notifyOnFailure ?? false,
+    notifyOnCancel: workflow.notifyOnCancel ?? false,
+  }
+}
+
+export function getWorkflowFormValuesFromExport(
+  payload: unknown
+): WorkflowFormValues {
+  const root = asRecord(payload)
+  if (!root) return emptyWorkflowFormValues
+  const source = asRecord(root.workflow) ?? root
+
+  const scheduleTypeRaw = pickString(source, ["scheduleType", "schedule_type"])
+  const scheduleUnitRaw = pickString(source, [
+    "scheduleIntervalUnit",
+    "schedule_interval_unit",
+  ])
+
+  return {
+    name: pickString(source, ["name"]) ?? "",
+    description: pickString(source, ["description"]) ?? "",
+    scheduleType: SCHEDULE_TYPES.includes(scheduleTypeRaw as ScheduleType)
+      ? (scheduleTypeRaw as ScheduleType)
+      : "none",
+    scheduleIntervalValue:
+      pickNumber(source, [
+        "scheduleIntervalValue",
+        "schedule_interval_value",
+      ]) || 1,
+    scheduleIntervalUnit: SCHEDULE_UNITS.includes(
+      scheduleUnitRaw as ScheduleUnit
+    )
+      ? (scheduleUnitRaw as ScheduleUnit)
+      : "hour",
+    scheduleAt: toDatetimeLocalValue(
+      pickString(source, ["scheduleAt", "schedule_at"])
+    ),
+    notificationsEnabled:
+      pickBoolean(source, [
+        "notificationsEnabled",
+        "notifications_enabled",
+      ]) ?? false,
+    notifyOnSuccess:
+      pickBoolean(source, ["notifyOnSuccess", "notify_on_success"]) ?? false,
+    notifyOnFailure:
+      pickBoolean(source, ["notifyOnFailure", "notify_on_failure"]) ?? false,
+    notifyOnCancel:
+      pickBoolean(source, ["notifyOnCancel", "notify_on_cancel"]) ?? false,
+  }
+}
+
+export function applyWorkflowFormToExport(
+  payload: unknown,
+  values: WorkflowFormValues
+): unknown {
+  const create = toCreateWorkflowPayload(values)
+  const root = asRecord(payload)
+  if (!root) return payload
+
+  const nested = asRecord(root.workflow)
+  if (nested) {
+    return {
+      ...root,
+      workflow: {
+        ...nested,
+        ...create,
+      },
+    }
+  }
+
+  return {
+    ...root,
+    ...create,
+  }
+}
 
 export function toDatetimeLocalValue(iso?: string | null): string {
   if (!iso) return ""

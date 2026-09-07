@@ -89,6 +89,28 @@ async function readErrorMessage(
   return errorMessageFromBody(await readErrorBody(response), fallback)
 }
 
+function parseVariableList(data: unknown): WorkflowVariable[] {
+  let raw: unknown[] = []
+  if (Array.isArray(data)) {
+    raw = data
+  } else {
+    const record = asRecord(data)
+    const nested = asRecord(record?.data)
+    if (Array.isArray(record?.members)) raw = record.members
+    else if (Array.isArray(record?.data)) raw = record.data
+    else if (Array.isArray(nested?.members)) raw = nested.members
+  }
+
+  return raw.map((item) => {
+    const record = asRecord(item)
+    if (!record) return item as WorkflowVariable
+    return {
+      ...(item as WorkflowVariable),
+      isSecret: record.isSecret === true || record.is_secret === true,
+    }
+  })
+}
+
 export async function listWorkflowVariables(
   workflowId: string
 ): Promise<WorkflowVariable[]> {
@@ -102,8 +124,7 @@ export async function listWorkflowVariables(
     )
   }
 
-  const data = await response.json()
-  return Array.isArray(data) ? data : []
+  return parseVariableList(await response.json())
 }
 
 export async function listAvailableVariables(

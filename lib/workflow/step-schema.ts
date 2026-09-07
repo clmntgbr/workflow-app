@@ -27,7 +27,6 @@ export const stepFormSchema = z.object({
     .min(1, "Name is required")
     .max(255, "Name must be at most 255 characters"),
   description: z.string().max(2000).optional(),
-  endpointId: z.string().optional(),
   url: z.string().url("URL must be valid").max(2048),
   method: z.enum([
     "GET",

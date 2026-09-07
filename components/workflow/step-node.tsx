@@ -2,7 +2,6 @@
 
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { StepPreview } from "@/components/workflow/step-preview"
-import { Endpoint } from "@/lib/endpoint/types"
 import { GetStatusStyle } from "@/lib/misc"
 import { cn } from "@/lib/utils"
 import { RunStatus } from "@/lib/workflow-run/types"
@@ -27,7 +26,6 @@ export type CanvasStep = {
   index?: string
   name: string
   description: string | null
-  endpointId: string | null
   delayDurationSeconds: number | null
   expression: string | null
   method: string
@@ -45,7 +43,6 @@ export type CanvasStep = {
   lastRunStatus?: RunStatus | null
   x: number
   y: number
-  endpoint?: Endpoint
 }
 
 export type StepNodeData = {
