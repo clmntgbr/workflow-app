@@ -293,7 +293,7 @@ export function StepNode({ data }: NodeProps) {
       <div
         className={cn(
           "group relative flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card transition-all duration-200 hover:shadow-sm",
-          delayStep && "w-48 border-violet-200/80 px-3 py-2",
+          delayStep && "w-60 border-violet-200/80 px-3 py-2",
           conditionStep && "w-60 border-amber-200/80 px-3 py-2",
           !delayStep && !conditionStep && "w-80 px-3 py-2"
         )}
