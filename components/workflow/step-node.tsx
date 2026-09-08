@@ -141,7 +141,7 @@ function ConditionStepNodeContent() {
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
       <div className="flex min-w-0 items-center gap-2">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-700">
           <GitBranchIcon className="size-3.5" />
         </span>
         <div className="min-w-0 flex-1">
@@ -252,7 +252,7 @@ export function StepNode({ data }: NodeProps) {
         className={cn(
           "group relative flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card transition-all duration-200 hover:shadow-sm",
           delayStep && "w-48 border-violet-200/80 px-3 py-2",
-          conditionStep && "w-60 border-emerald-200/80 px-3 py-2",
+          conditionStep && "w-60 border-amber-200/80 px-3 py-2",
           !delayStep && !conditionStep && "w-80 px-3 py-2"
         )}
         onClick={handleNodeClick}

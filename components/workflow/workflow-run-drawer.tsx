@@ -80,7 +80,7 @@ export function WorkflowRunDrawer({
             <WorkflowRunTimeline run={timelineRun} stepRuns={sortedStepRuns} />
           ) : null}
           {sortedStepRuns.length > 0 ? (
-            <div className="space-y-2">
+            <div className="overflow-hidden rounded-lg border bg-card">
               {sortedStepRuns.map((stepRun, index) => (
                 <WorkflowRunStepRun
                   key={stepRun.id}

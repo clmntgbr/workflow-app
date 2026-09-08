@@ -366,7 +366,7 @@ function CanvasInner({
           type="button"
           draggable
           onDragStart={handleConditionDragStart}
-          className="pointer-events-auto flex size-10 cursor-grab items-center justify-center rounded-lg border border-emerald-200 bg-white text-emerald-700 shadow-sm transition-colors hover:bg-emerald-50 active:cursor-grabbing"
+          className="pointer-events-auto flex size-10 cursor-grab items-center justify-center rounded-lg border border-amber-200 bg-white text-amber-700 shadow-sm transition-colors hover:bg-amber-50 active:cursor-grabbing"
           aria-label="Drag condition step onto canvas"
           title="Drag to add a condition step"
         >

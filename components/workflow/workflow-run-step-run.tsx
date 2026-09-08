@@ -6,25 +6,19 @@ import { Button } from "@/components/ui/button"
 import { GetRunDuration } from "@/lib/misc"
 import { cn } from "@/lib/utils"
 import {
-  RunStatus,
   WorkflowRunInsight,
   WorkflowRunStepRunDetail,
 } from "@/lib/workflow-run/types"
-import { formatDelayDuration } from "@/lib/workflow/delay"
 import { inferStepType } from "@/lib/workflow/step-validation"
 import { StepType } from "@/lib/workflow/types"
 import {
-  CheckIcon,
   ChevronRightIcon,
-  CircleAlertIcon,
   ClockIcon,
   GaugeIcon,
   GitBranchIcon,
   GlobeIcon,
-  Loader2Icon,
   ServerIcon,
   TimerIcon,
-  XIcon,
 } from "lucide-react"
 import { Fragment, useState } from "react"
 import {
@@ -35,39 +29,31 @@ import {
 } from "../ui/tooltip"
 
 const METHOD_STYLES: Record<string, string> = {
-  GET: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  POST: "border-blue-200 bg-blue-50 text-blue-700",
-  PUT: "border-amber-200 bg-amber-50 text-amber-700",
-  PATCH: "border-orange-200 bg-orange-50 text-orange-700",
-  DELETE: "border-red-200 bg-red-50 text-red-700",
-  HEAD: "border-slate-200 bg-slate-50 text-slate-700",
-  OPTIONS: "border-violet-200 bg-violet-50 text-violet-700",
+  GET: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  POST: "bg-blue-50 text-blue-700 border-blue-200",
+  PUT: "bg-amber-50 text-amber-700 border-amber-200",
+  PATCH: "bg-orange-50 text-orange-700 border-orange-200",
+  DELETE: "bg-red-50 text-red-700 border-red-200",
+  HEAD: "bg-slate-50 text-slate-700 border-slate-200",
+  OPTIONS: "bg-violet-50 text-violet-700 border-violet-200",
 }
 
-const STATUS_ICON: Record<RunStatus, typeof CheckIcon> = {
-  success: CheckIcon,
-  failed: XIcon,
-  skipped: CircleAlertIcon,
-  cancelled: CircleAlertIcon,
-  waiting: ClockIcon,
-  running: Loader2Icon,
-  pending: ClockIcon,
-}
-
-const STATUS_COLOR: Record<RunStatus, string> = {
-  success: "text-emerald-600",
-  failed: "text-rose-600",
-  skipped: "text-slate-500",
-  cancelled: "text-orange-600",
-  waiting: "text-violet-600",
-  running: "text-sky-600",
-  pending: "text-amber-600",
-}
-
-const STEP_TYPE_LABEL: Record<StepType, string> = {
-  http: "HTTP",
-  delay: "Delay",
-  condition: "Condition",
+const STEP_TYPE_ICON: Record<
+  StepType,
+  { icon: typeof GlobeIcon; className: string }
+> = {
+  http: {
+    icon: GlobeIcon,
+    className: "border-sky-200 bg-sky-50 text-sky-700",
+  },
+  delay: {
+    icon: TimerIcon,
+    className: "border-violet-200 bg-violet-50 text-violet-700",
+  },
+  condition: {
+    icon: GitBranchIcon,
+    className: "border-amber-200 bg-amber-50 text-amber-700",
+  },
 }
 
 export interface WorkflowRunStepRunProps {
@@ -79,24 +65,36 @@ function MethodBadge({ method }: { method: string | null | undefined }) {
   if (!method) return null
   const normalized = method.toUpperCase()
   return (
-    <Badge
-      variant="outline"
+    <span
       className={cn(
-        "font-mono uppercase",
-        METHOD_STYLES[normalized] ?? "text-muted-foreground"
+        "shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase",
+        METHOD_STYLES[normalized] ??
+          "border-border bg-muted text-muted-foreground"
       )}
     >
       {normalized}
-    </Badge>
+    </span>
   )
 }
 
-function StepTypeBadge({ type }: { type: StepType }) {
+function StepTypeIcon({ type }: { type: StepType }) {
+  const { icon: Icon, className } = STEP_TYPE_ICON[type]
   return (
-    <Badge variant="secondary" className="font-medium">
-      {STEP_TYPE_LABEL[type]}
-    </Badge>
+    <span
+      className={cn(
+        "flex size-7 shrink-0 items-center justify-center rounded-md border",
+        className
+      )}
+    >
+      <Icon className="size-3.5" />
+    </span>
   )
+}
+
+function statusCodeClass(status: number): string {
+  if (status >= 200 && status < 300) return "text-emerald-600"
+  if (status >= 400) return "text-rose-600"
+  return "text-muted-foreground"
 }
 
 function formatMillisLabel(ms: number | null | undefined): string {
@@ -124,151 +122,96 @@ function readDelaySeconds(
   return typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : null
 }
 
-function readExpression(step: WorkflowRunStepRunDetail["step"]): string | null {
-  const record = step as unknown as Record<string, unknown>
-  return typeof record.expression === "string" && record.expression.trim()
-    ? record.expression
-    : null
-}
-
 export function WorkflowRunStepRun({
   stepRun,
   index,
 }: WorkflowRunStepRunProps) {
   const [expanded, setExpanded] = useState(false)
   const stepType = resolveStepType(stepRun)
-  const assertions = stepRun.assertionsResult ?? []
   const insights = stepRun.insights ?? []
   const skipped = !stepRun.startedAt || stepRun.status === "skipped"
   const status = skipped ? "skipped" : stepRun.status
+  const delaySeconds = readDelaySeconds(stepRun.step)
   const elapsed = skipped ? 0 : stepElapsedMs(stepRun)
-  const durationLabel = GetRunDuration(elapsed) || "—"
-  const StatusIcon = STATUS_ICON[status] ?? ClockIcon
+  const durationLabel =
+    stepType === "delay"
+      ? delaySeconds != null
+        ? GetRunDuration(delaySeconds * 1000) || "—"
+        : "—"
+      : GetRunDuration(elapsed) || "—"
+  const responseStatus = stepRun.responseSnapshot?.status
+  const hasDetails = !skipped && stepType === "http" && insights.length > 0
 
-  const hasDetails =
-    assertions.length > 0 ||
-    insights.length > 0 ||
-    stepType === "condition" ||
-    stepType === "delay" ||
-    stepRun.error != null ||
-    (stepType === "http" && Boolean(stepRun.url || stepRun.responseSnapshot))
+  const header = (
+    <>
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted font-mono text-xs font-semibold text-muted-foreground">
+        {index + 1}
+      </div>
+      <StepTypeIcon type={stepType} />
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="shrink-0 truncate text-sm font-semibold">
+          {stepRun.name}
+        </span>
+        {stepType === "http" && (stepRun.method || stepRun.url) ? (
+          <>
+            <MethodBadge method={stepRun.method} />
+            {stepRun.url ? (
+              <p className="min-w-0 truncate font-mono text-xs text-muted-foreground">
+                {stepRun.url}
+              </p>
+            ) : null}
+            <StatusBadge status={status} />
+          </>
+        ) : null}
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Badge
+          variant="outline"
+          className="gap-1 font-mono text-muted-foreground tabular-nums"
+        >
+          <ClockIcon data-icon="inline-start" />
+          {durationLabel}
+        </Badge>
+        {hasDetails ? (
+          <ChevronRightIcon
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform",
+              expanded && "rotate-90"
+            )}
+          />
+        ) : null}
+      </div>
+    </>
+  )
+
+  const headerClassName =
+    "flex h-auto w-full items-center justify-start gap-3 px-4 py-3 text-left whitespace-normal"
 
   return (
     <div
       className={cn(
-        "relative rounded-lg border bg-card",
-        expanded && "ring-1 ring-ring/30",
-        status === "failed" && "border-rose-200",
+        "border-b last:border-b-0",
+        expanded && "bg-muted/30",
         skipped && "opacity-60"
       )}
     >
-      <div
-        className={cn(
-          "absolute top-0 left-0 h-full w-0.5 rounded-l-lg",
-          status === "success" && "bg-emerald-500",
-          status === "failed" && "bg-rose-500",
-          status === "skipped" && "bg-slate-400",
-          status === "cancelled" && "bg-orange-500",
-          status === "waiting" && "bg-violet-500",
-          status === "running" && "animate-pulse bg-sky-500",
-          status === "pending" && "bg-amber-500"
-        )}
-      />
-
-      <Button
-        type="button"
-        variant="ghost"
-        aria-expanded={hasDetails ? expanded : undefined}
-        onClick={() => {
-          if (!hasDetails) return
-          setExpanded((current) => !current)
-        }}
-        className={cn(
-          "flex h-auto w-full items-center justify-start gap-3 rounded-lg px-4 py-3 text-left whitespace-normal",
-          hasDetails
-            ? "hover:bg-muted/60"
-            : "cursor-default hover:bg-transparent"
-        )}
-      >
-        <div className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted font-mono text-xs font-semibold text-muted-foreground">
-          {index + 1}
-        </div>
-
-        <StatusIcon
-          className={cn(
-            "size-4 shrink-0",
-            STATUS_COLOR[status],
-            status === "running" && "animate-spin"
-          )}
-        />
-
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="truncate text-sm font-medium">{stepRun.name}</span>
-          <StepTypeBadge type={stepType} />
-        </div>
-
-        {stepType === "http" && stepRun.url ? (
-          <div className="hidden max-w-90 min-w-0 items-center gap-2 md:flex">
-            <MethodBadge method={stepRun.method} />
-            <span className="truncate font-mono text-xs text-muted-foreground">
-              {stepRun.url}
-            </span>
-          </div>
-        ) : null}
-
-        {stepType === "condition" && readExpression(stepRun.step) ? (
-          <div className="hidden items-center gap-1.5 md:flex">
-            <GitBranchIcon className="size-3.5 text-muted-foreground" />
-            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-              {readExpression(stepRun.step)}
-            </code>
-          </div>
-        ) : null}
-
-        {stepType === "delay" && readDelaySeconds(stepRun.step) ? (
-          <div className="hidden items-center gap-1.5 text-xs text-muted-foreground md:flex">
-            <ClockIcon className="size-3.5" />
-            {formatDelayDuration(readDelaySeconds(stepRun.step) ?? 0)}
-          </div>
-        ) : null}
-
-        <div className="flex shrink-0 items-center gap-3">
-          {stepRun.responseSnapshot && stepType === "http" ? (
-            <Badge variant="outline" className="font-mono">
-              {stepRun.responseSnapshot.status}
-            </Badge>
-          ) : null}
-          {stepType === "condition" && stepRun.matchedBranch != null ? (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 text-xs font-medium",
-                stepRun.matchedBranch
-                  ? "text-emerald-700"
-                  : "text-muted-foreground"
-              )}
-            >
-              <GitBranchIcon className="size-3" />
-              {stepRun.matchedBranch ? "True" : "False"}
-            </span>
-          ) : null}
-          <span className="font-mono text-xs text-muted-foreground tabular-nums">
-            {durationLabel}
-          </span>
-          <StatusBadge status={status} />
-          {hasDetails ? (
-            <ChevronRightIcon
-              className={cn(
-                "size-4 shrink-0 text-muted-foreground transition-transform",
-                expanded && "rotate-90"
-              )}
-            />
-          ) : null}
-        </div>
-      </Button>
+      {hasDetails ? (
+        <Button
+          type="button"
+          variant="ghost"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((current) => !current)}
+          className={cn(headerClassName, "rounded-none hover:bg-muted/60")}
+        >
+          {header}
+        </Button>
+      ) : (
+        <div className={headerClassName}>{header}</div>
+      )}
 
       {expanded && hasDetails ? (
         <div className="space-y-4 border-t px-4 py-4">
-          {insights.length > 0 ? <InsightsPanel insights={insights} /> : null}
+          <InsightsPanel insights={insights} />
         </div>
       ) : null}
     </div>
@@ -343,8 +286,8 @@ function InsightsPanel({ insights }: { insights: WorkflowRunInsight[] }) {
                   className={cn(
                     "h-full rounded",
                     phase.label === "Request time"
-                      ? "bg-sky-500/60"
-                      : "bg-sky-500/30"
+                      ? "bg-emerald-500/60"
+                      : "bg-emerald-500/30"
                   )}
                   style={{
                     width: `${Math.max(((phase.value ?? 0) / maxValue) * 100, phase.value ? 2 : 0)}%`,
