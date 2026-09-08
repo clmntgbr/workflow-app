@@ -14,6 +14,14 @@ import {
   WorkflowRunDetail,
   WorkflowRunStepRunDetail,
 } from "@/lib/workflow-run/types"
+import {
+  CheckIcon,
+  CircleAlertIcon,
+  ClockIcon,
+  Loader2Icon,
+  MinusIcon,
+  XIcon,
+} from "lucide-react"
 
 interface WorkflowRunTimelineProps {
   run: WorkflowRun | WorkflowRunDetail
@@ -53,6 +61,31 @@ const BAR_COLOR: Record<RunStatus, string> = {
   pending: "bg-amber-500",
   cancelled: "bg-gray-500",
   skipped: "bg-slate-400/40",
+}
+
+const STATUS_ICON: Record<RunStatus, { bg: string; icon: typeof CheckIcon }> = {
+  success: { bg: "bg-emerald-500", icon: CheckIcon },
+  failed: { bg: "bg-rose-500", icon: XIcon },
+  running: { bg: "bg-sky-500", icon: Loader2Icon },
+  waiting: { bg: "bg-violet-500", icon: ClockIcon },
+  pending: { bg: "bg-amber-500", icon: ClockIcon },
+  cancelled: { bg: "bg-gray-500", icon: MinusIcon },
+  skipped: { bg: "bg-slate-400", icon: CircleAlertIcon },
+}
+
+function TimelineStatusIcon({ status }: { status: RunStatus }) {
+  const { bg, icon: Icon } = STATUS_ICON[status] ?? STATUS_ICON.pending
+  return (
+    <span
+      className={cn(
+        "flex size-3 shrink-0 items-center justify-center rounded-full text-white",
+        bg
+      )}
+      aria-label={status}
+    >
+      <Icon className={cn("size-2", status === "running" && "animate-spin")} />
+    </span>
+  )
 }
 
 function earliestIso(values: Array<string | null | undefined>): string | null {
@@ -117,6 +150,12 @@ export function WorkflowRunTimeline({
         <TooltipProvider delayDuration={100}>
           <div className="space-y-1.5">
             {packedSteps.map(({ stepRun, skipped, elapsed, offset }) => {
+              const statusIcon = (
+                <TimelineStatusIcon
+                  status={skipped ? "skipped" : stepRun.status}
+                />
+              )
+
               if (skipped) {
                 return (
                   <div key={stepRun.id} className="flex items-center gap-3">
@@ -133,6 +172,7 @@ export function WorkflowRunTimeline({
                         <p className="text-xs">This step was skipped</p>
                       </TooltipContent>
                     </Tooltip>
+                    {statusIcon}
                   </div>
                 )
               }
@@ -164,6 +204,7 @@ export function WorkflowRunTimeline({
                       </TooltipContent>
                     </Tooltip>
                   </div>
+                  {statusIcon}
                 </div>
               )
             })}

@@ -15,6 +15,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 import { UserButton } from "@clerk/nextjs"
 import Link from "next/link"
+import { useSyncExternalStore } from "react"
 
 const components: { title: string; href: string; description: string }[] = [
   {
@@ -107,10 +108,24 @@ export function AppHeader() {
       </div>
 
       <div className="z-10 flex items-center gap-2">
-        <UserButton />
+        <HeaderUserButton />
       </div>
     </header>
   )
+}
+
+function HeaderUserButton() {
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
+
+  if (!mounted) {
+    return <div className="size-8 shrink-0" aria-hidden="true" />
+  }
+
+  return <UserButton />
 }
 
 function ListItem({
