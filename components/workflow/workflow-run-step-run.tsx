@@ -2,7 +2,6 @@
 
 import { StatusBadge } from "@/components/status-badge"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { GetRunDuration } from "@/lib/misc"
 import { cn } from "@/lib/utils"
 import {
@@ -91,12 +90,6 @@ function StepTypeIcon({ type }: { type: StepType }) {
   )
 }
 
-function statusCodeClass(status: number): string {
-  if (status >= 200 && status < 300) return "text-emerald-600"
-  if (status >= 400) return "text-rose-600"
-  return "text-muted-foreground"
-}
-
 function formatMillisLabel(ms: number | null | undefined): string {
   if (ms == null || !Number.isFinite(ms)) return "—"
   return `${ms}ms`
@@ -139,17 +132,16 @@ export function WorkflowRunStepRun({
         ? GetRunDuration(delaySeconds * 1000) || "—"
         : "—"
       : GetRunDuration(elapsed) || "—"
-  const responseStatus = stepRun.responseSnapshot?.status
   const hasDetails = !skipped && stepType === "http" && insights.length > 0
 
   const header = (
     <>
-      <div className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted font-mono text-xs font-semibold text-muted-foreground">
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted font-mono text-xs font-semibold text-foreground">
         {index + 1}
       </div>
       <StepTypeIcon type={stepType} />
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="shrink-0 truncate text-sm font-semibold">
+        <span className="min-w-0 shrink truncate text-sm font-semibold">
           {stepRun.name}
         </span>
         {stepType === "http" && (stepRun.method || stepRun.url) ? (
@@ -185,7 +177,7 @@ export function WorkflowRunStepRun({
   )
 
   const headerClassName =
-    "flex h-auto w-full items-center justify-start gap-3 px-4 py-3 text-left whitespace-normal"
+    "flex h-auto w-full items-center justify-start gap-3 px-4 py-3 text-left"
 
   return (
     <div
@@ -196,15 +188,17 @@ export function WorkflowRunStepRun({
       )}
     >
       {hasDetails ? (
-        <Button
+        <button
           type="button"
-          variant="ghost"
           aria-expanded={expanded}
           onClick={() => setExpanded((current) => !current)}
-          className={cn(headerClassName, "rounded-none hover:bg-muted/60")}
+          className={cn(
+            headerClassName,
+            "cursor-pointer hover:bg-muted/60"
+          )}
         >
           {header}
-        </Button>
+        </button>
       ) : (
         <div className={headerClassName}>{header}</div>
       )}
