@@ -91,12 +91,19 @@ export function isWorkflowRunInProgress(status: string): boolean {
 
 export const startWorkflowRun = async (
   workflowId: string,
-  context?: Record<string, unknown>
+  options?: {
+    context?: Record<string, unknown>
+    fromStepId?: string
+  }
 ): Promise<WorkflowRun> => {
+  const body: Record<string, unknown> = {}
+  if (options?.context) body.context = options.context
+  if (options?.fromStepId) body.fromStepId = options.fromStepId
+
   const response = await fetch(`/api/workflows/${workflowId}/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(context ? { context } : {}),
+    body: JSON.stringify(body),
   })
 
   const conflict = await readConflictFromResponse(response)

@@ -574,6 +574,41 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
     }
   }
 
+  const handleStartFromStep = async (stepId: string) => {
+    if (
+      isRunActionLoading ||
+      activeRun ||
+      isWorkflowDeleted(workflow?.status ?? "")
+    ) {
+      return
+    }
+
+    setIsRunActionLoading(true)
+    try {
+      const run = await startWorkflowRun(workflowId, { fromStepId: stepId })
+      setActiveRun(run)
+    } catch (error) {
+      if (
+        error instanceof WorkflowRunConflictError &&
+        (error.code === "RUN_IN_PROGRESS" ||
+          error.code === "MISSING_PREVIOUS_STEP_RUN")
+      ) {
+        if (error.code === "RUN_IN_PROGRESS") {
+          await refreshActiveRun()
+        }
+        toast.error(error.message)
+        return
+      }
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to start workflow from this step"
+      )
+    } finally {
+      setIsRunActionLoading(false)
+    }
+  }
+
   const handleStopRun = async () => {
     if (isRunActionLoading || !activeRun) return
 
@@ -1278,6 +1313,12 @@ export function WorkflowPageClient({ workflowId }: WorkflowPageClientProps) {
           onDeleteConnection={handleDeleteConnection}
           onEditStep={handleEditStep}
           onDeleteStep={handleDeleteStep}
+          onStartFromStep={handleStartFromStep}
+          startFromStepDisabled={
+            Boolean(activeRun) ||
+            isRunActionLoading ||
+            isWorkflowDeleted(workflow?.status ?? "")
+          }
         />
       </div>
 

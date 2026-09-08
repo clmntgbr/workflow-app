@@ -10,6 +10,7 @@ import { StepType } from "@/lib/workflow/types"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
 import {
   CheckIcon,
+  CirclePlayIcon,
   ClockIcon,
   GitBranchIcon,
   LoaderCircleIcon,
@@ -18,7 +19,7 @@ import {
   TimerIcon,
   Trash2,
 } from "lucide-react"
-import { useRef, useState } from "react"
+import { useRef, useState, type MouseEvent } from "react"
 
 export type CanvasStep = {
   id: string
@@ -49,6 +50,8 @@ export type StepNodeData = {
   step: CanvasStep
   onEdit: (step: CanvasStep) => void
   onDelete: (stepId: string) => Promise<void>
+  onStartFromStep: (stepId: string) => Promise<void>
+  startFromStepDisabled: boolean
 }
 
 export function isDelayStep(step: Pick<CanvasStep, "type">): boolean {
@@ -158,25 +161,43 @@ function StepNodeActions({
   step,
   onEdit,
   onDelete,
+  onStartFromStep,
+  startFromStepDisabled,
   onBeforeDelete,
   isDelay,
 }: {
   step: CanvasStep
   onEdit: (step: CanvasStep) => void
   onDelete: (stepId: string) => Promise<void>
+  onStartFromStep: (stepId: string) => Promise<void>
+  startFromStepDisabled: boolean
   onBeforeDelete?: () => void
   isDelay: boolean
 }) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isStarting, setIsStarting] = useState(false)
 
   const handleConfirmDelete = async () => {
     onBeforeDelete?.()
     await onDelete(step.id)
   }
 
+  const handleStartFromStep = async (
+    event: MouseEvent<HTMLButtonElement>
+  ) => {
+    event.stopPropagation()
+    if (startFromStepDisabled || isStarting) return
+    setIsStarting(true)
+    try {
+      await onStartFromStep(step.id)
+    } finally {
+      setIsStarting(false)
+    }
+  }
+
   return (
     <>
-      <div className="relative ml-auto h-6 w-10 shrink-0">
+      <div className="relative ml-auto h-6 w-16 shrink-0">
         {step.lastRunStatus ? (
           <div className="absolute inset-y-0 right-0 flex items-center transition-opacity duration-200 group-hover:opacity-0">
             <LastRunStatusIcon status={step.lastRunStatus} isDelay={isDelay} />
@@ -184,6 +205,26 @@ function StepNodeActions({
         ) : null}
 
         <div className="absolute inset-y-0 -right-2 flex items-center gap-px rounded-full border border-border bg-background p-px opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100">
+          <button
+            type="button"
+            aria-label="Start from this step"
+            title={
+              startFromStepDisabled
+                ? "A run is already in progress"
+                : "Start from this step"
+            }
+            disabled={startFromStepDisabled || isStarting}
+            className="nodrag nopan grid size-6 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-sky-50 hover:text-sky-600 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-sky-500/10 dark:hover:text-sky-400"
+            onClick={(event) => {
+              void handleStartFromStep(event)
+            }}
+          >
+            {isStarting ? (
+              <LoaderCircleIcon className="size-3 animate-spin" strokeWidth={1.6} />
+            ) : (
+              <CirclePlayIcon className="size-3" strokeWidth={1.6} />
+            )}
+          </button>
           <button
             type="button"
             aria-label="Edit step"
@@ -223,7 +264,8 @@ function StepNodeActions({
 }
 
 export function StepNode({ data }: NodeProps) {
-  const { step, onEdit, onDelete } = data as unknown as StepNodeData
+  const { step, onEdit, onDelete, onStartFromStep, startFromStepDisabled } =
+    data as unknown as StepNodeData
   const delayStep = isDelayStep(step)
   const conditionStep = isConditionStep(step)
   const ignoreEditRef = useRef(false)
@@ -274,6 +316,8 @@ export function StepNode({ data }: NodeProps) {
           step={step}
           onEdit={onEdit}
           onDelete={onDelete}
+          onStartFromStep={onStartFromStep}
+          startFromStepDisabled={startFromStepDisabled}
           onBeforeDelete={handleBeforeDelete}
           isDelay={delayStep}
         />

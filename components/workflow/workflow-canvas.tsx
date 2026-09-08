@@ -75,12 +75,16 @@ interface WorkflowCanvasProps {
   onDeleteConnection: (connectionId: string) => Promise<void>
   onEditStep: (step: CanvasStep) => void
   onDeleteStep: (stepId: string) => Promise<void>
+  onStartFromStep: (stepId: string) => Promise<void>
+  startFromStepDisabled: boolean
 }
 
 function makeNodes(
   steps: CanvasStep[],
   onEdit: (step: CanvasStep) => void,
-  onDelete: (stepId: string) => Promise<void>
+  onDelete: (stepId: string) => Promise<void>,
+  onStartFromStep: (stepId: string) => Promise<void>,
+  startFromStepDisabled: boolean
 ): Node[] {
   return steps.map((step) => ({
     id: step.id,
@@ -90,6 +94,8 @@ function makeNodes(
       step,
       onEdit,
       onDelete,
+      onStartFromStep,
+      startFromStepDisabled,
     } satisfies StepNodeData,
   }))
 }
@@ -123,6 +129,8 @@ function CanvasInner({
   onDeleteConnection,
   onEditStep,
   onDeleteStep,
+  onStartFromStep,
+  startFromStepDisabled,
 }: WorkflowCanvasProps) {
   const { screenToFlowPosition } = useReactFlow()
   const propsRef = useRef({
@@ -137,6 +145,8 @@ function CanvasInner({
     onDeleteConnection,
     onEditStep,
     onDeleteStep,
+    onStartFromStep,
+    startFromStepDisabled,
   })
 
   useLayoutEffect(() => {
@@ -152,6 +162,8 @@ function CanvasInner({
       onDeleteConnection,
       onEditStep,
       onDeleteStep,
+      onStartFromStep,
+      startFromStepDisabled,
     }
   })
 
@@ -187,15 +199,31 @@ function CanvasInner({
     }
   }, [])
 
+  const handleStartFromStep = useCallback(async (stepId: string) => {
+    await propsRef.current.onStartFromStep(stepId)
+  }, [])
+
   useEffect(() => {
     setNodes((previous) => {
-      const next = makeNodes(steps, handleEditStep, handleDeleteStep)
+      const next = makeNodes(
+        steps,
+        handleEditStep,
+        handleDeleteStep,
+        handleStartFromStep,
+        startFromStepDisabled
+      )
       return next.map((node) => {
         const existing = previous.find((item) => item.id === node.id)
         return existing ? { ...node, position: existing.position } : node
       })
     })
-  }, [steps, handleEditStep, handleDeleteStep])
+  }, [
+    steps,
+    handleEditStep,
+    handleDeleteStep,
+    handleStartFromStep,
+    startFromStepDisabled,
+  ])
 
   useEffect(() => {
     setEdges(makeEdges(connections, handleEdgeDelete))
