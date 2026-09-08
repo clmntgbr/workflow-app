@@ -3,6 +3,7 @@ import {
   AssertionOperator,
   AssertionSource,
 } from "@/lib/workflow/assertion/types"
+import { StepType } from "@/lib/workflow/types"
 
 /** Shared status for workflow runs and step runs. */
 export const RUN_STATUSES = [
@@ -172,6 +173,9 @@ export interface WorkflowRunStep {
   name: string
   url: string
   method: string
+  type?: StepType
+  expression?: string | null
+  delayDurationSeconds?: number | null
   position: StepRunPosition
   lastRunStatus: RunStatus | null
   description: string | null

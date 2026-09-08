@@ -22,22 +22,11 @@ import {
   MinusIcon,
   XIcon,
 } from "lucide-react"
+import { Fragment } from "react"
 
 interface WorkflowRunTimelineProps {
   run: WorkflowRun | WorkflowRunDetail
   stepRuns: WorkflowRunStepRunDetail[]
-}
-
-function formatTime(iso: string | null | undefined): string {
-  if (!iso) return "—"
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return "—"
-
-  return date.toLocaleTimeString("fr-FR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  })
 }
 
 function formatDuration(ms: number): string {
@@ -88,29 +77,7 @@ function TimelineStatusIcon({ status }: { status: RunStatus }) {
   )
 }
 
-function earliestIso(values: Array<string | null | undefined>): string | null {
-  let earliest: string | null = null
-  let earliestTime = Number.POSITIVE_INFINITY
-  for (const value of values) {
-    const time = parseTime(value)
-    if (time == null || time >= earliestTime) continue
-    earliestTime = time
-    earliest = value ?? null
-  }
-  return earliest
-}
-
-function latestIso(values: Array<string | null | undefined>): string | null {
-  let latest: string | null = null
-  let latestTime = Number.NEGATIVE_INFINITY
-  for (const value of values) {
-    const time = parseTime(value)
-    if (time == null || time <= latestTime) continue
-    latestTime = time
-    latest = value ?? null
-  }
-  return latest
-}
+const MIN_VISIBLE_RATIO = 0.008
 
 function stepElapsedMs(stepRun: WorkflowRunStepRunDetail): number {
   const start = parseTime(stepRun.startedAt)
@@ -123,48 +90,62 @@ export function WorkflowRunTimeline({
   run,
   stepRuns,
 }: WorkflowRunTimelineProps) {
-  const firstStepAt = earliestIso(stepRuns.map((stepRun) => stepRun.startedAt))
-  const lastStepAt = latestIso(
-    stepRuns.map((stepRun) => stepRun.finishedAt ?? stepRun.startedAt)
-  )
-  const packedTotal = Math.max(
-    run.duration,
-    stepRuns.reduce((sum, stepRun) => sum + stepElapsedMs(stepRun), 0),
-    1
-  )
-  const packedSteps = stepRuns.map((stepRun, index, items) => {
+  const timedSteps = stepRuns.map((stepRun) => {
     const skipped = !stepRun.startedAt
     const elapsed = skipped ? 0 : stepElapsedMs(stepRun)
-    const offset = items
-      .slice(0, index)
-      .reduce(
-        (sum, item) => sum + (item.startedAt ? stepElapsedMs(item) : 0),
-        0
-      )
-    return { stepRun, skipped, elapsed, offset }
+    return { stepRun, skipped, elapsed }
   })
+  const rawTotal = Math.max(
+    run.duration,
+    timedSteps.reduce((sum, item) => sum + item.elapsed, 0),
+    1
+  )
+  const minVisibleMs = rawTotal * MIN_VISIBLE_RATIO
+  const visualWeights = timedSteps.map((item) => {
+    if (item.skipped) return 0
+    return Math.max(item.elapsed, minVisibleMs)
+  })
+  const visualTotal = Math.max(
+    visualWeights.reduce((sum, weight) => sum + weight, 0),
+    1
+  )
+  const packedSteps = timedSteps.map((item, index) => ({
+    ...item,
+    offset: visualWeights
+      .slice(0, index)
+      .reduce((sum, weight) => sum + weight, 0),
+    visualWidth: visualWeights[index] ?? 0,
+  }))
 
   return (
     <Card className="shadow-none">
-      <CardContent className="">
+      <CardContent>
         <TooltipProvider delayDuration={100}>
-          <div className="space-y-1.5">
-            {packedSteps.map(({ stepRun, skipped, elapsed, offset }) => {
-              const statusIcon = (
-                <TimelineStatusIcon
-                  status={skipped ? "skipped" : stepRun.status}
-                />
-              )
+          <div className="grid grid-cols-[max-content_1fr_auto] items-center gap-x-3 gap-y-1.5">
+            {packedSteps.map(
+              ({ stepRun, skipped, elapsed, offset, visualWidth }) => {
+                const statusIcon = (
+                  <TimelineStatusIcon
+                    status={skipped ? "skipped" : stepRun.status}
+                  />
+                )
+                const left = (offset / visualTotal) * 100
+                const width = (visualWidth / visualTotal) * 100
 
-              if (skipped) {
                 return (
-                  <div key={stepRun.id} className="flex items-center gap-3">
-                    <span className="w-40 truncate text-xs font-bold text-muted-foreground">
-                      {stepRun.name}
-                    </span>
+                <Fragment key={stepRun.id}>
+                  <span
+                    className={cn(
+                      "text-xs font-bold",
+                      skipped ? "text-muted-foreground" : "text-gray-900"
+                    )}
+                  >
+                    {stepRun.name}
+                  </span>
+                  {skipped ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="relative h-5 flex-1 rounded bg-gray-500/20">
+                        <div className="relative h-5 min-w-0 rounded bg-gray-500/20">
                           <div className="absolute inset-y-0 left-0 flex w-full items-center px-2" />
                         </div>
                       </TooltipTrigger>
@@ -172,40 +153,26 @@ export function WorkflowRunTimeline({
                         <p className="text-xs">This step was skipped</p>
                       </TooltipContent>
                     </Tooltip>
-                    {statusIcon}
-                  </div>
-                )
-              }
-
-              const left = (offset / packedTotal) * 100
-              const width = Math.max(
-                (elapsed / packedTotal) * 100,
-                elapsed > 0 ? 0.8 : 0
-              )
-
-              return (
-                <div key={stepRun.id} className="flex items-center gap-3">
-                  <span className="w-40 truncate text-xs font-bold text-gray-900">
-                    {stepRun.name}
-                  </span>
-                  <div className="relative h-5 flex-1 rounded border border-gray-200 bg-secondary/50">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div
-                          className={cn(
-                            "absolute inset-y-0 rounded-xs",
-                            BAR_COLOR[stepRun.status]
-                          )}
-                          style={{ left: `${left}%`, width: `${width}%` }}
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">{formatDuration(elapsed)}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
+                  ) : (
+                    <div className="relative h-5 min-w-0 rounded border border-gray-200 bg-secondary/50">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={cn(
+                              "absolute inset-y-0 rounded-xs",
+                              BAR_COLOR[stepRun.status]
+                            )}
+                            style={{ left: `${left}%`, width: `${width}%` }}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">{formatDuration(elapsed)}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  )}
                   {statusIcon}
-                </div>
+                </Fragment>
               )
             })}
           </div>

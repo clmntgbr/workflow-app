@@ -1,5 +1,6 @@
 "use client"
 
+import { WorkflowRunStepRun } from "@/components/workflow/workflow-run-step-run"
 import { WorkflowRunTimeline } from "@/components/workflow/workflow-run-timeline"
 import {
   Drawer,
@@ -74,9 +75,20 @@ export function WorkflowRunDrawer({
           </DrawerTitle>
         </DrawerHeader>
 
-        <div className="min-h-0 flex-1 overflow-auto px-6 py-8">
+        <div className="min-h-0 flex-1 space-y-6 overflow-auto px-6 py-8">
           {timelineRun ? (
             <WorkflowRunTimeline run={timelineRun} stepRuns={sortedStepRuns} />
+          ) : null}
+          {sortedStepRuns.length > 0 ? (
+            <div className="space-y-2">
+              {sortedStepRuns.map((stepRun, index) => (
+                <WorkflowRunStepRun
+                  key={stepRun.id}
+                  stepRun={stepRun}
+                  index={index}
+                />
+              ))}
+            </div>
           ) : null}
         </div>
       </DrawerContent>
