@@ -2,22 +2,35 @@
 
 import { StatusBadge } from "@/components/status-badge"
 import { Badge } from "@/components/ui/badge"
-import { GetRunDuration } from "@/lib/misc"
+import { FormatBytes, GetRunDuration } from "@/lib/misc"
 import { cn } from "@/lib/utils"
 import {
   WorkflowRunInsight,
   WorkflowRunStepRunDetail,
 } from "@/lib/workflow-run/types"
+import {
+  AssertionOperator,
+  AssertionSource,
+  getAssertionSummaryParts,
+  operatorNeedsExpectedValue,
+} from "@/lib/workflow/assertion/types"
 import { inferStepType } from "@/lib/workflow/step-validation"
 import { StepType } from "@/lib/workflow/types"
 import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CheckCircle2,
   ChevronRightIcon,
+  Clock,
   ClockIcon,
   GaugeIcon,
   GitBranchIcon,
   GlobeIcon,
+  Hash,
+  RotateCcw,
   ServerIcon,
   TimerIcon,
+  XCircle,
 } from "lucide-react"
 import { Fragment, useState } from "react"
 import {
@@ -35,6 +48,40 @@ const METHOD_STYLES: Record<string, string> = {
   DELETE: "bg-red-50 text-red-700 border-red-200",
   HEAD: "bg-slate-50 text-slate-700 border-slate-200",
   OPTIONS: "bg-violet-50 text-violet-700 border-violet-200",
+}
+
+const SOURCE_BADGE_STYLES: Record<AssertionSource, string> = {
+  status: "border-sky-200 bg-sky-50 text-sky-700",
+  header: "border-violet-200 bg-violet-50 text-violet-700",
+  body: "border-emerald-200 bg-emerald-50 text-emerald-700",
+}
+
+const OPERATOR_EXPECTED_LABEL: Partial<Record<AssertionOperator, string>> = {
+  not_null: "not null",
+  is_null: "null",
+  is_string: "string",
+  is_number: "number",
+  is_boolean: "boolean",
+  is_array: "array",
+  is_object: "object",
+}
+
+function formatAssertionExpected(assertion: {
+  operator: AssertionOperator
+  expectedValue: string | null
+}): string {
+  if (
+    operatorNeedsExpectedValue(assertion.operator) &&
+    assertion.expectedValue != null &&
+    assertion.expectedValue !== ""
+  ) {
+    return assertion.expectedValue
+  }
+
+  return (
+    OPERATOR_EXPECTED_LABEL[assertion.operator] ??
+    assertion.operator.replaceAll("_", " ")
+  )
 }
 
 const STEP_TYPE_ICON: Record<
@@ -136,7 +183,7 @@ export function WorkflowRunStepRun({
 
   const header = (
     <>
-      <div className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted font-mono text-xs font-semibold text-foreground">
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted text-xs font-semibold text-foreground">
         {index + 1}
       </div>
       <StepTypeIcon type={stepType} />
@@ -144,11 +191,12 @@ export function WorkflowRunStepRun({
         <span className="min-w-0 shrink truncate text-sm font-semibold">
           {stepRun.name}
         </span>
+        {stepType !== "http" ? <StatusBadge status={status} /> : null}
         {stepType === "http" && (stepRun.method || stepRun.url) ? (
           <>
             <MethodBadge method={stepRun.method} />
             {stepRun.url ? (
-              <p className="min-w-0 truncate font-mono text-xs text-muted-foreground">
+              <p className="min-w-0 truncate text-xs text-muted-foreground">
                 {stepRun.url}
               </p>
             ) : null}
@@ -159,7 +207,7 @@ export function WorkflowRunStepRun({
       <div className="flex shrink-0 items-center gap-2">
         <Badge
           variant="outline"
-          className="gap-1 font-mono text-muted-foreground tabular-nums"
+          className="gap-1 text-muted-foreground tabular-nums"
         >
           <ClockIcon data-icon="inline-start" />
           {durationLabel}
@@ -192,10 +240,7 @@ export function WorkflowRunStepRun({
           type="button"
           aria-expanded={expanded}
           onClick={() => setExpanded((current) => !current)}
-          className={cn(
-            headerClassName,
-            "cursor-pointer hover:bg-muted/60"
-          )}
+          className={cn(headerClassName, "cursor-pointer hover:bg-muted/60")}
         >
           {header}
         </button>
@@ -206,6 +251,12 @@ export function WorkflowRunStepRun({
       {expanded && hasDetails ? (
         <div className="space-y-4 border-t px-4 py-4">
           <InsightsPanel insights={insights} />
+        </div>
+      ) : null}
+
+      {expanded && hasDetails ? (
+        <div className="space-y-4 border-t px-4 py-4">
+          <AssertionsTable stepRun={stepRun} />
         </div>
       ) : null}
     </div>
@@ -258,6 +309,28 @@ function InsightsPanel({ insights }: { insights: WorkflowRunInsight[] }) {
 
   return (
     <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <MetricBox
+          icon={ArrowDownToLine}
+          label="Response size"
+          value={FormatBytes(insight.responseSize)}
+        />
+        <MetricBox
+          icon={ArrowUpFromLine}
+          label="Request size"
+          value={FormatBytes(insight.requestSize)}
+        />
+        <MetricBox
+          icon={Hash}
+          label="Status code"
+          value={String(insight.statusCode)}
+        />
+        <MetricBox
+          icon={RotateCcw}
+          label="Attempts"
+          value={`${insight.totalAttempts}`}
+        />
+      </div>
       <TooltipProvider delayDuration={100}>
         <div className="grid grid-cols-[max-content_1fr_auto] items-center gap-x-3 gap-y-2 rounded-lg border bg-muted/30 p-3">
           {phases.map((phase) => (
@@ -288,13 +361,138 @@ function InsightsPanel({ insights }: { insights: WorkflowRunInsight[] }) {
                   }}
                 />
               </div>
-              <span className="text-right font-mono text-xs tabular-nums">
+              <span className="text-right text-xs tabular-nums">
                 {formatMillisLabel(phase.value)}
               </span>
             </Fragment>
           ))}
         </div>
       </TooltipProvider>
+    </div>
+  )
+}
+
+function MetricBox({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Clock
+  label: string
+  value: string
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+      <div className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Icon className="h-3 w-3" />
+        {label}
+      </div>
+      <p className="text-sm font-medium text-foreground tabular-nums">
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function AssertionsTable({ stepRun }: { stepRun: WorkflowRunStepRunDetail }) {
+  const assertionsResult = stepRun.assertionsResult ?? []
+  return (
+    <div className="overflow-hidden rounded-md border">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b bg-secondary/50 text-left text-xs text-muted-foreground">
+            <th className="px-3 py-2 font-medium">Asserts</th>
+            <th className="px-3 py-2 font-medium">Expected</th>
+            <th className="px-3 py-2 font-medium">Received</th>
+            <th className="px-3 py-2 text-right font-medium">Result</th>
+          </tr>
+        </thead>
+        <tbody>
+          {assertionsResult.map((ar) => (
+            <tr key={ar.assertion.id} className="border-b last:border-0">
+              <td className="px-3 py-2.5">
+                {ar.assertion.description ? (
+                  <p className="text-xs font-medium">
+                    {ar.assertion.description}
+                  </p>
+                ) : null}
+                <span
+                  className={cn(
+                    "flex min-w-0 flex-wrap items-center gap-1",
+                    ar.assertion.description && "mt-1"
+                  )}
+                >
+                  {getAssertionSummaryParts({
+                    id: ar.assertion.id,
+                    description: ar.assertion.description,
+                    source: ar.assertion.source,
+                    path: ar.assertion.path,
+                    operator: ar.assertion.operator,
+                    expectedValue: null,
+                    stepId: "",
+                    workflowId: "",
+                  })
+                    .filter((part) => {
+                      if (operatorNeedsExpectedValue(ar.assertion.operator)) {
+                        return true
+                      }
+                      return (
+                        part !== ar.assertion.operator.replaceAll("_", " ")
+                      )
+                    })
+                    .map((part, index) => (
+                      <Badge
+                        key={`${ar.assertion.id}-${index}`}
+                        variant={index === 0 ? "outline" : "secondary"}
+                        className={cn(
+                          "max-w-full truncate font-normal",
+                          index === 0 &&
+                            SOURCE_BADGE_STYLES[ar.assertion.source]
+                        )}
+                      >
+                        {part}
+                      </Badge>
+                    ))}
+                </span>
+              </td>
+              <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                {formatAssertionExpected(ar.assertion)}
+              </td>
+              <td className="max-w-56 px-3 py-2.5">
+                <span
+                  className="block truncate text-xs"
+                  title={
+                    typeof ar.actualValue === "object"
+                      ? JSON.stringify(ar.actualValue)
+                      : String(ar.actualValue)
+                  }
+                >
+                  {typeof ar.actualValue === "object"
+                    ? JSON.stringify(ar.actualValue)
+                    : String(ar.actualValue)}
+                </span>
+              </td>
+              <td className="px-3 py-2.5 text-right">
+                {ar.passed ? (
+                  <Badge
+                    variant="outline"
+                    className="gap-1 border-emerald-200 bg-emerald-50 text-emerald-700"
+                  >
+                    <CheckCircle2 className="size-3" /> Passed
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className="gap-1 border-rose-200 bg-rose-50 text-rose-700"
+                  >
+                    <XCircle className="size-3" /> Failed
+                  </Badge>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

@@ -121,3 +121,30 @@ export function GetRunDuration(durationMs: number | null | undefined): string {
   if (durationMs < 60_000) return `${(durationMs / 1000).toFixed(1)}s`
   return `${Math.floor(durationMs / 60_000)}m ${Math.floor((durationMs % 60_000) / 1000)}s`
 }
+
+export function FormatBytes(bytes: number | null | undefined): string {
+  if (bytes == null || !Number.isFinite(bytes) || bytes < 0) {
+    return ""
+  }
+  if (bytes === 0) return "0 B"
+  const k = 1024
+  const sizes = ["B", "KB", "MB", "GB"]
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+}
+
+export function FormatActualValue(value: unknown | null | undefined): string {
+  if (value === null || value === undefined) return "null"
+  if (typeof value === "string") return value
+  if (typeof value === "number" || typeof value === "boolean")
+    return String(value)
+  if (typeof value === "object") {
+    try {
+      const json = JSON.stringify(value, null, 2)
+      return json.length > 200 ? json.slice(0, 200) + "..." : json
+    } catch {
+      return String(value)
+    }
+  }
+  return String(value)
+}
